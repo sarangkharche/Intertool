@@ -1,0 +1,14 @@
+name: edewd
+type: skill
+slug: edewd
+description: edwed
+author: sarangkharche
+category: dev-tools
+tags: []
+compatibility: []
+install_command: intertool install @sarangkharche/edewd
+install_commands:
+  Claude Code: claude skill add intertool://sarangkharche/edewd
+  Intertool CLI: intertool install @sarangkharche/edewd
+status: published
+created_at: 2026-03-17T22:56:27.456Z
