@@ -1,5 +1,6 @@
 import { Package } from "lucide-react";
 import { Metadata } from "next";
+import { LogoDownload, DownloadAllLogos } from "@/components/logo-download";
 
 export const metadata: Metadata = {
   title: "Brand Kit — Intertool",
@@ -75,7 +76,10 @@ export default function BrandPage() {
 
       {/* ── Logo ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">Logo</h2>
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="text-lg font-medium tracking-tight">Logo</h2>
+          <DownloadAllLogos />
+        </div>
         <p className="mb-6 text-sm text-muted-foreground">
           The Intertool mark is the Package icon paired with the wordmark. Use
           the full lockup where space allows; the icon alone for compact
@@ -91,9 +95,12 @@ export default function BrandPage() {
                 intertool
               </span>
             </div>
-            <p className="text-[11px] text-background/40">
-              Primary — on dark backgrounds
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] text-background/40">
+                Primary — on dark backgrounds
+              </p>
+              <LogoDownload variant="dark" />
+            </div>
           </div>
 
           {/* Light background */}
@@ -104,9 +111,12 @@ export default function BrandPage() {
                 intertool
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Inverse — on light backgrounds
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                Inverse — on light backgrounds
+              </p>
+              <LogoDownload variant="light" />
+            </div>
           </div>
         </div>
 
@@ -115,20 +125,24 @@ export default function BrandPage() {
           <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-foreground px-4 py-6">
             <Package className="h-8 w-8 text-background" />
             <p className="text-[11px] text-background/40">Icon dark</p>
+            <LogoDownload variant="icon-dark" />
           </div>
           <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-background px-4 py-6">
             <Package className="h-8 w-8 text-foreground" />
             <p className="text-[11px] text-muted-foreground">Icon light</p>
+            <LogoDownload variant="icon-light" />
           </div>
           <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-primary px-4 py-6">
             <Package className="h-8 w-8 text-primary-foreground" />
             <p className="text-[11px] text-primary-foreground/60">
               Icon accent
             </p>
+            <LogoDownload variant="icon-accent" />
           </div>
           <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-muted px-4 py-6">
             <Package className="h-8 w-8 text-muted-foreground" />
             <p className="text-[11px] text-muted-foreground">Icon muted</p>
+            <LogoDownload variant="icon-muted" />
           </div>
         </div>
 
