@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Skill, SkillType } from "@/lib/types";
 import { SKILL_TYPE_LABELS, SKILL_TYPE_COLORS } from "@/lib/constants";
+import { displayAuthor } from "@/lib/utils";
 
 export function SkillCard({ skill }: { skill: Skill }) {
   return (
@@ -13,7 +14,7 @@ export function SkillCard({ skill }: { skill: Skill }) {
               {skill.name}
             </h3>
             <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-              @{skill.author}/{skill.slug}
+              @{displayAuthor(skill.author)}/{skill.slug}
             </p>
           </div>
           <TypeBadge type={skill.type} />

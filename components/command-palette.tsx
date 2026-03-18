@@ -51,7 +51,7 @@ export function CommandPalette() {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=8`);
       if (res.ok) {
         const data = await res.json();
-        setResults(data.results ?? data.skills ?? []);
+        setResults(Array.isArray(data) ? data : data.results ?? data.skills ?? []);
       }
     } catch {
       // ignore
@@ -106,21 +106,17 @@ export function CommandPalette() {
         <CommandSeparator />
 
         <CommandGroup heading="Pages">
-          <CommandItem value="browse-registry" onSelect={() => navigate("/browse")}>
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <span>Browse Registry</span>
+          <CommandItem value="dashboard" onSelect={() => navigate("/dashboard")}>
+            <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+            <span>Dashboard</span>
           </CommandItem>
           <CommandItem value="publish-skill" onSelect={() => navigate("/publish")}>
             <Plus className="h-4 w-4 text-muted-foreground" />
             <span>Publish a Skill</span>
           </CommandItem>
-          <CommandItem value="dashboard" onSelect={() => navigate("/dashboard")}>
-            <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-            <span>Dashboard</span>
-          </CommandItem>
-          <CommandItem value="review-queue" onSelect={() => navigate("/review")}>
+          <CommandItem value="your-skills" onSelect={() => navigate("/dashboard?mine=true")}>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
-            <span>Review Queue</span>
+            <span>Your Skills</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

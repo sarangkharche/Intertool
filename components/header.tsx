@@ -39,8 +39,8 @@ export function Header() {
           </Link>
 
           <nav className="hidden items-center gap-4 md:flex">
-            <Link href="/browse" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Browse
+            <Link href="/dashboard" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+              Registry
             </Link>
           </nav>
 

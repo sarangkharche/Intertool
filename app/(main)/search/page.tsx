@@ -46,7 +46,7 @@ export default async function SearchPage({
         <div className="min-w-0 flex-1">
           {results.skills.length > 0 ? (
             <>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {results.skills.map((skill) => (
                   <SkillCard key={skill.slug} skill={skill} />
                 ))}
