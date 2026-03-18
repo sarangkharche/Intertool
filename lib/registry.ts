@@ -1,3 +1,4 @@
+import { cache } from "react";
 import yaml from "yaml";
 import { getObject, putObject, deleteObject, listObjects, isS3Configured } from "./s3";
 import { getSettings, typeToFolder } from "./settings";
@@ -103,15 +104,14 @@ export function generateInstallCommands(skill: {
 
 /**
  * Resolve settings for the current request context.
- * In SaaS mode, reads org slug from request headers.
- * In self-hosted mode, reads from settings.json.
+ * Wrapped with React cache() to deduplicate within a single server request.
  */
-async function resolveSettings(): Promise<RegistrySettings | null> {
+const resolveSettings = cache(async (): Promise<RegistrySettings | null> => {
   const orgSlug = await getOrgSlug();
   const settings = await getSettings(orgSlug);
   if (!isS3Configured(settings)) return null;
   return settings;
-}
+});
 
 // ── In-memory cache for _index.json (keyed by bucket) ──
 
@@ -131,30 +131,37 @@ async function fetchIndex(settings: RegistrySettings): Promise<Skill[]> {
   return skills;
 }
 
+const categoriesCache = new Map<string, { categories: Category[]; fetchedAt: number }>();
+
 function invalidateCache(bucket: string): void {
   indexCaches.delete(bucket);
+  categoriesCache.delete(bucket);
 }
 
 /** Rebuild _index.json by scanning all skill.json files in the bucket */
 async function rebuildIndex(settings: RegistrySettings): Promise<Skill[]> {
   const folders = ["skills", "mcp-servers", "agent-tools", "prompt-templates"];
-  const skills: Skill[] = [];
 
-  for (const folder of folders) {
-    const keys = await listObjects(settings, `${folder}/`);
-    for (const key of keys) {
-      if (!key.endsWith("/skill.json")) continue;
-      const raw = await getObject(settings, key);
-      if (!raw) continue;
-      try {
-        const skill = JSON.parse(raw) as Skill;
-        skills.push({ ...skill, readme: "" });
-      } catch {
-        // skip malformed
-      }
-    }
-  }
+  const results = await Promise.all(
+    folders.map(async (folder) => {
+      const keys = await listObjects(settings, `${folder}/`);
+      return Promise.all(
+        keys
+          .filter((k) => k.endsWith("/skill.json"))
+          .map(async (key) => {
+            const raw = await getObject(settings, key);
+            if (!raw) return null;
+            try {
+              return { ...(JSON.parse(raw) as Skill), readme: "" };
+            } catch {
+              return null;
+            }
+          })
+      );
+    })
+  );
 
+  const skills = results.flat().filter(Boolean) as Skill[];
   skills.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   await putObject(settings, "_index.json", JSON.stringify(skills, null, 2));
   invalidateCache(settings.s3_bucket);
@@ -190,6 +197,10 @@ export async function getSkills(
   skills = skills.filter((s) => s.status === "published");
   if (filters.type) skills = skills.filter((s) => s.type === filters.type);
   if (filters.category) skills = skills.filter((s) => s.category_slug === filters.category);
+  if (filters.author) {
+    const authorLower = filters.author.toLowerCase();
+    skills = skills.filter((s) => s.author.toLowerCase() === authorLower);
+  }
   if (filters.query) {
     const q = filters.query.toLowerCase();
     skills = skills.filter(
@@ -214,10 +225,50 @@ export async function getSkills(
   return { skills, total };
 }
 
+/** Return tab counts from the cached index without allocating a full array. */
+export async function getSkillCounts(username?: string): Promise<{
+  total: number;
+  byType: Record<string, number>;
+  mine: number;
+}> {
+  const settings = await resolveSettings();
+  if (!settings) return { total: 0, byType: {}, mine: 0 };
+
+  const all = await fetchIndex(settings);
+  const published = all.filter((s) => s.status === "published");
+
+  const byType: Record<string, number> = {};
+  let mine = 0;
+  for (const s of published) {
+    byType[s.type] = (byType[s.type] || 0) + 1;
+    if (username && s.author.toLowerCase() === username.toLowerCase()) {
+      mine++;
+    }
+  }
+
+  return { total: published.length, byType, mine };
+}
+
 export async function getSkillBySlug(slug: string): Promise<Skill | null> {
   const settings = await resolveSettings();
   if (!settings) return null;
 
+  // Try to find the type from the cached index to avoid N+1 folder scanning
+  const index = await fetchIndex(settings);
+  const indexed = index.find((s) => s.slug === slug);
+  if (indexed) {
+    const folder = typeToFolder(indexed.type);
+    const raw = await getObject(settings, `${folder}/${slug}/skill.json`);
+    if (raw) {
+      const skill = JSON.parse(raw) as Skill;
+      if (!skill.install_commands) {
+        skill.install_commands = generateInstallCommands(skill);
+      }
+      return skill;
+    }
+  }
+
+  // Fallback: scan all folders (new/uncached skill)
   const folders = ["skills", "mcp-servers", "agent-tools", "prompt-templates"];
   for (const folder of folders) {
     const raw = await getObject(settings, `${folder}/${slug}/skill.json`);
@@ -236,26 +287,34 @@ export async function getSkillVersions(slug: string): Promise<SkillVersion[]> {
   const settings = await resolveSettings();
   if (!settings) return [];
 
-  // Find which folder the skill is in
-  const folders = ["skills", "mcp-servers", "agent-tools", "prompt-templates"];
-  for (const folder of folders) {
+  // Use index to find the correct folder directly
+  const index = await fetchIndex(settings);
+  const indexed = index.find((s) => s.slug === slug);
+
+  const foldersToCheck = indexed
+    ? [typeToFolder(indexed.type)]
+    : ["skills", "mcp-servers", "agent-tools", "prompt-templates"];
+
+  for (const folder of foldersToCheck) {
     const keys = await listObjects(settings, `${folder}/${slug}/versions/`);
     if (keys.length === 0) continue;
 
-    const versions: SkillVersion[] = [];
-    for (const key of keys) {
-      if (!key.endsWith(".json")) continue;
-      const raw = await getObject(settings, key);
-      if (!raw) continue;
-      try {
-        const data = JSON.parse(raw) as SkillVersion;
-        versions.push(data);
-      } catch {
-        // skip malformed
-      }
-    }
+    const versions = (
+      await Promise.all(
+        keys
+          .filter((k) => k.endsWith(".json"))
+          .map(async (key) => {
+            const raw = await getObject(settings, key);
+            if (!raw) return null;
+            try {
+              return JSON.parse(raw) as SkillVersion;
+            } catch {
+              return null;
+            }
+          })
+      )
+    ).filter(Boolean) as SkillVersion[];
 
-    // Sort newest first
     versions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return versions;
   }
@@ -267,9 +326,19 @@ export async function getCategories(): Promise<Category[]> {
   const settings = await resolveSettings();
   if (!settings) return hardcodedCategories();
 
+  const cacheKey = settings.s3_bucket;
+  const cached = categoriesCache.get(cacheKey);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.categories;
+  }
+
   try {
     const raw = await getObject(settings, "_categories.json");
-    if (raw) return JSON.parse(raw) as Category[];
+    if (raw) {
+      const categories = JSON.parse(raw) as Category[];
+      categoriesCache.set(cacheKey, { categories, fetchedAt: Date.now() });
+      return categories;
+    }
   } catch {
     // fall through
   }

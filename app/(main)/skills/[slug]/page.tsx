@@ -21,10 +21,11 @@ export default async function SkillDetailPage({
 
   const { slug } = await params;
 
-  const skill = await getSkillBySlug(slug);
+  const [skill, versions] = await Promise.all([
+    getSkillBySlug(slug),
+    getSkillVersions(slug),
+  ]);
   if (!skill) notFound();
-
-  const versions = await getSkillVersions(slug);
   const username = (session?.user as { username?: string } | undefined)?.username;
   const isAuthor = username && skill.author.toLowerCase() === username.toLowerCase();
 
