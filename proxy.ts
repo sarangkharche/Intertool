@@ -33,20 +33,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Read JWT
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-  });
-
-  if (!token) {
-    const signInUrl = new URL("/sign-in", request.url);
-    return NextResponse.redirect(signInUrl);
-  }
-
-  // GitHub org enforcement
+  // GitHub org enforcement — only when GITHUB_ORG is configured
   const githubOrg = process.env.GITHUB_ORG;
   if (githubOrg) {
+    const token = await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET,
+    });
+
+    if (!token) {
+      const signInUrl = new URL("/sign-in", request.url);
+      return NextResponse.redirect(signInUrl);
+    }
+
     const userOrgs = (token.githubOrgs as string[]) ?? [];
     if (!userOrgs.includes(githubOrg.toLowerCase())) {
       const signInUrl = new URL("/sign-in?error=github_org", request.url);
