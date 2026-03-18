@@ -8,6 +8,8 @@ const SETTINGS_PATH = path.resolve(process.cwd(), "registry", "settings.json");
 export interface RegistrySettings {
   /** Username of the admin who configured this */
   admin_username: string;
+  /** Email of the admin (for Google-authed admins) */
+  admin_email?: string;
   /** When settings were last configured */
   configured_at: string;
   /** S3 bucket name */
@@ -26,6 +28,14 @@ export interface RegistrySettings {
   org_slug?: string;
   /** Org display name (SaaS mode only) */
   org_name?: string;
+  /** Whether Google Workspace auth is enabled */
+  google_auth_enabled?: boolean;
+  /** Allowed Google Workspace domains (e.g., ["acme.com"]) */
+  google_allowed_domains?: string[];
+  /** GitHub organization login name (e.g., "intertoolsh") */
+  github_org?: string;
+  /** Whether GitHub org membership is required to sign in */
+  github_org_required?: boolean;
 }
 
 // ── KV store (SaaS mode) ──
@@ -53,6 +63,10 @@ function getSettingsFromEnv(): RegistrySettings | null {
   const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
   if (!bucket || !accessKeyId || !secretAccessKey) return null;
 
+  const googleDomains = process.env.GOOGLE_ALLOWED_DOMAINS
+    ? process.env.GOOGLE_ALLOWED_DOMAINS.split(",").map((d) => d.trim()).filter(Boolean)
+    : undefined;
+
   return {
     admin_username: process.env.INTERTOOL_ADMIN ?? "",
     configured_at: "",
@@ -62,6 +76,10 @@ function getSettingsFromEnv(): RegistrySettings | null {
     s3_secret_access_key: secretAccessKey,
     s3_endpoint: process.env.S3_ENDPOINT || undefined,
     s3_session_token: process.env.S3_SESSION_TOKEN || undefined,
+    google_auth_enabled: googleDomains ? true : undefined,
+    google_allowed_domains: googleDomains,
+    github_org: process.env.GITHUB_ORG || undefined,
+    github_org_required: !!process.env.GITHUB_ORG,
   };
 }
 
@@ -127,7 +145,10 @@ export async function isAdmin(username: string, orgSlug?: string): Promise<boole
   const settings = await getSettings(orgSlug);
   if (!settings) return true; // no settings yet = anyone can set up
   if (!settings.admin_username) return true; // env-var config with no admin set
-  return settings.admin_username.toLowerCase() === username.toLowerCase();
+  if (settings.admin_username.toLowerCase() === username.toLowerCase()) return true;
+  // For Google-authed admins: check admin_email too
+  if (settings.admin_email && settings.admin_email.toLowerCase() === username.toLowerCase()) return true;
+  return false;
 }
 
 /** Map skill type to the folder name in S3 */
@@ -177,4 +198,33 @@ export async function createOrg(orgSlug: string, orgName: string, adminUsername:
 export async function getOrgForUser(username: string): Promise<string | null> {
   if (!isSaasMode()) return null;
   return await getRedis().get<string>(`user:${username}:org`);
+}
+
+// ── Org membership helpers (SaaS mode) ──
+
+function memberSetKey(orgSlug: string): string {
+  return `org:${orgSlug}:members`;
+}
+
+/** Add a user to an org's membership set */
+export async function addOrgMember(orgSlug: string, username: string): Promise<void> {
+  await getRedis().sadd(memberSetKey(orgSlug), username.toLowerCase());
+}
+
+/** Remove a user from an org's membership set */
+export async function removeOrgMember(orgSlug: string, username: string): Promise<void> {
+  await getRedis().srem(memberSetKey(orgSlug), username.toLowerCase());
+}
+
+/** Check if a user is a member of an org (also returns true for admin) */
+export async function isOrgMember(orgSlug: string, username: string): Promise<boolean> {
+  const settings = await getSettings(orgSlug);
+  if (settings?.admin_username?.toLowerCase() === username.toLowerCase()) return true;
+  const result = await getRedis().sismember(memberSetKey(orgSlug), username.toLowerCase());
+  return result === 1;
+}
+
+/** Get all members of an org */
+export async function getOrgMembers(orgSlug: string): Promise<string[]> {
+  return await getRedis().smembers(memberSetKey(orgSlug));
 }

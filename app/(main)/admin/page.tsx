@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Settings, Shield, Loader2, Check, Database, Globe } from "lucide-react";
+import { Settings, Shield, Loader2, Check, Database, Globe, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 interface SettingsData {
@@ -15,6 +15,10 @@ interface SettingsData {
   s3_endpoint?: string;
   admin_username: string;
   configured_at: string;
+  google_auth_enabled?: boolean;
+  google_allowed_domains?: string[];
+  github_org?: string;
+  github_org_required?: boolean;
 }
 
 const REGIONS = [
@@ -50,6 +54,16 @@ export default function AdminPage() {
   const [sessionToken, setSessionToken] = useState("");
   const [endpoint, setEndpoint] = useState("");
 
+  // Google auth state
+  const [googleClientConfigured, setGoogleClientConfigured] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [googleDomains, setGoogleDomains] = useState("");
+  const [savingAuth, setSavingAuth] = useState(false);
+
+  // GitHub org state
+  const [githubOrg, setGithubOrg] = useState("");
+  const [githubOrgRequired, setGithubOrgRequired] = useState(false);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/sign-in");
@@ -63,12 +77,19 @@ export default function AdminPage() {
         setSettings(data.settings);
         setIsAdmin(data.is_admin);
         setNeedsSetup(data.needs_setup);
+        setGoogleClientConfigured(data.google_client_configured ?? false);
         if (data.settings) {
           setBucket(data.settings.s3_bucket || "");
           setRegion(data.settings.s3_region || "us-east-1");
           setAccessKeyId(data.settings.s3_access_key_id || "");
           setSecretAccessKey(""); // never send back
           setEndpoint(data.settings.s3_endpoint || "");
+          setGoogleEnabled(data.settings.google_auth_enabled ?? false);
+          setGoogleDomains(
+            (data.settings.google_allowed_domains ?? []).join(", ")
+          );
+          setGithubOrg(data.settings.github_org ?? "");
+          setGithubOrgRequired(data.settings.github_org_required ?? false);
         }
         setLoading(false);
       });
@@ -150,11 +171,57 @@ export default function AdminPage() {
         admin_username:
           (session?.user as { username?: string })?.username ?? "",
         configured_at: new Date().toISOString(),
+        google_auth_enabled: googleEnabled,
+        google_allowed_domains: googleDomains
+          .split(",")
+          .map((d) => d.trim())
+          .filter(Boolean),
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveAuth = async () => {
+    const domains = googleDomains
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean);
+
+    if (googleEnabled && domains.length === 0) {
+      toast.error("At least one allowed domain is required when Google auth is enabled");
+      return;
+    }
+
+    setSavingAuth(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Pass existing S3 settings to preserve them
+          s3_bucket: bucket.trim(),
+          s3_region: region,
+          s3_access_key_id: accessKeyId.trim(),
+          s3_endpoint: endpoint.trim() || undefined,
+          // Auth fields
+          google_auth_enabled: googleEnabled,
+          google_allowed_domains: domains,
+          github_org: githubOrg.trim() || undefined,
+          github_org_required: githubOrgRequired,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+      toast.success("Authentication settings saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingAuth(false);
     }
   };
 
@@ -360,6 +427,156 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Authentication config */}
+      {!needsSetup && (
+        <div className="mt-6 rounded-lg border border-border">
+          <div className="border-b border-border px-4 py-3">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-sm font-medium">Authentication</p>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Allow team members to sign in with Google Workspace.
+            </p>
+          </div>
+
+          <div className="space-y-4 p-4">
+            {/* Env var status */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium">Google OAuth credentials</p>
+                <p className="text-[11px] text-muted-foreground">
+                  GOOGLE_CLIENT_ID environment variable
+                </p>
+              </div>
+              {googleClientConfigured ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <Check className="h-3 w-3" />
+                  Configured
+                </span>
+              ) : (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  Not configured
+                </span>
+              )}
+            </div>
+
+            {!googleClientConfigured && (
+              <div className="rounded-md border border-border bg-card px-3 py-2.5">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <span className="font-medium text-foreground">Setup steps:</span>
+                  {" "}1. Create OAuth credentials in{" "}
+                  <span className="font-mono text-[11px]">Google Cloud Console</span>
+                  {" "}&rarr; 2. Set{" "}
+                  <span className="font-mono text-[11px]">GOOGLE_CLIENT_ID</span> and{" "}
+                  <span className="font-mono text-[11px]">GOOGLE_CLIENT_SECRET</span>{" "}
+                  env vars &rarr; 3. Enable and add your domain(s) here.
+                </p>
+              </div>
+            )}
+
+            {/* Enable toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium">Enable Google Workspace sign-in</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Restricts access to specified domains only
+                </p>
+              </div>
+              <button
+                onClick={() => setGoogleEnabled(!googleEnabled)}
+                disabled={!googleClientConfigured}
+                className={`relative h-5 w-9 rounded-full transition-colors disabled:opacity-40 ${
+                  googleEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                    googleEnabled ? "translate-x-4" : ""
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Allowed domains */}
+            {googleEnabled && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">
+                  Allowed domains
+                </label>
+                <Input
+                  placeholder="acme.com, subsidiary.com"
+                  value={googleDomains}
+                  onChange={(e) => setGoogleDomains(e.target.value)}
+                  className="h-8 font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground/60">
+                  Comma-separated list of Google Workspace domains. Only users
+                  with these email domains can sign in.
+                </p>
+              </div>
+            )}
+
+            {/* GitHub org restriction */}
+            <div className="mt-2 border-t border-border pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium">GitHub Organization</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Only members of this GitHub org can sign in
+                  </p>
+                </div>
+                <button
+                  onClick={() => setGithubOrgRequired(!githubOrgRequired)}
+                  className={`relative h-5 w-9 rounded-full transition-colors ${
+                    githubOrgRequired ? "bg-emerald-500" : "bg-muted-foreground/20"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      githubOrgRequired ? "translate-x-4" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {githubOrgRequired && (
+                <div className="mt-3 space-y-1.5">
+                  <label className="text-xs text-muted-foreground">
+                    Organization name
+                  </label>
+                  <Input
+                    placeholder="my-github-org"
+                    value={githubOrg}
+                    onChange={(e) => setGithubOrg(e.target.value)}
+                    className="h-8 font-mono text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground/60">
+                    The GitHub organization login name (from the URL). Users must
+                    be a member to sign in.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={handleSaveAuth}
+                disabled={savingAuth}
+                className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+              >
+                {savingAuth ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

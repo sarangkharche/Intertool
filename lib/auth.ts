@@ -1,30 +1,134 @@
 import NextAuth from "next-auth";
+import type { Provider } from "next-auth/providers";
 import GitHub from "next-auth/providers/github";
+import Google from "next-auth/providers/google";
+import { getSettings, addOrgMember } from "./settings";
+import { getOrgSlug, isSaasMode } from "./org";
+import { getGitHubUserOrgs } from "./github";
+
+const providers: Provider[] = [
+  GitHub({
+    clientId: process.env.GITHUB_ID,
+    clientSecret: process.env.GITHUB_SECRET,
+    authorization: { params: { scope: "read:user user:email read:org" } },
+  }),
+];
+
+// Only register Google provider if credentials are configured
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          scope: "openid email profile",
+        },
+      },
+    })
+  );
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    GitHub({
-      clientId: process.env.GITHUB_ID,
-      clientSecret: process.env.GITHUB_SECRET,
-      authorization: { params: { scope: "read:user user:email" } },
-    }),
-  ],
+  providers,
+  pages: {
+    signIn: "/sign-in",
+  },
   callbacks: {
+    async signIn({ account, profile }) {
+      if (account?.provider === "google") {
+        const googleProfile = profile as {
+          email?: string;
+          email_verified?: boolean;
+          hd?: string;
+        };
+
+        // Must have verified email
+        if (!googleProfile.email_verified) {
+          return "/sign-in?error=unverified";
+        }
+
+        // Load settings and check domain restrictions
+        const orgSlug = await getOrgSlug();
+        const settings = await getSettings(orgSlug);
+
+        if (!settings?.google_auth_enabled) {
+          return "/sign-in?error=google_disabled";
+        }
+
+        const allowedDomains = settings.google_allowed_domains ?? [];
+        if (allowedDomains.length === 0) {
+          return "/sign-in?error=no_domains";
+        }
+
+        // Check hd claim (Workspace domain)
+        const hdDomain = googleProfile.hd?.toLowerCase();
+        const emailDomain = googleProfile.email?.split("@")[1]?.toLowerCase();
+
+        const domainMatch = allowedDomains.some(
+          (d) => d.toLowerCase() === hdDomain || d.toLowerCase() === emailDomain
+        );
+
+        if (!domainMatch) {
+          return "/sign-in?error=domain";
+        }
+      }
+
+      // GitHub org membership check
+      if (account?.provider === "github" && account.access_token) {
+        const orgSlug = await getOrgSlug();
+        const settings = await getSettings(orgSlug);
+
+        if (settings?.github_org_required && settings.github_org) {
+          const userOrgs = await getGitHubUserOrgs(account.access_token);
+          const requiredOrg = settings.github_org.toLowerCase();
+
+          if (!userOrgs.includes(requiredOrg)) {
+            return "/sign-in?error=github_org";
+          }
+
+          // Cache membership in SaaS mode
+          const githubLogin = (profile as { login?: string })?.login;
+          if (isSaasMode() && orgSlug && githubLogin) {
+            await addOrgMember(orgSlug, githubLogin);
+          }
+        }
+      }
+
+      return true;
+    },
+
     async jwt({ token, account, profile }) {
       if (account?.access_token) {
         token.accessToken = account.access_token;
       }
-      if (profile) {
-        token.username = (profile as { login?: string }).login;
+      if (account && profile) {
+        if (account.provider === "google") {
+          token.username = (profile as { email?: string }).email;
+          token.provider = "google";
+        } else {
+          token.username = (profile as { login?: string }).login;
+          token.provider = "github";
+
+          // Store GitHub org memberships in the JWT
+          if (account.access_token) {
+            token.githubOrgs = await getGitHubUserOrgs(account.access_token);
+          }
+        }
       }
       return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { username?: string; accessToken?: string }).username =
+        (session.user as { username?: string; accessToken?: string; provider?: string; githubOrgs?: string[] }).username =
           token.username as string;
         (session.user as { accessToken?: string }).accessToken =
           token.accessToken as string;
+        (session.user as { provider?: string }).provider =
+          token.provider as string;
+        (session.user as { githubOrgs?: string[] }).githubOrgs =
+          (token.githubOrgs as string[]) ?? [];
       }
       return session;
     },

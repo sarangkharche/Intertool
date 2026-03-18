@@ -29,6 +29,7 @@ export async function GET() {
     is_admin: await isAdmin(username, orgSlug),
     needs_setup: !settings || !isS3Configured(settings),
     org_slug: orgSlug,
+    google_client_configured: !!process.env.GOOGLE_CLIENT_ID,
   });
 }
 
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
   const username = (session.user as { username?: string }).username;
   if (!username) {
     return NextResponse.json(
-      { error: "GitHub username required" },
+      { error: "Username required" },
       { status: 400 }
     );
   }
@@ -96,13 +97,34 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { s3_bucket, s3_region, s3_access_key_id, s3_secret_access_key, s3_endpoint, s3_session_token } = body;
+  const {
+    s3_bucket,
+    s3_region,
+    s3_access_key_id,
+    s3_secret_access_key,
+    s3_endpoint,
+    s3_session_token,
+    google_auth_enabled,
+    google_allowed_domains,
+    github_org,
+    github_org_required,
+  } = body;
 
   if (!s3_bucket || !s3_access_key_id) {
     return NextResponse.json(
       { error: "Bucket and access key are required" },
       { status: 400 }
     );
+  }
+
+  // Validate: if enabling Google auth, at least one domain is required
+  if (google_auth_enabled === true) {
+    if (!Array.isArray(google_allowed_domains) || google_allowed_domains.length === 0) {
+      return NextResponse.json(
+        { error: "At least one allowed domain is required when enabling Google auth" },
+        { status: 400 }
+      );
+    }
   }
 
   const existing = await getSettings(orgSlug);
@@ -116,8 +138,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const provider = (session.user as { provider?: string }).provider;
+
   const newSettings = {
-    admin_username: username,
+    admin_username: existing?.admin_username || username,
+    admin_email:
+      provider === "google"
+        ? username
+        : existing?.admin_email || undefined,
     configured_at: new Date().toISOString(),
     s3_bucket,
     s3_region: s3_region || "us-east-1",
@@ -127,6 +155,22 @@ export async function POST(request: NextRequest) {
     s3_session_token: s3_session_token || existing?.s3_session_token || undefined,
     org_slug: orgSlug,
     org_name: existing?.org_name,
+    google_auth_enabled:
+      google_auth_enabled !== undefined
+        ? google_auth_enabled
+        : existing?.google_auth_enabled,
+    google_allowed_domains:
+      google_allowed_domains !== undefined
+        ? google_allowed_domains
+        : existing?.google_allowed_domains,
+    github_org:
+      github_org !== undefined
+        ? github_org || undefined
+        : existing?.github_org,
+    github_org_required:
+      github_org_required !== undefined
+        ? github_org_required
+        : existing?.github_org_required,
   };
 
   await saveSettings(newSettings, orgSlug);
