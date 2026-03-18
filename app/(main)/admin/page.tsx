@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Settings, Shield, Loader2, Check, Database, Globe, KeyRound } from "lucide-react";
+import { Settings, Shield, Loader2, Check, Database, Globe, KeyRound, Github } from "lucide-react";
 import { toast } from "sonner";
 
 interface SettingsData {
@@ -261,12 +261,12 @@ export default function AdminPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           {needsSetup
-            ? "Configure S3 storage where all skills will be stored."
-            : "Manage the S3 storage configuration."}
+            ? "Configure your registry storage and access controls."
+            : "Manage storage, authentication, and access controls."}
         </p>
       </div>
 
-      {/* S3 config */}
+      {/* S3 Storage */}
       <div className="rounded-lg border border-border">
         <div className="border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
@@ -428,80 +428,117 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Authentication config */}
-      {!needsSetup && (
-        <div className="mt-6 rounded-lg border border-border">
-          <div className="border-b border-border px-4 py-3">
-            <div className="flex items-center gap-2">
-              <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="text-sm font-medium">Authentication</p>
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Allow team members to sign in with Google Workspace.
-            </p>
+      {/* Access Control */}
+      <div className="mt-6 rounded-lg border border-border">
+        <div className="border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+            <p className="text-sm font-medium">Access Control</p>
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Restrict who can sign in and access this registry.
+          </p>
+        </div>
 
-          <div className="space-y-4 p-4">
-            {/* Env var status */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 p-4">
+          {/* GitHub org restriction */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Github className="h-3.5 w-3.5 text-muted-foreground" />
               <div>
-                <p className="text-xs font-medium">Google OAuth credentials</p>
+                <p className="text-xs font-medium">GitHub Organization</p>
                 <p className="text-[11px] text-muted-foreground">
-                  GOOGLE_CLIENT_ID environment variable
+                  Only members of this GitHub org can sign in
                 </p>
               </div>
-              {googleClientConfigured ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                  <Check className="h-3 w-3" />
-                  Configured
-                </span>
-              ) : (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                  Not configured
-                </span>
-              )}
+            </div>
+            <button
+              onClick={() => setGithubOrgRequired(!githubOrgRequired)}
+              className={`relative h-5 w-9 rounded-full transition-colors ${
+                githubOrgRequired ? "bg-emerald-500" : "bg-muted-foreground/20"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  githubOrgRequired ? "translate-x-4" : ""
+                }`}
+              />
+            </button>
+          </div>
+
+          {githubOrgRequired && (
+            <div className="space-y-1.5 pl-5.5">
+              <label className="text-xs text-muted-foreground">
+                Organization name
+              </label>
+              <Input
+                placeholder="my-github-org"
+                value={githubOrg}
+                onChange={(e) => setGithubOrg(e.target.value)}
+                className="h-8 font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground/60">
+                The GitHub organization login name (from the URL). Users must
+                be a member to sign in.
+              </p>
+            </div>
+          )}
+
+          {/* Google Workspace */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs font-medium">Google Workspace</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Restrict access to specific email domains
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {googleClientConfigured ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <Check className="h-3 w-3" />
+                    Configured
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                    Not configured
+                  </span>
+                )}
+                <button
+                  onClick={() => setGoogleEnabled(!googleEnabled)}
+                  disabled={!googleClientConfigured}
+                  className={`relative h-5 w-9 rounded-full transition-colors disabled:opacity-40 ${
+                    googleEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      googleEnabled ? "translate-x-4" : ""
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
 
             {!googleClientConfigured && (
-              <div className="rounded-md border border-border bg-card px-3 py-2.5">
+              <div className="mt-3 rounded-md border border-border bg-card px-3 py-2.5">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  <span className="font-medium text-foreground">Setup steps:</span>
-                  {" "}1. Create OAuth credentials in{" "}
+                  <span className="font-medium text-foreground">Setup:</span>
+                  {" "}Create OAuth credentials in{" "}
                   <span className="font-mono text-[11px]">Google Cloud Console</span>
-                  {" "}&rarr; 2. Set{" "}
+                  {" "}&rarr; Set{" "}
                   <span className="font-mono text-[11px]">GOOGLE_CLIENT_ID</span> and{" "}
                   <span className="font-mono text-[11px]">GOOGLE_CLIENT_SECRET</span>{" "}
-                  env vars &rarr; 3. Enable and add your domain(s) here.
+                  env vars &rarr; Enable and add your domain(s) here.
                 </p>
               </div>
             )}
 
-            {/* Enable toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium">Enable Google Workspace sign-in</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Restricts access to specified domains only
-                </p>
-              </div>
-              <button
-                onClick={() => setGoogleEnabled(!googleEnabled)}
-                disabled={!googleClientConfigured}
-                className={`relative h-5 w-9 rounded-full transition-colors disabled:opacity-40 ${
-                  googleEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                    googleEnabled ? "translate-x-4" : ""
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Allowed domains */}
             {googleEnabled && (
-              <div className="space-y-1.5">
+              <div className="mt-3 space-y-1.5">
                 <label className="text-xs text-muted-foreground">
                   Allowed domains
                 </label>
@@ -517,66 +554,24 @@ export default function AdminPage() {
                 </p>
               </div>
             )}
+          </div>
 
-            {/* GitHub org restriction */}
-            <div className="mt-2 border-t border-border pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium">GitHub Organization</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Only members of this GitHub org can sign in
-                  </p>
-                </div>
-                <button
-                  onClick={() => setGithubOrgRequired(!githubOrgRequired)}
-                  className={`relative h-5 w-9 rounded-full transition-colors ${
-                    githubOrgRequired ? "bg-emerald-500" : "bg-muted-foreground/20"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                      githubOrgRequired ? "translate-x-4" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {githubOrgRequired && (
-                <div className="mt-3 space-y-1.5">
-                  <label className="text-xs text-muted-foreground">
-                    Organization name
-                  </label>
-                  <Input
-                    placeholder="my-github-org"
-                    value={githubOrg}
-                    onChange={(e) => setGithubOrg(e.target.value)}
-                    className="h-8 font-mono text-sm"
-                  />
-                  <p className="text-[11px] text-muted-foreground/60">
-                    The GitHub organization login name (from the URL). Users must
-                    be a member to sign in.
-                  </p>
-                </div>
+          <div className="flex justify-end border-t border-border pt-3">
+            <button
+              onClick={handleSaveAuth}
+              disabled={savingAuth}
+              className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+            >
+              {savingAuth ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="h-3 w-3" />
               )}
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={handleSaveAuth}
-                disabled={savingAuth}
-                className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
-              >
-                {savingAuth ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Check className="h-3 w-3" />
-                )}
-                Save
-              </button>
-            </div>
+              Save
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
