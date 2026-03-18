@@ -1,0 +1,180 @@
+import fs from "node:fs";
+import path from "node:path";
+import { Redis } from "@upstash/redis";
+import { isSaasMode } from "./org";
+
+const SETTINGS_PATH = path.resolve(process.cwd(), "registry", "settings.json");
+
+export interface RegistrySettings {
+  /** Username of the admin who configured this */
+  admin_username: string;
+  /** When settings were last configured */
+  configured_at: string;
+  /** S3 bucket name */
+  s3_bucket: string;
+  /** S3 region */
+  s3_region: string;
+  /** S3 access key ID */
+  s3_access_key_id: string;
+  /** S3 secret access key */
+  s3_secret_access_key: string;
+  /** Custom S3 endpoint for S3-compatible services (MinIO, R2, Wasabi) */
+  s3_endpoint?: string;
+  /** AWS session token for temporary/SSO credentials */
+  s3_session_token?: string;
+  /** Org slug (SaaS mode only) */
+  org_slug?: string;
+  /** Org display name (SaaS mode only) */
+  org_name?: string;
+}
+
+// ── KV store (SaaS mode) ──
+
+let _redis: Redis | null = null;
+
+function getRedis(): Redis {
+  if (_redis) return _redis;
+  _redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
+  return _redis;
+}
+
+function kvKey(orgSlug: string): string {
+  return `org:${orgSlug}:settings`;
+}
+
+// ── Env var fallback (for Vercel deployments in self-hosted mode) ──
+
+function getSettingsFromEnv(): RegistrySettings | null {
+  const bucket = process.env.S3_BUCKET;
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+  if (!bucket || !accessKeyId || !secretAccessKey) return null;
+
+  return {
+    admin_username: process.env.INTERTOOL_ADMIN ?? "",
+    configured_at: "",
+    s3_bucket: bucket,
+    s3_region: process.env.S3_REGION ?? "us-east-1",
+    s3_access_key_id: accessKeyId,
+    s3_secret_access_key: secretAccessKey,
+    s3_endpoint: process.env.S3_ENDPOINT || undefined,
+    s3_session_token: process.env.S3_SESSION_TOKEN || undefined,
+  };
+}
+
+function getSettingsFromFile(): RegistrySettings | null {
+  if (!fs.existsSync(SETTINGS_PATH)) return null;
+  try {
+    const raw = fs.readFileSync(SETTINGS_PATH, "utf-8");
+    return JSON.parse(raw) as RegistrySettings;
+  } catch {
+    return null;
+  }
+}
+
+// ── Public API ──
+
+/**
+ * Get settings for a given org (SaaS) or the single tenant (self-hosted).
+ *
+ * Self-hosted resolution order:
+ *   1. registry/settings.json (writable filesystem — local dev, Docker)
+ *   2. Environment variables S3_BUCKET, S3_ACCESS_KEY_ID, etc. (Vercel, read-only FS)
+ */
+export async function getSettings(orgSlug?: string): Promise<RegistrySettings | null> {
+  if (isSaasMode()) {
+    if (!orgSlug) return null;
+    const data = await getRedis().get<RegistrySettings>(kvKey(orgSlug));
+    return data ?? null;
+  }
+
+  // Self-hosted: file first, then env vars
+  return getSettingsFromFile() ?? getSettingsFromEnv();
+}
+
+/**
+ * Save settings for a given org (SaaS) or the single tenant (self-hosted).
+ * On Vercel (read-only FS), self-hosted settings are read from env vars
+ * and this function is a no-op — configure via Vercel dashboard instead.
+ */
+export async function saveSettings(settings: RegistrySettings, orgSlug?: string): Promise<void> {
+  if (isSaasMode()) {
+    const slug = orgSlug ?? settings.org_slug;
+    if (!slug) throw new Error("org_slug required in SaaS mode");
+    await getRedis().set(kvKey(slug), settings);
+    return;
+  }
+
+  // Self-hosted: try file-based, silently skip if read-only (Vercel)
+  try {
+    const dir = path.dirname(SETTINGS_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
+  } catch {
+    // Read-only filesystem (Vercel) — settings come from env vars
+  }
+}
+
+/**
+ * Check if a user is admin.
+ * - Self-hosted: first user to configure becomes admin, or matches INTERTOOL_ADMIN env var
+ * - SaaS: the user who created the org is admin
+ */
+export async function isAdmin(username: string, orgSlug?: string): Promise<boolean> {
+  const settings = await getSettings(orgSlug);
+  if (!settings) return true; // no settings yet = anyone can set up
+  if (!settings.admin_username) return true; // env-var config with no admin set
+  return settings.admin_username.toLowerCase() === username.toLowerCase();
+}
+
+/** Map skill type to the folder name in S3 */
+export function typeToFolder(type: string): string {
+  switch (type) {
+    case "skill":
+      return "skills";
+    case "mcp-server":
+      return "mcp-servers";
+    case "agent-tool":
+      return "agent-tools";
+    case "prompt-template":
+      return "prompt-templates";
+    default:
+      return "skills";
+  }
+}
+
+/** Check if an org exists (SaaS mode) */
+export async function orgExists(orgSlug: string): Promise<boolean> {
+  if (!isSaasMode()) return true;
+  const exists = await getRedis().exists(kvKey(orgSlug));
+  return exists === 1;
+}
+
+/** Register a new org (SaaS mode) */
+export async function createOrg(orgSlug: string, orgName: string, adminUsername: string): Promise<void> {
+  if (!isSaasMode()) return;
+  const existing = await getRedis().exists(kvKey(orgSlug));
+  if (existing) throw new Error(`Organization "${orgSlug}" already exists`);
+
+  const settings: RegistrySettings = {
+    admin_username: adminUsername,
+    configured_at: new Date().toISOString(),
+    s3_bucket: "",
+    s3_region: "us-east-1",
+    s3_access_key_id: "",
+    s3_secret_access_key: "",
+    org_slug: orgSlug,
+    org_name: orgName,
+  };
+  await getRedis().set(kvKey(orgSlug), settings);
+  await getRedis().set(`user:${adminUsername}:org`, orgSlug);
+}
+
+/** Get the org slug for a user (SaaS mode) */
+export async function getOrgForUser(username: string): Promise<string | null> {
+  if (!isSaasMode()) return null;
+  return await getRedis().get<string>(`user:${username}:org`);
+}

@@ -31,7 +31,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env*.local
+
+# cli build
+cli/dist
 
 # vercel
 .vercel
@@ -39,3 +42,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# registry settings (contains S3 secrets)
+registry/settings.json
+registry/.index.json
+
+# plugin/tool directories
+.clerk/
+.superpowers/
+.claude/

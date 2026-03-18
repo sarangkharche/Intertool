@@ -1,0 +1,41 @@
+{
+  "name": "intertool",
+  "version": "0.1.0",
+  "description": "CLI for the Intertool agent skill registry",
+  "type": "module",
+  "bin": {
+    "intertool": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc",
+    "dev": "tsx src/index.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "skills",
+    "registry",
+    "mcp",
+    "claude",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sarangkharche/intertool",
+    "directory": "cli"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

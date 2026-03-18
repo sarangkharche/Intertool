@@ -1,0 +1,12 @@
+[
+  { "id": "1", "name": "AI & Machine Learning", "slug": "ai-ml", "description": "AI models, embeddings, and ML tools", "icon": "brain" },
+  { "id": "2", "name": "Developer Tools", "slug": "dev-tools", "description": "CLI tools, linters, formatters, and dev utilities", "icon": "wrench" },
+  { "id": "3", "name": "Data & Analytics", "slug": "data-analytics", "description": "Data processing, visualization, and analytics", "icon": "bar-chart" },
+  { "id": "4", "name": "Communication", "slug": "communication", "description": "Chat, email, notifications, and messaging", "icon": "message-circle" },
+  { "id": "5", "name": "Security", "slug": "security", "description": "Auth, encryption, and security scanning", "icon": "shield" },
+  { "id": "6", "name": "Infrastructure", "slug": "infrastructure", "description": "Deployment, monitoring, and cloud services", "icon": "server" },
+  { "id": "7", "name": "Content", "slug": "content", "description": "CMS, documentation, and content generation", "icon": "file-text" },
+  { "id": "8", "name": "Integrations", "slug": "integrations", "description": "Third-party API connectors and webhooks", "icon": "plug" },
+  { "id": "9", "name": "Testing", "slug": "testing", "description": "Test runners, mocking, and QA automation", "icon": "check-circle" },
+  { "id": "10", "name": "Productivity", "slug": "productivity", "description": "Workflow automation and task management", "icon": "zap" }
+]
