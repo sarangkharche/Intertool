@@ -10,7 +10,7 @@ export function SkillGrid({ skills }: { skills: Skill[] }) {
 
   if (view === "list") {
     return (
-      <div className="space-y-2">
+      <div className="rounded-lg border border-border/70 divide-y divide-border/70">
         {skills.map((skill) => (
           <SkillCard key={skill.slug} skill={skill} variant="list" />
         ))}

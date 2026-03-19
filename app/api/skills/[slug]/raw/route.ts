@@ -15,7 +15,11 @@ export async function GET(
   const authHeader = request.headers.get("authorization");
   const hasApiKey = apiKey && authHeader === `Bearer ${apiKey}`;
 
+  // Require either a valid session or a valid API key (not skip when key is unset)
   if (!session?.user && !hasApiKey) {
+    return apiError("Unauthorized", 401);
+  }
+  if (!session?.user && !apiKey) {
     return apiError("Unauthorized", 401);
   }
 

@@ -59,7 +59,7 @@ function TypographySample({
 
 export default function BrandPage() {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12">
+    <div className="mx-auto max-w-5xl px-4 py-12">
       {/* Header */}
       <div className="mb-16">
         <div className="mb-4 flex items-center gap-3">

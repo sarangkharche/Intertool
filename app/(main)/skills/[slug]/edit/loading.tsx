@@ -1,6 +1,6 @@
 export default function EditSkillLoading() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-1 h-6 w-32 animate-pulse rounded bg-muted" />
       <div className="mb-8 h-4 w-64 animate-pulse rounded bg-muted/60" />
 

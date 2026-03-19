@@ -2,7 +2,7 @@ import { memo } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Skill, SkillType } from "@/lib/types";
-import { SKILL_TYPE_LABELS, SKILL_TYPE_COLORS } from "@/lib/constants";
+import { SKILL_TYPE_LABELS } from "@/lib/constants";
 import { displayAuthor } from "@/lib/utils";
 
 export const SkillCard = memo(function SkillCard({
@@ -15,17 +15,17 @@ export const SkillCard = memo(function SkillCard({
   if (variant === "list") {
     return (
       <Link href={`/skills/${skill.slug}`}>
-        <div className="skill-card group flex items-center gap-4 rounded-lg border border-border/70 px-4 py-3 interactive-card">
+        <div className="skill-card group flex items-center gap-3.5 px-4 py-3.5 transition-colors duration-150 hover:bg-muted/30">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate text-sm font-medium leading-tight group-hover:text-foreground">
+            <div className="flex items-baseline gap-2">
+              <h3 className="truncate text-sm font-medium leading-tight text-foreground">
                 {skill.name}
               </h3>
-              <p className="shrink-0 font-mono text-xs text-muted-foreground">
+              <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
                 @{displayAuthor(skill.author)}/{skill.slug}
-              </p>
+              </span>
             </div>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            <p className="mt-0.5 truncate text-[13px] leading-normal text-muted-foreground">
               {skill.description}
             </p>
           </div>
@@ -60,7 +60,7 @@ export const SkillCard = memo(function SkillCard({
 
 export function TypeBadge({ type }: { type: SkillType }) {
   return (
-    <Badge variant="outline" className={`shrink-0 text-[10px] font-normal ${SKILL_TYPE_COLORS[type]}`}>
+    <Badge variant="outline" className="shrink-0 text-[10px] font-normal text-muted-foreground">
       {SKILL_TYPE_LABELS[type]}
     </Badge>
   );

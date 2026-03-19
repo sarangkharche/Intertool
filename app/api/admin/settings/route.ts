@@ -52,7 +52,13 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
-  const body = await request.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const { s3_bucket, s3_region, s3_access_key_id, s3_secret_access_key, s3_endpoint, s3_session_token } = body;
 
   if (!s3_bucket || !s3_access_key_id || !s3_secret_access_key) {
@@ -102,7 +108,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const {
     s3_bucket,
     s3_region,

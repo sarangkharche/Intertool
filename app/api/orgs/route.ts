@@ -28,7 +28,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { slug, name } = (await request.json()) as { slug: string; name: string };
+  let reqBody: { slug: string; name: string };
+  try {
+    reqBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const { slug, name } = reqBody;
 
   if (!slug || !name) {
     return NextResponse.json({ error: "slug and name are required" }, { status: 400 });

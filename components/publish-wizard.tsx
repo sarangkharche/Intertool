@@ -284,6 +284,7 @@ export function PublishWizard({
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       const formData = new FormData();

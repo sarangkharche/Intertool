@@ -19,6 +19,12 @@ export async function getGitHubUserOrgs(accessToken: string): Promise<string[]> 
     return [];
   }
 
-  const orgs: { login: string }[] = await res.json();
+  let orgs: { login: string }[];
+  try {
+    orgs = await res.json();
+  } catch {
+    console.error("[github] Failed to parse orgs response as JSON");
+    return [];
+  }
   return orgs.map((o) => o.login.toLowerCase());
 }

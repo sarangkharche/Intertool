@@ -74,7 +74,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { url } = (await request.json()) as { url: string };
+  let reqBody: { url: string };
+  try {
+    reqBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const { url } = reqBody;
   if (!url) {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }

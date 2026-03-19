@@ -17,7 +17,7 @@ export default async function VersionsPage({
   const versions = await getSkillVersions(slug);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8">
       <Link href={`/skills/${slug}`}>
         <Button variant="ghost" size="sm" className="mb-4 gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to {skill.name}

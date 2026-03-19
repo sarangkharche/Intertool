@@ -4,10 +4,11 @@ import { auth } from "@/lib/auth";
 import { getSkills, getCategories, getSkillCounts } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
 import { SKILL_TYPE_LABELS, PER_PAGE } from "@/lib/constants";
-import { Upload, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Upload, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { DashboardPreferenceApplier } from "@/components/dashboard-preference-applier";
+import { DashboardPagination } from "@/components/dashboard-pagination";
 import { ViewToggle } from "@/components/view-toggle";
 import { SkillGrid } from "@/components/skill-grid";
 
@@ -75,11 +76,19 @@ export default async function DashboardPage({
   };
 
   // Fetch skills + categories + counts for tabs in parallel
-  const [{ skills, total }, categories, counts] = await Promise.all([
-    getSkills(filters),
-    getCategories(),
-    getSkillCounts(username || undefined),
-  ]);
+  let skills: Awaited<ReturnType<typeof getSkills>>["skills"] = [];
+  let total = 0;
+  let categories: Awaited<ReturnType<typeof getCategories>> = [];
+  let counts: Awaited<ReturnType<typeof getSkillCounts>> = { total: 0, byType: {}, mine: 0 };
+  try {
+    [{ skills, total }, categories, counts] = await Promise.all([
+      getSkills(filters),
+      getCategories(),
+      getSkillCounts(username || undefined),
+    ]);
+  } catch (err) {
+    console.error("[dashboard] Failed to load data:", err);
+  }
 
   const page = filters.page ?? 1;
   const totalPages = Math.ceil(total / limit);
@@ -148,19 +157,17 @@ export default async function DashboardPage({
             })}
           </div>
 
-          {/* Filter bar */}
-          <div className="mb-6">
+          {/* Filter bar + results count + view toggle */}
+          <div className="mb-5 flex items-center justify-between">
             <Suspense>
               <DashboardFilters categories={categories} />
             </Suspense>
-          </div>
-
-          {/* Results count + view toggle */}
-          <div className="mb-3 flex items-center justify-between">
-            <span className="font-mono text-xs text-muted-foreground">
-              {total} result{total !== 1 ? "s" : ""}
-            </span>
-            <ViewToggle />
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[11px] tabular-nums text-muted-foreground/70">
+                {total} result{total !== 1 ? "s" : ""}
+              </span>
+              <ViewToggle />
+            </div>
           </div>
 
           {/* Skill list */}
@@ -175,29 +182,9 @@ export default async function DashboardPage({
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-3 text-sm">
-              {page > 1 && (
-                <Link
-                  href={`?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>).toString()}`}
-                  className="flex items-center gap-1 text-muted-foreground interactive-ghost rounded-md px-2 py-1"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" /> Prev
-                </Link>
-              )}
-              <span className="font-mono tabular-nums text-muted-foreground">
-                {page} / {totalPages}
-              </span>
-              {page < totalPages && (
-                <Link
-                  href={`?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>).toString()}`}
-                  className="flex items-center gap-1 text-muted-foreground interactive-ghost rounded-md px-2 py-1"
-                >
-                  Next <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              )}
-            </div>
-          )}
+          <Suspense>
+            <DashboardPagination currentPage={page} totalPages={totalPages} />
+          </Suspense>
         </>
       )}
     </div>

@@ -1,0 +1,4 @@
+[     424ms] [ERROR] n: Failed to fetch. Read more at https://errors.authjs.dev#autherror
+    at i (https://intertool.sh/_next/static/chunks/a42edf8a17977d4b.js:1:2178)
+    at async y (https://intertool.sh/_next/static/chunks/a42edf8a17977d4b.js:1:3802)
+    at async u._getSession (https://intertool.sh/_next/static/chunks/a42edf8a17977d4b.js:2:1633) @ https://intertool.sh/_next/static/chunks/a42edf8a17977d4b.js:0

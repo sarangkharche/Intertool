@@ -4,6 +4,10 @@ const VALID_TYPES: SkillType[] = ["skill", "mcp-server", "agent-tool", "prompt-t
 const VALID_TRANSPORTS: McpTransport[] = ["stdio", "sse", "streamable-http"];
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
 const MAX_README_BYTES = 5 * 1024 * 1024;
+const RESERVED_SLUGS = [
+  "_index", "_categories", "_analytics", "_meta",
+  "api", "admin", "settings", "publish", "search", "dashboard",
+];
 
 interface ValidationError {
   field: string;
@@ -34,6 +38,8 @@ export function validateSkillInput(input: {
     errors.push({ field: "slug", message: "Slug must be at most 64 characters" });
   } else if (!SLUG_RE.test(input.slug)) {
     errors.push({ field: "slug", message: "Slug must be lowercase alphanumeric with hyphens, starting with a letter or digit" });
+  } else if (RESERVED_SLUGS.includes(input.slug)) {
+    errors.push({ field: "slug", message: "This slug is reserved and cannot be used" });
   }
 
   // name

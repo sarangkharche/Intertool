@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export function DeleteSkillButton({ slug }: { slug: string }) {
   const router = useRouter();
@@ -15,7 +16,7 @@ export function DeleteSkillButton({ slug }: { slug: string }) {
       const res = await fetch(`/api/skills/${slug}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error ?? "Failed to delete");
+        toast.error(data.error ?? "Failed to delete");
         setDeleting(false);
         setConfirming(false);
         return;
@@ -23,7 +24,7 @@ export function DeleteSkillButton({ slug }: { slug: string }) {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      alert("Failed to delete");
+      toast.error("Failed to delete");
       setDeleting(false);
       setConfirming(false);
     }

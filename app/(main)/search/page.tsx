@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import { SkillCard } from "@/components/skill-card";
 import { FilterSidebar } from "@/components/filter-sidebar";
+import { DashboardPagination } from "@/components/dashboard-pagination";
 import { getSkills, getCategories } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
 import { PER_PAGE } from "@/lib/constants";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 export default async function SearchPage({
   searchParams,
@@ -23,10 +23,16 @@ export default async function SearchPage({
     page: params.page ? Number(params.page) : 1,
   };
 
-  const [results, categories] = await Promise.all([
-    getSkills(filters),
-    getCategories(),
-  ]);
+  let results: Awaited<ReturnType<typeof getSkills>> = { skills: [], total: 0 };
+  let categories: Awaited<ReturnType<typeof getCategories>> = [];
+  try {
+    [results, categories] = await Promise.all([
+      getSkills(filters),
+      getCategories(),
+    ]);
+  } catch (err) {
+    console.error("[search] Failed to load data:", err);
+  }
 
   const page = filters.page ?? 1;
   const totalPages = Math.ceil(results.total / PER_PAGE);
@@ -47,34 +53,14 @@ export default async function SearchPage({
         <div className="min-w-0 flex-1">
           {results.skills.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-border/70 divide-y divide-border/70">
                 {results.skills.map((skill) => (
-                  <SkillCard key={skill.slug} skill={skill} />
+                  <SkillCard key={skill.slug} skill={skill} variant="list" />
                 ))}
               </div>
-              {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-3 text-sm">
-                  {page > 1 && (
-                    <Link
-                      href={`?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>).toString()}`}
-                      className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" /> Prev
-                    </Link>
-                  )}
-                  <span className="text-muted-foreground">
-                    {page} / {totalPages}
-                  </span>
-                  {page < totalPages && (
-                    <Link
-                      href={`?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>).toString()}`}
-                      className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                    >
-                      Next <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                  )}
-                </div>
-              )}
+              <Suspense>
+                <DashboardPagination currentPage={page} totalPages={totalPages} />
+              </Suspense>
             </>
           ) : (
             <div className="py-16 text-center">

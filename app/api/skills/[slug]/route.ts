@@ -44,6 +44,9 @@ export async function DELETE(
     return apiError("Skill not found", 404);
   }
 
+  if (authResult.username === "unknown") {
+    return apiError("Cannot determine authenticated user", 403);
+  }
   if (skill.author.toLowerCase() !== authResult.username.toLowerCase()) {
     return apiError("Only the skill author can delete this skill", 403);
   }

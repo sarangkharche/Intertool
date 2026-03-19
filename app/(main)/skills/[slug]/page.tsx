@@ -107,7 +107,7 @@ export default async function SkillDetailPage({
           {/* Tabs */}
           <Tabs defaultValue="readme">
             <TabsList>
-              <TabsTrigger value="readme" className="text-sm">README</TabsTrigger>
+              <TabsTrigger value="readme" className="text-sm">Content</TabsTrigger>
               <TabsTrigger value="install" className="text-sm">Install</TabsTrigger>
               <TabsTrigger value="versions" className="text-sm">
                 Versions ({versions.length})
@@ -206,8 +206,8 @@ export default async function SkillDetailPage({
           </Tabs>
         </div>
 
-        {/* Sidebar — unified panel */}
-        <aside className="rounded-lg border border-border/60 bg-card">
+        {/* Sidebar */}
+        <aside className="rounded-lg border border-border/60">
           {/* Author */}
           <div className="p-4">
             <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Author</h3>

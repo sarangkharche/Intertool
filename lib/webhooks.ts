@@ -51,5 +51,7 @@ export function fireWebhook(
     },
     body,
     signal: AbortSignal.timeout(10000),
-  }).catch(() => {});
+  }).catch((err: Error) => {
+    console.error("[webhook] delivery failed:", url, err.message);
+  });
 }

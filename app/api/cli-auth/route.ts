@@ -17,6 +17,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "port parameter required" }, { status: 400 });
   }
 
+  // Validate port is numeric and in valid range
+  const portNum = Number(port);
+  if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+    return NextResponse.json({ error: "port must be a number between 1 and 65535" }, { status: 400 });
+  }
+
   const session = await auth();
   if (!session?.user) {
     const callbackUrl = `/api/cli-auth?port=${port}`;

@@ -121,9 +121,14 @@ const indexCaches = new Map<string, Skill[]>();
 async function fetchIndex(settings: RegistrySettings): Promise<Skill[]> {
   const raw = await getObjectIfChanged(settings, "_index.json");
   if (raw) {
-    const skills: Skill[] = JSON.parse(raw) as Skill[];
-    indexCaches.set(settings.s3_bucket, skills);
-    return skills;
+    try {
+      const skills: Skill[] = JSON.parse(raw) as Skill[];
+      indexCaches.set(settings.s3_bucket, skills);
+      return skills;
+    } catch {
+      console.error("[registry] Failed to parse _index.json");
+      return indexCaches.get(settings.s3_bucket) ?? [];
+    }
   }
   return indexCaches.get(settings.s3_bucket) ?? [];
 }
@@ -258,11 +263,16 @@ export async function getSkillBySlug(slug: string): Promise<Skill | null> {
     const folder = typeToFolder(indexed.type);
     const raw = await getObjectIfChanged(settings, `${folder}/${slug}/skill.json`);
     if (raw) {
-      const skill = JSON.parse(raw) as Skill;
-      if (!skill.install_commands) {
-        skill.install_commands = generateInstallCommands(skill);
+      try {
+        const skill = JSON.parse(raw) as Skill;
+        if (!skill.install_commands) {
+          skill.install_commands = generateInstallCommands(skill);
+        }
+        return skill;
+      } catch {
+        console.error(`[registry] Failed to parse skill.json for ${slug}`);
+        return null;
       }
-      return skill;
     }
   }
 
@@ -271,11 +281,16 @@ export async function getSkillBySlug(slug: string): Promise<Skill | null> {
   for (const folder of folders) {
     const raw = await getObjectIfChanged(settings, `${folder}/${slug}/skill.json`);
     if (raw) {
-      const skill = JSON.parse(raw) as Skill;
-      if (!skill.install_commands) {
-        skill.install_commands = generateInstallCommands(skill);
+      try {
+        const skill = JSON.parse(raw) as Skill;
+        if (!skill.install_commands) {
+          skill.install_commands = generateInstallCommands(skill);
+        }
+        return skill;
+      } catch {
+        console.error(`[registry] Failed to parse ${folder}/${slug}/skill.json`);
+        continue;
       }
-      return skill;
     }
   }
   return null;
@@ -470,8 +485,27 @@ function bumpPatch(version: string): string {
   return parts.join(".");
 }
 
+// Simple in-memory lock per slug to prevent concurrent upserts
+const upsertLocks = new Map<string, Promise<void>>();
+
 /** Insert or update a skill in S3, with version snapshotting */
 export async function upsertSkill(skill: Skill, changelog?: string): Promise<void> {
+  // Wait for any in-flight upsert of the same slug
+  const existing = upsertLocks.get(skill.slug);
+  if (existing) {
+    await existing;
+  }
+
+  const doUpsert = _upsertSkillInner(skill, changelog);
+  upsertLocks.set(skill.slug, doUpsert);
+  try {
+    await doUpsert;
+  } finally {
+    upsertLocks.delete(skill.slug);
+  }
+}
+
+async function _upsertSkillInner(skill: Skill, changelog?: string): Promise<void> {
   const settings = await resolveSettings();
   if (!settings) throw new Error("S3 not configured. Go to /admin to set up storage.");
 

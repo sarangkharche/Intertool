@@ -54,7 +54,7 @@ export function Header() {
             >
               <Search className="h-3 w-3" aria-hidden="true" />
               <span className="flex-1 text-left">Search skills…</span>
-              <kbd className="hidden rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">
+              <kbd className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">
                 ⌘K
               </kbd>
             </button>

@@ -10,7 +10,7 @@ export function SkillReadme({
   return (
     <pre
       className={cn(
-        'overflow-x-auto rounded-lg border border-border bg-card p-6 font-mono text-xs leading-relaxed text-foreground/90',
+        'overflow-x-auto rounded-lg border border-border/60 p-6 font-mono text-xs leading-relaxed text-foreground/90',
         className,
       )}
     >

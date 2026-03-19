@@ -90,7 +90,10 @@ export default function AdminSettingsPage() {
     if (status !== "authenticated") return;
 
     fetch("/api/admin/settings")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load settings (${r.status})`);
+        return r.json();
+      })
       .then((data) => {
         setSettings(data.settings);
         setIsAdmin(data.is_admin);
@@ -117,6 +120,10 @@ export default function AdminSettingsPage() {
           setWebhookUpdate(wEvents.includes("update"));
           setWebhookDelete(wEvents.includes("delete"));
         }
+        setLoading(false);
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to load settings");
         setLoading(false);
       });
   }, [status, router]);

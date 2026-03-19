@@ -74,7 +74,11 @@ export function usePreferences(): [
     (key: keyof UserPreferences, value: string | number) => {
       const coerced = key === "itemsPerPage" ? Number(value) : value;
       const next = { ...getStoredPrefs(), [key]: coerced };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage quota exceeded — preferences won't persist
+      }
       cachedPrefs = next;
       listeners.forEach((l) => l());
       // Dispatch storage event for cross-tab sync

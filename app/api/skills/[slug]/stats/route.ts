@@ -3,11 +3,15 @@ import { getDownloadStats } from "@/lib/analytics";
 import { apiError } from "@/lib/api-utils";
 import { getSettings } from "@/lib/settings";
 import { getOrgSlug } from "@/lib/org";
+import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const authResult = await authenticateApi(request);
+  if (!isAuthenticated(authResult)) return authResult;
+
   const { slug } = await params;
   if (!slug) return apiError("Slug is required", 400);
 

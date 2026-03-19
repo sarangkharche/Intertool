@@ -105,6 +105,14 @@ function getSettingsFromFile(): RegistrySettings | null {
   }
 }
 
+// ── Self-hosted Redis fallback (Vercel with read-only FS) ──
+
+const SELF_HOSTED_REDIS_KEY = "self-hosted:settings";
+
+function hasRedis(): boolean {
+  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}
+
 // ── Public API ──
 
 /**
@@ -112,7 +120,8 @@ function getSettingsFromFile(): RegistrySettings | null {
  *
  * Self-hosted resolution order:
  *   1. registry/settings.json (writable filesystem — local dev, Docker)
- *   2. Environment variables S3_BUCKET, S3_ACCESS_KEY_ID, etc. (Vercel, read-only FS)
+ *   2. Redis key "self-hosted:settings" (Vercel with Redis)
+ *   3. Environment variables S3_BUCKET, S3_ACCESS_KEY_ID, etc. (Vercel without Redis)
  */
 export async function getSettings(orgSlug?: string): Promise<RegistrySettings | null> {
   if (isSaasMode()) {
@@ -121,8 +130,16 @@ export async function getSettings(orgSlug?: string): Promise<RegistrySettings | 
     return data ?? null;
   }
 
-  // Self-hosted: file first, then env vars
-  return getSettingsFromFile() ?? getSettingsFromEnv();
+  // Self-hosted: file → Redis → env vars
+  const fromFile = getSettingsFromFile();
+  if (fromFile) return fromFile;
+
+  if (hasRedis()) {
+    const fromRedis = await getRedis().get<RegistrySettings>(SELF_HOSTED_REDIS_KEY);
+    if (fromRedis) return fromRedis;
+  }
+
+  return getSettingsFromEnv();
 }
 
 /**
@@ -138,13 +155,17 @@ export async function saveSettings(settings: RegistrySettings, orgSlug?: string)
     return;
   }
 
-  // Self-hosted: try file-based, silently skip if read-only (Vercel)
+  // Self-hosted: try file-based, fall back to Redis if read-only (Vercel)
   try {
     const dir = path.dirname(SETTINGS_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
   } catch {
-    // Read-only filesystem (Vercel) — settings come from env vars
+    // Read-only filesystem (Vercel) — try Redis
+    if (hasRedis()) {
+      await getRedis().set(SELF_HOSTED_REDIS_KEY, settings);
+      return;
+    }
   }
 }
 

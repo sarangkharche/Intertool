@@ -17,17 +17,27 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
 
-  const name = formData.get("name") as string;
-  const slug = formData.get("slug") as string;
-  const type = formData.get("type") as string;
-  const description = formData.get("description") as string;
+  const name = (formData.get("name") as string) ?? "";
+  const slug = (formData.get("slug") as string) ?? "";
+  const type = (formData.get("type") as string) ?? "";
+  const description = (formData.get("description") as string) ?? "";
   const readmeRaw = formData.get("readme");
   const readme = typeof readmeRaw === "string" ? readmeRaw : "";
-  const category = formData.get("category") as string;
-  const tags = JSON.parse((formData.get("tags") as string) || "[]");
-  const compatibility = JSON.parse(
-    (formData.get("compatibility") as string) || "[]"
-  );
+  const category = (formData.get("category") as string) ?? "";
+
+  let tags: string[];
+  try {
+    tags = JSON.parse((formData.get("tags") as string) || "[]");
+  } catch {
+    tags = [];
+  }
+  let compatibility: string[];
+  try {
+    compatibility = JSON.parse((formData.get("compatibility") as string) || "[]");
+  } catch {
+    compatibility = [];
+  }
+
   const sourceUrl = (formData.get("source_url") as string) || undefined;
   const sourceFormat = (formData.get("source_format") as string) || undefined;
   const transport = (formData.get("transport") as string) || undefined;

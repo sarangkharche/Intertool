@@ -50,7 +50,7 @@ export async function checkRateLimit(
   const resetAt = now + config.windowSeconds;
 
   return {
-    allowed: count <= config.limit,
+    allowed: count < config.limit,
     remaining,
     resetAt,
   };
