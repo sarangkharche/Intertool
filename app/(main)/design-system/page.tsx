@@ -5,20 +5,20 @@ import { InstallCommand } from "@/components/install-command";
 import { SKILL_TYPE_LABELS, SKILL_TYPE_COLORS } from "@/lib/constants";
 import { SkillType } from "@/lib/types";
 import {
-  Package, Zap, Terminal, Wrench, FileText, Upload, Search,
+  Package, Zap, Terminal, Bot, FileText, Upload, Search,
   Plus, Settings, ArrowRight, Database, Shield, Calendar,
   ExternalLink, Check, X,
 } from "lucide-react";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+
 
 const TYPES: SkillType[] = ["skill", "mcp-server", "agent-tool", "prompt-template"];
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   skill: <Zap className="h-4 w-4" />,
   "mcp-server": <Terminal className="h-4 w-4" />,
-  "agent-tool": <Wrench className="h-4 w-4" />,
+  "agent-tool": <Bot className="h-4 w-4" />,
   "prompt-template": <FileText className="h-4 w-4" />,
 };
 
@@ -162,30 +162,20 @@ export default async function DesignSystemPage() {
             <div>
               <p className="mb-3 text-xs font-medium text-muted-foreground">Variants</p>
               <div className="flex flex-wrap items-center gap-2">
-                <button className="rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-foreground/90 active:translate-y-px">
-                  Primary
-                </button>
-                <button className="rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted active:translate-y-px">
-                  Outline
-                </button>
-                <button className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted/80 active:translate-y-px">
-                  Secondary
-                </button>
-                <button className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:translate-y-px">
-                  Ghost
-                </button>
-                <button className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-destructive/90 active:translate-y-px">
-                  Destructive
-                </button>
+                <button className="btn-pill">Pill</button>
+                <button className="btn-pill-lg">Pill Large</button>
+                <button className="btn-ghost">Ghost</button>
+                <button className="btn-pill !border-red-500/40 !bg-red-500/10 !text-red-400">Destructive</button>
+                <button className="btn-pill" disabled>Disabled</button>
               </div>
             </div>
             <div>
-              <p className="mb-3 text-xs font-medium text-muted-foreground">Sizes</p>
-              <div className="flex flex-wrap items-end gap-2">
-                <button className="h-6 rounded-md bg-foreground px-2 text-[10px] font-medium text-background">xs (h-6)</button>
-                <button className="h-7 rounded-md bg-foreground px-2.5 text-xs font-medium text-background">sm (h-7)</button>
-                <button className="h-8 rounded-md bg-foreground px-3 text-xs font-medium text-background">default (h-8)</button>
-                <button className="h-9 rounded-md bg-foreground px-4 text-sm font-medium text-background">lg (h-9)</button>
+              <p className="mb-3 text-xs font-medium text-muted-foreground">Usage</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <button className="btn-ghost">Cancel</button>
+                  <button className="btn-pill">Save</button>
+                </div>
               </div>
             </div>
           </div>
@@ -200,7 +190,7 @@ export default async function DesignSystemPage() {
                 { icon: <Package className="h-4 w-4" />, label: "Package" },
                 { icon: <Zap className="h-4 w-4" />, label: "Zap" },
                 { icon: <Terminal className="h-4 w-4" />, label: "Terminal" },
-                { icon: <Wrench className="h-4 w-4" />, label: "Wrench" },
+                { icon: <Bot className="h-4 w-4" />, label: "Bot" },
                 { icon: <FileText className="h-4 w-4" />, label: "FileText" },
                 { icon: <Upload className="h-4 w-4" />, label: "Upload" },
                 { icon: <Search className="h-4 w-4" />, label: "Search" },

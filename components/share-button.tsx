@@ -28,18 +28,13 @@ export function ShareButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={handleShare}
-      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+      aria-label={copied ? "Copied" : "Share"}
     >
       {copied ? (
-        <>
-          <Check className="h-3 w-3" />
-          Copied
-        </>
+        <Check className="h-3.5 w-3.5" />
       ) : (
-        <>
-          <Share2 className="h-3 w-3" />
-          Share
-        </>
+        <Share2 className="h-3.5 w-3.5" />
       )}
     </button>
   );

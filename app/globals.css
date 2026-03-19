@@ -26,6 +26,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -40,6 +41,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-success: var(--success);
+  --color-surface: var(--surface);
   --color-success-foreground: var(--success-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -60,16 +62,17 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.545 0.195 260);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.965 0.005 83);
+  --secondary: oklch(0.968 0.004 83);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.965 0.005 83);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.965 0.005 83);
+  --muted: oklch(0.968 0.004 83);
+  --muted-foreground: oklch(0.38 0 0);
+  --accent: oklch(0.968 0.004 83);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.529 0.257 29.2);
-  --border: oklch(0.905 0.008 83);
-  --input: oklch(0.905 0.008 83);
-  --ring: oklch(0.545 0.195 260);
+  --border: oklch(0.92 0.006 83);
+  --border-subtle: oklch(0.94 0.004 83);
+  --input: oklch(0.915 0.006 83);
+  --ring: oklch(0.545 0.12 260);
   --chart-1: oklch(0.545 0.195 260);
   --chart-2: oklch(0.72 0.14 173);
   --chart-3: oklch(0.78 0.155 72);
@@ -84,6 +87,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.905 0.008 83);
   --sidebar-ring: oklch(0.545 0.195 260);
+  --surface: oklch(0.995 0.002 83);
   --success: oklch(0.72 0.14 173);
   --success-foreground: oklch(0.145 0 0);
 }
@@ -91,23 +95,24 @@
 /* Dark — subtle warm tint (hue 75) prevents clinical feel */
 .dark {
   --background: oklch(0.115 0.005 75);
-  --foreground: oklch(0.93 0.005 75);
+  --foreground: oklch(0.96 0.005 75);
   --card: oklch(0.155 0.005 75);
-  --card-foreground: oklch(0.93 0.005 75);
+  --card-foreground: oklch(0.96 0.005 75);
   --popover: oklch(0.155 0.005 75);
-  --popover-foreground: oklch(0.93 0.005 75);
+  --popover-foreground: oklch(0.96 0.005 75);
   --primary: oklch(0.62 0.2 262);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.195 0.005 75);
-  --secondary-foreground: oklch(0.93 0.005 75);
+  --secondary-foreground: oklch(0.95 0.005 75);
   --muted: oklch(0.195 0.005 75);
-  --muted-foreground: oklch(0.55 0.01 75);
+  --muted-foreground: oklch(0.63 0.01 75);
   --accent: oklch(0.195 0.005 75);
-  --accent-foreground: oklch(0.93 0.005 75);
+  --accent-foreground: oklch(0.96 0.005 75);
   --destructive: oklch(0.65 0.25 25);
-  --border: oklch(1 0.005 75 / 8%);
+  --border: oklch(1 0.005 75 / 6%);
+  --border-subtle: oklch(1 0.003 75 / 4%);
   --input: oklch(1 0.005 75 / 10%);
-  --ring: oklch(0.62 0.2 262);
+  --ring: oklch(0.62 0.13 262);
   --chart-1: oklch(0.62 0.2 262);
   --chart-2: oklch(0.72 0.14 173);
   --chart-3: oklch(0.78 0.155 72);
@@ -121,6 +126,7 @@
   --sidebar-accent-foreground: oklch(0.93 0.005 75);
   --sidebar-border: oklch(1 0.005 75 / 8%);
   --sidebar-ring: oklch(0.62 0.2 262);
+  --surface: oklch(0.14 0.005 75);
   --success: oklch(0.72 0.14 173);
   --success-foreground: oklch(0.115 0.005 75);
 }
@@ -252,6 +258,21 @@
   }
 }
 
+/* Accent color overrides */
+[data-accent="violet"] { --primary: oklch(0.55 0.2 290); --ring: oklch(0.55 0.2 290); }
+[data-accent="green"]  { --primary: oklch(0.55 0.17 155); --ring: oklch(0.55 0.17 155); }
+[data-accent="orange"] { --primary: oklch(0.65 0.18 55);  --ring: oklch(0.65 0.18 55); }
+[data-accent="rose"]   { --primary: oklch(0.55 0.2 10);   --ring: oklch(0.55 0.2 10); }
+
+.dark[data-accent="violet"], .dark [data-accent="violet"] { --primary: oklch(0.65 0.22 290); --ring: oklch(0.65 0.22 290); }
+.dark[data-accent="green"], .dark [data-accent="green"]   { --primary: oklch(0.65 0.19 155); --ring: oklch(0.65 0.19 155); }
+.dark[data-accent="orange"], .dark [data-accent="orange"] { --primary: oklch(0.72 0.19 55);  --ring: oklch(0.72 0.19 55); }
+.dark[data-accent="rose"], .dark [data-accent="rose"]     { --primary: oklch(0.65 0.22 10);  --ring: oklch(0.65 0.22 10); }
+
+/* Density: compact spacing */
+[data-density="compact"] .skill-card { padding: 0.5rem 0.75rem; }
+[data-density="compact"] .skill-card .line-clamp-2 { display: none; }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -261,5 +282,85 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /* Snappy interactive defaults */
+  button, [role="button"], a, select {
+    @apply cursor-pointer;
+  }
+  button:disabled, [role="button"][aria-disabled="true"] {
+    @apply cursor-not-allowed;
+  }
+}
+
+@layer components {
+  /* Display heading: semibold + tight tracking for page titles */
+  .text-display {
+    @apply font-semibold tracking-tight;
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+
+  /* Ghost-style interactive: icon buttons, nav links, subtle actions */
+  .interactive-ghost {
+    @apply transition-all duration-100
+      hover:bg-muted active:brightness-95
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1;
+  }
+
+  /* Solid-style interactive: primary buttons, CTAs */
+  .interactive-solid {
+    @apply transition-all duration-100
+      active:brightness-95
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1;
+  }
+
+  /* Card-style interactive: skill cards, clickable panels */
+  .interactive-card {
+    @apply transition-all duration-150
+      hover:border-border hover:bg-muted/20 hover:shadow-[0_1px_3px_0_rgb(0_0_0/0.04)]
+      active:brightness-[0.97]
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50;
+  }
+
+  /* Toggle switch base */
+  .interactive-toggle {
+    @apply transition-colors duration-150
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2;
+  }
+
+  /* Toggle knob */
+  .toggle-knob {
+    @apply transition-transform duration-200 ease-out;
+  }
+
+  /* Button: pill — bordered capsule for primary actions (Save, Publish, Next) */
+  .btn-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border
+      px-3.5 py-1.5 text-xs font-medium text-foreground
+      transition-all duration-100
+      hover:bg-muted active:brightness-95
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* Button: pill-lg — larger capsule for hero CTAs */
+  .btn-pill-lg {
+    @apply inline-flex items-center gap-2 rounded-full border border-border
+      px-5 py-2.5 text-sm font-medium text-foreground
+      transition-all duration-100
+      hover:bg-muted active:brightness-95
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* Button: ghost — plain text for secondary actions (Cancel, Back) */
+  .btn-ghost {
+    @apply inline-flex items-center gap-1 rounded-full
+      px-3 py-1.5 text-xs text-muted-foreground
+      transition-all duration-100
+      hover:text-foreground
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50
+      disabled:pointer-events-none disabled:opacity-50;
   }
 }

@@ -3,6 +3,7 @@ import { SkillCard } from "@/components/skill-card";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { getSkills, getCategories } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
+import { PER_PAGE } from "@/lib/constants";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
@@ -28,11 +29,11 @@ export default async function SearchPage({
   ]);
 
   const page = filters.page ?? 1;
-  const totalPages = Math.ceil(results.total / 20);
+  const totalPages = Math.ceil(results.total / PER_PAGE);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <h1 className="mb-1 text-xl font-medium tracking-tight">Search</h1>
+      <h1 className="mb-1 text-xl text-display">Search</h1>
       {query && (
         <p className="mb-8 text-sm text-muted-foreground">
           {results.total} result{results.total !== 1 ? "s" : ""} for &ldquo;{query}&rdquo;

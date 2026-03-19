@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSkillBySlug, deleteSkill } from "@/lib/registry";
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
+import { apiError } from "@/lib/api-utils";
+import { trackDownload } from "@/lib/analytics";
+import { getSettings } from "@/lib/settings";
+import { getOrgSlug } from "@/lib/org";
 
 export async function GET(
   request: NextRequest,
@@ -12,9 +16,19 @@ export async function GET(
   const { slug } = await params;
   const skill = await getSkillBySlug(slug);
   if (!skill) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError("Skill not found", 404);
   }
-  return NextResponse.json(skill);
+
+  // Track download (fire-and-forget)
+  const orgSlug = await getOrgSlug();
+  const settings = await getSettings(orgSlug);
+  trackDownload(slug, settings).catch(() => {});
+
+  return NextResponse.json(skill, {
+    headers: {
+      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+    },
+  });
 }
 
 export async function DELETE(
@@ -27,12 +41,11 @@ export async function DELETE(
   const { slug } = await params;
   const skill = await getSkillBySlug(slug);
   if (!skill) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return apiError("Skill not found", 404);
   }
 
-  // Only the author can delete
   if (skill.author.toLowerCase() !== authResult.username.toLowerCase()) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return apiError("Only the skill author can delete this skill", 403);
   }
 
   await deleteSkill(slug, skill.type);

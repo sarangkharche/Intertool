@@ -2,25 +2,14 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getSkills } from "@/lib/registry";
+import { getContributors } from "@/lib/registry";
 import { Users } from "lucide-react";
-
-export const dynamic = "force-dynamic";
 
 export default async function TeamsPage() {
   const session = await auth();
   if (!session?.user) redirect("/sign-in");
 
-  const { skills } = await getSkills({ limit: 1000 });
-
-  // Group skills by author to derive team members
-  const authorMap = new Map<string, number>();
-  for (const s of skills) {
-    authorMap.set(s.author, (authorMap.get(s.author) ?? 0) + 1);
-  }
-  const authors = Array.from(authorMap.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
+  const authors = await getContributors();
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">

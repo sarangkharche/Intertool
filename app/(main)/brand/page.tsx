@@ -304,7 +304,7 @@ export default function BrandPage() {
           <TypographySample
             label="Body text"
             className="text-sm leading-relaxed text-muted-foreground"
-            text="A private registry for your organization. Share skills, MCP servers, agent tools, and prompt templates."
+            text="A private registry for your organization. Share skills, MCP servers, agents, and prompt templates."
             spec="text-sm / leading-relaxed / text-muted-foreground"
           />
           <TypographySample
@@ -377,7 +377,7 @@ export default function BrandPage() {
             { name: "Package", icon: "package" },
             { name: "Zap", icon: "zap" },
             { name: "Terminal", icon: "terminal" },
-            { name: "Wrench", icon: "wrench" },
+            { name: "Bot", icon: "bot" },
             { name: "FileText", icon: "file-text" },
             { name: "Upload", icon: "upload" },
             { name: "Search", icon: "search" },
@@ -468,19 +468,19 @@ export default function BrandPage() {
               Buttons
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background">
+              <button className="btn-pill-lg">
                 Primary
               </button>
-              <button className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">
+              <button className="btn-pill">
                 Secondary
               </button>
-              <button className="rounded-md px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
+              <button className="btn-ghost">
                 Ghost
               </button>
-              <button className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white">
+              <button className="btn-pill !border-red-500/40 !bg-red-500/10 !text-red-400">
                 Destructive
               </button>
-              <button className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background opacity-50">
+              <button className="btn-pill" disabled>
                 Disabled
               </button>
             </div>
@@ -492,16 +492,16 @@ export default function BrandPage() {
               Badges &amp; tags
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+              <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
                 Skill
               </span>
-              <span className="rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[10px] text-purple-700 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300">
+              <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
                 MCP Server
               </span>
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                Agent Tool
+              <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
+                Agents
               </span>
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
                 Prompt Template
               </span>
               <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -529,7 +529,7 @@ export default function BrandPage() {
                       @author/example-skill
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                  <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                     Skill
                   </span>
                 </div>

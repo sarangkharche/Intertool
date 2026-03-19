@@ -1,10 +1,11 @@
 import { cache } from "react";
 import yaml from "yaml";
-import { getObject, putObject, deleteObject, listObjects, isS3Configured } from "./s3";
+import { getObject, getObjectIfChanged, putObject, deleteObject, listObjects, isS3Configured } from "./s3";
 import { getSettings, typeToFolder } from "./settings";
 import type { RegistrySettings } from "./settings";
 import { getOrgSlug } from "./org";
 import { Skill, SkillVersion, Category, SearchFilters, SkillType, SkillStatus, SourceFormat, McpTransport } from "./types";
+import { fireWebhook } from "./webhooks";
 import { PER_PAGE } from "./constants";
 import categoriesData from "../registry/categories.json";
 
@@ -115,23 +116,19 @@ const resolveSettings = cache(async (): Promise<RegistrySettings | null> => {
 
 // ── In-memory cache for _index.json (keyed by bucket) ──
 
-const indexCaches = new Map<string, { skills: Skill[]; fetchedAt: number }>();
-const CACHE_TTL_MS = 30_000;
+const indexCaches = new Map<string, Skill[]>();
 
 async function fetchIndex(settings: RegistrySettings): Promise<Skill[]> {
-  const cacheKey = settings.s3_bucket;
-  const cached = indexCaches.get(cacheKey);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.skills;
+  const raw = await getObjectIfChanged(settings, "_index.json");
+  if (raw) {
+    const skills: Skill[] = JSON.parse(raw) as Skill[];
+    indexCaches.set(settings.s3_bucket, skills);
+    return skills;
   }
-
-  const raw = await getObject(settings, "_index.json");
-  const skills: Skill[] = raw ? (JSON.parse(raw) as Skill[]) : [];
-  indexCaches.set(cacheKey, { skills, fetchedAt: Date.now() });
-  return skills;
+  return indexCaches.get(settings.s3_bucket) ?? [];
 }
 
-const categoriesCache = new Map<string, { categories: Category[]; fetchedAt: number }>();
+const categoriesCache = new Map<string, Category[]>();
 
 function invalidateCache(bucket: string): void {
   indexCaches.delete(bucket);
@@ -203,19 +200,20 @@ export async function getSkills(
   }
   if (filters.query) {
     const q = filters.query.toLowerCase();
-    skills = skills.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q) ||
-        s.tags.some((t) => t.toLowerCase().includes(q))
-    );
+    const scored = skills
+      .map((s) => ({ skill: s, score: scoreSkill(s, q) }))
+      .filter((x) => x.score > 0);
+    scored.sort((a, b) => b.score - a.score);
+    skills = scored.map((x) => x.skill);
   }
 
-  // Sort
-  if (filters.sort === "name") {
-    skills.sort((a, b) => a.name.localeCompare(b.name));
-  } else {
-    skills.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  // Sort (only when not searching — search uses relevance)
+  if (!filters.query) {
+    if (filters.sort === "name") {
+      skills.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      skills.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
   }
 
   const total = skills.length;
@@ -258,7 +256,7 @@ export async function getSkillBySlug(slug: string): Promise<Skill | null> {
   const indexed = index.find((s) => s.slug === slug);
   if (indexed) {
     const folder = typeToFolder(indexed.type);
-    const raw = await getObject(settings, `${folder}/${slug}/skill.json`);
+    const raw = await getObjectIfChanged(settings, `${folder}/${slug}/skill.json`);
     if (raw) {
       const skill = JSON.parse(raw) as Skill;
       if (!skill.install_commands) {
@@ -271,7 +269,7 @@ export async function getSkillBySlug(slug: string): Promise<Skill | null> {
   // Fallback: scan all folders (new/uncached skill)
   const folders = ["skills", "mcp-servers", "agent-tools", "prompt-templates"];
   for (const folder of folders) {
-    const raw = await getObject(settings, `${folder}/${slug}/skill.json`);
+    const raw = await getObjectIfChanged(settings, `${folder}/${slug}/skill.json`);
     if (raw) {
       const skill = JSON.parse(raw) as Skill;
       if (!skill.install_commands) {
@@ -304,7 +302,7 @@ export async function getSkillVersions(slug: string): Promise<SkillVersion[]> {
         keys
           .filter((k) => k.endsWith(".json"))
           .map(async (key) => {
-            const raw = await getObject(settings, key);
+            const raw = await getObjectIfChanged(settings, key);
             if (!raw) return null;
             try {
               return JSON.parse(raw) as SkillVersion;
@@ -322,28 +320,44 @@ export async function getSkillVersions(slug: string): Promise<SkillVersion[]> {
   return [];
 }
 
+export async function getSkillVersion(slug: string, version: string): Promise<SkillVersion | null> {
+  const settings = await resolveSettings();
+  if (!settings) return null;
+
+  const index = await fetchIndex(settings);
+  const indexed = index.find((s) => s.slug === slug);
+
+  const foldersToCheck = indexed
+    ? [typeToFolder(indexed.type)]
+    : ["skills", "mcp-servers", "agent-tools", "prompt-templates"];
+
+  for (const folder of foldersToCheck) {
+    const raw = await getObject(settings, `${folder}/${slug}/versions/${version}.json`);
+    if (!raw) continue;
+    try {
+      return JSON.parse(raw) as SkillVersion;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export async function getCategories(): Promise<Category[]> {
   const settings = await resolveSettings();
   if (!settings) return hardcodedCategories();
 
-  const cacheKey = settings.s3_bucket;
-  const cached = categoriesCache.get(cacheKey);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.categories;
-  }
-
   try {
-    const raw = await getObject(settings, "_categories.json");
+    const raw = await getObjectIfChanged(settings, "_categories.json");
     if (raw) {
       const categories = JSON.parse(raw) as Category[];
-      categoriesCache.set(cacheKey, { categories, fetchedAt: Date.now() });
+      categoriesCache.set(settings.s3_bucket, categories);
       return categories;
     }
+    return categoriesCache.get(settings.s3_bucket) ?? hardcodedCategories();
   } catch {
-    // fall through
+    return categoriesCache.get(settings.s3_bucket) ?? hardcodedCategories();
   }
-
-  return hardcodedCategories();
 }
 
 export async function getFeaturedSkills(): Promise<Skill[]> {
@@ -355,6 +369,23 @@ export async function getRecentSkills(): Promise<Skill[]> {
   return getFeaturedSkills();
 }
 
+/** Derive contributors from the cached index without loading full skill objects. */
+export async function getContributors(): Promise<{ name: string; count: number }[]> {
+  const settings = await resolveSettings();
+  if (!settings) return [];
+
+  const all = await fetchIndex(settings);
+  const authorMap = new Map<string, number>();
+  for (const s of all) {
+    if (s.status === "published") {
+      authorMap.set(s.author, (authorMap.get(s.author) ?? 0) + 1);
+    }
+  }
+  return Array.from(authorMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 export async function searchSkills(
   query: string
 ): Promise<Pick<Skill, "slug" | "name" | "type" | "description">[]> {
@@ -364,15 +395,71 @@ export async function searchSkills(
   const q = query.toLowerCase();
   const all = await fetchIndex(settings);
   return all
-    .filter(
-      (s) =>
-        s.status === "published" &&
-        (s.name.toLowerCase().includes(q) ||
-          s.description.toLowerCase().includes(q) ||
-          s.tags.some((t) => t.toLowerCase().includes(q)))
-    )
+    .filter((s) => s.status === "published")
+    .map((s) => ({ skill: s, score: scoreSkill(s, q) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
     .slice(0, 10)
-    .map((s) => ({ slug: s.slug, name: s.name, type: s.type, description: s.description }));
+    .map((x) => ({ slug: x.skill.slug, name: x.skill.name, type: x.skill.type, description: x.skill.description }));
+}
+
+// ── Search scoring ──
+
+function levenshtein(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      matrix[i][j] =
+        b[i - 1] === a[j - 1]
+          ? matrix[i - 1][j - 1]
+          : Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function scoreSkill(skill: Skill, query: string): number {
+  const name = skill.name.toLowerCase();
+  const desc = skill.description.toLowerCase();
+  const tags = skill.tags.map((t) => t.toLowerCase());
+
+  let score = 0;
+
+  // Name scoring
+  if (name === query) {
+    score += 100;
+  } else if (name.startsWith(query)) {
+    score += 50;
+  } else if (name.includes(query)) {
+    score += 20;
+  }
+
+  // Tag scoring
+  for (const tag of tags) {
+    if (tag === query) score += 15;
+    else if (tag.includes(query)) score += 8;
+  }
+
+  // Description scoring
+  if (desc.includes(query)) score += 5;
+
+  // Fuzzy matching for queries > 3 chars with no exact matches
+  if (score === 0 && query.length > 3) {
+    // Check against name words and tags
+    const candidates = [name, ...name.split(/[-\s]+/), ...tags];
+    for (const candidate of candidates) {
+      if (candidate.length > 0 && levenshtein(query, candidate) <= 2) {
+        score += 10;
+        break;
+      }
+    }
+  }
+
+  return score;
 }
 
 /** Bump a semver patch: "1.0.0" → "1.0.1" */
@@ -397,12 +484,14 @@ export async function upsertSkill(skill: Skill, changelog?: string): Promise<voi
     const existing = JSON.parse(existingRaw) as Skill;
     const prevVersion = existing.version || "1.0.0";
 
-    // Snapshot the previous version
+    // Snapshot the previous version (including readme and full skill for diffs)
     const versionMeta: SkillVersion = {
       version: prevVersion,
       changelog: changelog || `Updated to ${bumpPatch(prevVersion)}`,
       author: existing.author,
       created_at: existing.updated_at || existing.created_at,
+      readme: existing.readme,
+      snapshot: existing,
     };
     await putObject(
       settings,
@@ -420,8 +509,10 @@ export async function upsertSkill(skill: Skill, changelog?: string): Promise<voi
     skill.version = "1.0.0";
   }
 
+  const isUpdate = !!existingRaw;
   await putObject(settings, key, JSON.stringify(skill, null, 2));
   await rebuildIndex(settings);
+  fireWebhook(settings, isUpdate ? "update" : "publish", skill);
 }
 
 /** Delete a skill from S3 and rebuild the index */
@@ -430,8 +521,16 @@ export async function deleteSkill(slug: string, type: string): Promise<void> {
   if (!settings) throw new Error("S3 not configured");
 
   const folder = typeToFolder(type);
+  const raw = await getObject(settings, `${folder}/${slug}/skill.json`);
   await deleteObject(settings, `${folder}/${slug}/skill.json`);
   await rebuildIndex(settings);
+
+  if (raw) {
+    try {
+      const skill = JSON.parse(raw) as Skill;
+      fireWebhook(settings, "delete", skill);
+    } catch { /* non-fatal */ }
+  }
 }
 
 /** Seed _categories.json into the bucket */

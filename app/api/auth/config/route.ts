@@ -6,7 +6,7 @@ export async function GET() {
   const orgSlug = await getOrgSlug();
   const settings = await getSettings(orgSlug);
 
-  const googleClientConfigured = !!process.env.GOOGLE_CLIENT_ID;
+  const googleClientConfigured = !!(settings?.google_client_id || process.env.GOOGLE_CLIENT_ID);
   const googleEnabled =
     googleClientConfigured && settings?.google_auth_enabled === true;
 

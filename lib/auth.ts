@@ -2,24 +2,30 @@ import NextAuth from "next-auth";
 import type { Provider } from "next-auth/providers";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
-import { getSettings, addOrgMember } from "./settings";
+import { getSettings, addOrgMember, getOAuthCredentialsSync } from "./settings";
 import { getOrgSlug, isSaasMode } from "./org";
 import { getGitHubUserOrgs } from "./github";
 
-const providers: Provider[] = [
-  GitHub({
-    clientId: process.env.GITHUB_ID,
-    clientSecret: process.env.GITHUB_SECRET,
-    authorization: { params: { scope: "read:user user:email read:org" } },
-  }),
-];
+// Resolve OAuth credentials from admin settings → env vars
+const oauthCreds = getOAuthCredentialsSync();
 
-// Only register Google provider if credentials are configured
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+const providers: Provider[] = [];
+
+if (oauthCreds.github) {
+  providers.push(
+    GitHub({
+      clientId: oauthCreds.github.clientId,
+      clientSecret: oauthCreds.github.clientSecret,
+      authorization: { params: { scope: "read:user user:email read:org" } },
+    })
+  );
+}
+
+if (oauthCreds.google) {
   providers.push(
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: oauthCreds.google.clientId,
+      clientSecret: oauthCreds.google.clientSecret,
       authorization: {
         params: {
           scope: "openid email profile",

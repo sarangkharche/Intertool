@@ -25,7 +25,7 @@ import {
   Sparkles,
   Zap,
   Terminal,
-  Wrench,
+  Bot,
 } from "lucide-react";
 import { SkillType, Category, SourceFormat, McpTransport } from "@/lib/types";
 import { SKILL_TYPE_LABELS } from "@/lib/constants";
@@ -88,6 +88,11 @@ export function PublishWizard({
       setTagInput("");
     }
   };
+
+  const handleReadmeChange = useCallback((val: string) => {
+    setReadme(val);
+    setReadmeFromFile(false);
+  }, []);
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -321,7 +326,7 @@ export function PublishWizard({
   if (publishedSlug) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-lg border border-border p-10 text-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground">
           <Check className="h-5 w-5" />
         </div>
         <div>
@@ -343,10 +348,10 @@ export function PublishWizard({
   // ── Type chooser ──
   if (mode === "choose") {
     const typeOptions: { type: SkillType; icon: React.ReactNode; color: string; desc: string }[] = [
-      { type: "skill", icon: <Zap className="h-5 w-5" />, color: "text-blue-500", desc: "Claude Code skills, reusable prompts" },
-      { type: "mcp-server", icon: <Terminal className="h-5 w-5" />, color: "text-purple-500", desc: "Model Context Protocol servers" },
-      { type: "agent-tool", icon: <Wrench className="h-5 w-5" />, color: "text-emerald-500", desc: "Standalone agent tools" },
-      { type: "prompt-template", icon: <FileText className="h-5 w-5" />, color: "text-amber-500", desc: "Reusable prompt templates" },
+      { type: "skill", icon: <Zap className="h-5 w-5" />, color: "text-muted-foreground", desc: "Claude Code skills, reusable prompts" },
+      { type: "mcp-server", icon: <Terminal className="h-5 w-5" />, color: "text-muted-foreground", desc: "Model Context Protocol servers" },
+      { type: "agent-tool", icon: <Bot className="h-5 w-5" />, color: "text-muted-foreground", desc: "Standalone agent tools" },
+      { type: "prompt-template", icon: <FileText className="h-5 w-5" />, color: "text-muted-foreground", desc: "Reusable prompt templates" },
     ];
 
     return (
@@ -749,7 +754,7 @@ export function PublishWizard({
                 ? setMode("choose")
                 : setStep(step - 1)
             }
-            className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="btn-ghost"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </button>
@@ -757,7 +762,7 @@ export function PublishWizard({
             <button
               onClick={() => setStep(step + 1)}
               disabled={step === 1 && (!name || !description || !category)}
-              className="flex items-center gap-1 text-sm transition-colors hover:text-muted-foreground disabled:opacity-30"
+              className="btn-pill"
             >
               Next <ArrowRight className="h-3.5 w-3.5" />
             </button>
@@ -765,7 +770,7 @@ export function PublishWizard({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="flex items-center gap-1 text-sm transition-colors hover:text-muted-foreground disabled:opacity-50"
+              className="btn-pill"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Publish
@@ -996,10 +1001,7 @@ export function PublishWizard({
             </div>
             <MarkdownEditor
               value={readme}
-              onChange={(val) => {
-                setReadme(val);
-                setReadmeFromFile(false);
-              }}
+              onChange={handleReadmeChange}
               height={250}
             />
           </div>
@@ -1142,7 +1144,7 @@ export function PublishWizard({
         {step < manualSteps.length - 1 ? (
           <button
             onClick={() => setStep(step + 1)}
-            className="flex items-center gap-1 text-sm transition-colors hover:text-muted-foreground"
+            className="btn-pill"
           >
             Next <ArrowRight className="h-3.5 w-3.5" />
           </button>
@@ -1150,7 +1152,7 @@ export function PublishWizard({
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex items-center gap-1 text-sm transition-colors hover:text-muted-foreground disabled:opacity-50"
+            className="btn-pill"
           >
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Publish

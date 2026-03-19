@@ -16,20 +16,26 @@ export async function GET() {
   const orgSlug = await getOrgSlug();
   const settings = await getSettings(orgSlug);
 
-  // Never expose the secret key
+  // Never expose secrets
   const safeSettings = settings
     ? {
         ...settings,
         s3_secret_access_key: "********",
+        github_client_secret: settings.github_client_secret ? "********" : undefined,
+        google_client_secret: settings.google_client_secret ? "********" : undefined,
       }
     : null;
+
+  const googleConfigured = !!(settings?.google_client_id || process.env.GOOGLE_CLIENT_ID);
+  const githubConfigured = !!(settings?.github_client_id || process.env.GITHUB_ID);
 
   return NextResponse.json({
     settings: safeSettings,
     is_admin: await isAdmin(username, orgSlug),
     needs_setup: !settings || !isS3Configured(settings),
     org_slug: orgSlug,
-    google_client_configured: !!process.env.GOOGLE_CLIENT_ID,
+    google_client_configured: googleConfigured,
+    github_client_configured: githubConfigured,
   });
 }
 
@@ -104,10 +110,16 @@ export async function POST(request: NextRequest) {
     s3_secret_access_key,
     s3_endpoint,
     s3_session_token,
+    github_client_id,
+    github_client_secret,
+    google_client_id,
+    google_client_secret,
     google_auth_enabled,
     google_allowed_domains,
     github_org,
     github_org_required,
+    webhook_url,
+    webhook_events,
   } = body;
 
   if (!s3_bucket || !s3_access_key_id) {
@@ -140,6 +152,16 @@ export async function POST(request: NextRequest) {
 
   const provider = (session.user as { provider?: string }).provider;
 
+  // Resolve OAuth secrets — keep existing if masked or not provided
+  const resolvedGithubSecret =
+    github_client_secret && github_client_secret !== "********"
+      ? github_client_secret
+      : existing?.github_client_secret;
+  const resolvedGoogleSecret =
+    google_client_secret && google_client_secret !== "********"
+      ? google_client_secret
+      : existing?.google_client_secret;
+
   const newSettings = {
     admin_username: existing?.admin_username || username,
     admin_email:
@@ -155,6 +177,16 @@ export async function POST(request: NextRequest) {
     s3_session_token: s3_session_token || existing?.s3_session_token || undefined,
     org_slug: orgSlug,
     org_name: existing?.org_name,
+    github_client_id:
+      github_client_id !== undefined
+        ? github_client_id || undefined
+        : existing?.github_client_id,
+    github_client_secret: resolvedGithubSecret || undefined,
+    google_client_id:
+      google_client_id !== undefined
+        ? google_client_id || undefined
+        : existing?.google_client_id,
+    google_client_secret: resolvedGoogleSecret || undefined,
     google_auth_enabled:
       google_auth_enabled !== undefined
         ? google_auth_enabled
@@ -171,6 +203,14 @@ export async function POST(request: NextRequest) {
       github_org_required !== undefined
         ? github_org_required
         : existing?.github_org_required,
+    webhook_url:
+      webhook_url !== undefined
+        ? webhook_url || undefined
+        : existing?.webhook_url,
+    webhook_events:
+      webhook_events !== undefined
+        ? webhook_events
+        : existing?.webhook_events,
   };
 
   await saveSettings(newSettings, orgSlug);

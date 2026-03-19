@@ -29,6 +29,8 @@ export interface SkillVersion {
   changelog: string;
   author: string;
   created_at: string;
+  readme?: string;
+  snapshot?: Skill;
 }
 
 export interface Category {

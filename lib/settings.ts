@@ -28,6 +28,14 @@ export interface RegistrySettings {
   org_slug?: string;
   /** Org display name (SaaS mode only) */
   org_name?: string;
+  /** GitHub OAuth App Client ID (admin-configurable) */
+  github_client_id?: string;
+  /** GitHub OAuth App Client Secret (admin-configurable) */
+  github_client_secret?: string;
+  /** Google OAuth Client ID (admin-configurable) */
+  google_client_id?: string;
+  /** Google OAuth Client Secret (admin-configurable) */
+  google_client_secret?: string;
   /** Whether Google Workspace auth is enabled */
   google_auth_enabled?: boolean;
   /** Allowed Google Workspace domains (e.g., ["acme.com"]) */
@@ -36,6 +44,10 @@ export interface RegistrySettings {
   github_org?: string;
   /** Whether GitHub org membership is required to sign in */
   github_org_required?: boolean;
+  /** Webhook URL for event notifications */
+  webhook_url?: string;
+  /** Which events trigger webhooks */
+  webhook_events?: ("publish" | "update" | "delete")[];
 }
 
 // ── KV store (SaaS mode) ──
@@ -149,6 +161,36 @@ export async function isAdmin(username: string, orgSlug?: string): Promise<boole
   // For Google-authed admins: check admin_email too
   if (settings.admin_email && settings.admin_email.toLowerCase() === username.toLowerCase()) return true;
   return false;
+}
+
+/**
+ * Synchronously resolve OAuth credentials from settings file → env vars.
+ * Used at module-init time by auth.ts (must be sync for NextAuth init).
+ */
+export function getOAuthCredentialsSync(): {
+  github: { clientId: string; clientSecret: string } | null;
+  google: { clientId: string; clientSecret: string } | null;
+} {
+  // Try settings file first (self-hosted, writable FS)
+  let settings: RegistrySettings | null = null;
+  try {
+    if (fs.existsSync(SETTINGS_PATH)) {
+      const raw = fs.readFileSync(SETTINGS_PATH, "utf-8");
+      settings = JSON.parse(raw) as RegistrySettings;
+    }
+  } catch {
+    // ignore
+  }
+
+  const githubId = settings?.github_client_id || process.env.GITHUB_ID;
+  const githubSecret = settings?.github_client_secret || process.env.GITHUB_SECRET;
+  const googleId = settings?.google_client_id || process.env.GOOGLE_CLIENT_ID;
+  const googleSecret = settings?.google_client_secret || process.env.GOOGLE_CLIENT_SECRET;
+
+  return {
+    github: githubId && githubSecret ? { clientId: githubId, clientSecret: githubSecret } : null,
+    google: googleId && googleSecret ? { clientId: googleId, clientSecret: googleSecret } : null,
+  };
 }
 
 /** Map skill type to the folder name in S3 */

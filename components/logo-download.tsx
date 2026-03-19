@@ -107,7 +107,7 @@ export function LogoDownload({ variant }: { variant: LogoVariant }) {
         <button
           key={fmt}
           onClick={() => downloadAs(variant, fmt)}
-          className="flex items-center gap-1 rounded-md border border-border/50 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+          className="flex items-center gap-1 rounded-md border border-border/50 px-2 py-1 text-[11px] text-muted-foreground interactive-ghost hover:border-border"
         >
           <Download className="h-2.5 w-2.5" />
           {fmt.toUpperCase()}
@@ -140,7 +140,7 @@ export function DownloadAllLogos() {
   return (
     <button
       onClick={handleDownloadAll}
-      className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+      className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground interactive-solid hover:border-foreground/20 hover:text-foreground"
     >
       <Archive className="h-3.5 w-3.5" />
       Download all assets (.zip)

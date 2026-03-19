@@ -35,14 +35,14 @@ export function DeleteSkillButton({ slug }: { slug: string }) {
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+          className="btn-pill !border-red-500/40 !bg-red-500/10 !text-red-400 hover:!bg-red-500/20"
         >
           {deleting ? "Deleting..." : "Confirm"}
         </button>
         <button
           onClick={() => setConfirming(false)}
           disabled={deleting}
-          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+          className="btn-ghost"
         >
           Cancel
         </button>
@@ -53,10 +53,10 @@ export function DeleteSkillButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-red-500/40 hover:text-red-400"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost hover:text-red-400"
+      aria-label="Delete"
     >
-      <Trash2 className="h-3 w-3" />
-      Delete
+      <Trash2 className="h-3.5 w-3.5" />
     </button>
   );
 }

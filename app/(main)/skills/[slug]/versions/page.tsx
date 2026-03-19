@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSkillBySlug, getSkillVersions } from "@/lib/registry";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, GitCompareArrows } from "lucide-react";
 
 export default async function VersionsPage({
   params,
@@ -30,27 +30,37 @@ export default async function VersionsPage({
 
       <div className="space-y-3">
         {versions.length > 0 ? (
-          versions.map((v) => (
-            <Card key={v.version}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="font-mono text-lg font-semibold">
-                      v{v.version}
-                    </span>
-                    <span className="ml-3 text-sm text-muted-foreground">
-                      {new Date(v.created_at).toLocaleDateString()}
-                    </span>
+          versions.map((v, i) => {
+            const toVersion = i === 0 ? "current" : versions[i - 1].version;
+            return (
+              <Card key={v.version}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="font-mono text-lg font-semibold">
+                        v{v.version}
+                      </span>
+                      <span className="ml-3 text-sm text-muted-foreground">
+                        {new Date(v.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <Link
+                      href={`/skills/${slug}/versions/diff?from=${v.version}&to=${toVersion}`}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                    >
+                      <GitCompareArrows className="h-3.5 w-3.5" />
+                      Compare
+                    </Link>
                   </div>
-                </div>
-                {v.changelog && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {v.changelog}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))
+                  {v.changelog && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {v.changelog}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })
         ) : (
           <p className="py-12 text-center text-muted-foreground">
             No versions published yet.

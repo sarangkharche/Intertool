@@ -247,14 +247,14 @@ export function EditSkillForm({
       <div className="flex items-center justify-between border-t border-border pt-5">
         <Link
           href={`/skills/${skill.slug}`}
-          className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="btn-ghost"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Cancel
+          Cancel
         </Link>
         <button
           onClick={handleSubmit}
           disabled={loading || !name || !description || !category}
-          className="flex items-center gap-1.5 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+          className="btn-pill"
         >
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Save changes

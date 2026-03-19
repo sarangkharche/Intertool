@@ -7,9 +7,11 @@ import { SkillReadme } from "@/components/skill-readme";
 import { InstallCommand } from "@/components/install-command";
 import { TypeBadge } from "@/components/skill-card";
 import { getSkillBySlug, getSkillVersions } from "@/lib/registry";
-import { Calendar, ExternalLink, Pencil } from "lucide-react";
+import { Calendar, Download, ExternalLink, GitCompareArrows, Pencil } from "lucide-react";
 import { ShareButton } from "@/components/share-button";
 import { DeleteSkillButton } from "@/components/delete-skill-button";
+import { DownloadStats } from "@/components/download-stats";
+
 
 export default async function SkillDetailPage({
   params,
@@ -38,21 +40,21 @@ export default async function SkillDetailPage({
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       {/* Breadcrumb */}
-      <nav className="mb-6 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-        <Link href="/" className="hover:text-foreground">registry</Link>
+      <nav className="mb-6 flex items-center gap-1.5 font-mono text-xs text-muted-foreground/70">
+        <Link href="/" className="hover:text-foreground transition-colors duration-100">registry</Link>
         <span>/</span>
-        <Link href="/browse" className="hover:text-foreground">skills</Link>
+        <Link href="/browse" className="hover:text-foreground transition-colors duration-100">skills</Link>
         <span>/</span>
         <span className="text-foreground">{skill.slug}</span>
       </nav>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
         {/* Main content */}
-        <div>
+        <div className="min-w-0">
           {/* Header */}
           <div className="mb-6">
             <div className="mb-2 flex items-center gap-3">
-              <h1 className="text-xl font-medium tracking-tight">{skill.name}</h1>
+              <h1 className="text-lg text-display">{skill.name}</h1>
               {skill.version && (
                 <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                   v{skill.version}
@@ -70,14 +72,22 @@ export default async function SkillDetailPage({
                 @{skill.author}/{skill.slug}
               </p>
               <ShareButton slug={skill.slug} />
+              <a
+                href={`/api/skills/${skill.slug}/raw`}
+                download={`${skill.slug}.md`}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+                aria-label="Download"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
               {isAuthor && (
                 <>
                   <Link
                     href={`/skills/${skill.slug}/edit`}
-                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+                    aria-label="Edit"
                   >
-                    <Pencil className="h-3 w-3" />
-                    Edit
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                   </Link>
                   <DeleteSkillButton slug={skill.slug} />
                 </>
@@ -106,9 +116,7 @@ export default async function SkillDetailPage({
 
             <TabsContent value="readme" className="mt-4">
               {skill.readme ? (
-                <div className="rounded-lg border border-border p-6">
-                  <SkillReadme content={skill.readme} />
-                </div>
+                <SkillReadme content={skill.readme} />
               ) : (
                 <p className="py-12 text-center text-sm text-muted-foreground">
                   No README provided.
@@ -157,25 +165,37 @@ export default async function SkillDetailPage({
             <TabsContent value="versions" className="mt-4 space-y-2">
               {versions.length > 0 ? (
                 <div className="space-y-0 rounded-lg border border-border">
-                  {versions.map((v, i) => (
-                    <div
-                      key={v.version}
-                      className={`flex items-start gap-3 p-4 ${i > 0 ? "border-t border-border" : ""}`}
-                    >
-                      <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-medium">v{v.version}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(v.created_at).toLocaleDateString()}
-                          </span>
+                  {versions.map((v, i) => {
+                    const toVersion = i === 0 ? "current" : versions[i - 1].version;
+                    return (
+                      <div
+                        key={v.version}
+                        className={`flex items-start justify-between gap-3 p-4 ${i > 0 ? "border-t border-border-subtle" : ""}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm font-medium">v{v.version}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(v.created_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
+                              </span>
+                            </div>
+                            {v.changelog && (
+                              <p className="mt-1 text-sm text-muted-foreground">{v.changelog}</p>
+                            )}
+                          </div>
                         </div>
-                        {v.changelog && (
-                          <p className="mt-1 text-sm text-muted-foreground">{v.changelog}</p>
-                        )}
+                        <Link
+                          href={`/skills/${slug}/versions/diff?from=${v.version}&to=${toVersion}`}
+                          className="shrink-0 inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                        >
+                          <GitCompareArrows className="h-3 w-3" aria-hidden="true" />
+                          Diff
+                        </Link>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="py-12 text-center text-sm text-muted-foreground">
@@ -187,10 +207,10 @@ export default async function SkillDetailPage({
         </div>
 
         {/* Sidebar — unified panel */}
-        <aside className="rounded-lg border border-border divide-y divide-border">
+        <aside className="rounded-lg border border-border/60 bg-card">
           {/* Author */}
           <div className="p-4">
-            <h3 className="mb-3 text-xs font-medium text-muted-foreground">Author</h3>
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Author</h3>
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
                 {skill.author.slice(0, 2).toUpperCase()}
@@ -201,48 +221,25 @@ export default async function SkillDetailPage({
                   href={`https://github.com/${skill.author}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors duration-100"
                 >
-                  GitHub <ExternalLink className="h-2.5 w-2.5" />
+                  GitHub <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
                 </a>
               </div>
             </div>
           </div>
 
-          {/* Install */}
-          <div className="p-4">
-            <h3 className="mb-3 text-xs font-medium text-muted-foreground">Install</h3>
-            <div className="space-y-2">
-              {Object.keys(installCommands).length > 0 ? (
-                Object.entries(installCommands).slice(0, 2).map(([tool, cmd]) => (
-                  <div key={tool}>
-                    <p className="mb-1 text-[10px] font-medium text-muted-foreground/60">
-                      {tool}
-                    </p>
-                    <code className="block rounded bg-muted p-2 font-mono text-xs break-all">
-                      {cmd}
-                    </code>
-                  </div>
-                ))
-              ) : (
-                <code className="block rounded bg-muted p-2 font-mono text-xs break-all">
-                  {primaryInstallCmd}
-                </code>
-              )}
-            </div>
-          </div>
-
           {/* Details */}
-          <div className="p-4">
-            <h3 className="mb-3 text-xs font-medium text-muted-foreground">Details</h3>
+          <div className="border-t border-border-subtle p-4">
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Details</h3>
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Calendar className="h-3 w-3" />
+                  <Calendar className="h-3 w-3" aria-hidden="true" />
                   Published
                 </span>
                 <span className="font-mono text-xs">
-                  {new Date(skill.created_at).toLocaleDateString()}
+                  {new Date(skill.created_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
                 </span>
               </div>
               {skill.version && (
@@ -255,10 +252,11 @@ export default async function SkillDetailPage({
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Updated</span>
                   <span className="font-mono text-xs">
-                    {new Date(skill.updated_at).toLocaleDateString()}
+                    {new Date(skill.updated_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
                   </span>
                 </div>
               )}
+              <DownloadStats slug={skill.slug} />
               {skill.transport && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Transport</span>
@@ -276,15 +274,15 @@ export default async function SkillDetailPage({
 
           {/* Source */}
           {skill.source_url && (
-            <div className="p-4">
-              <h3 className="mb-3 text-xs font-medium text-muted-foreground">Source</h3>
+            <div className="border-t border-border-subtle p-4">
+              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Source</h3>
               <a
                 href={skill.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors duration-100"
               >
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-3 w-3" aria-hidden="true" />
                 {skill.source_url.replace("https://github.com/", "")}
               </a>
             </div>
@@ -292,8 +290,8 @@ export default async function SkillDetailPage({
 
           {/* Tags */}
           {skill.tags.length > 0 && (
-            <div className="p-4">
-              <h3 className="mb-3 text-xs font-medium text-muted-foreground">Tags</h3>
+            <div className="border-t border-border-subtle p-4">
+              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Tags</h3>
               <div className="flex flex-wrap gap-1.5">
                 {skill.tags.map((tag) => (
                   <Badge key={tag} variant="secondary" className="text-xs font-normal">
@@ -306,8 +304,8 @@ export default async function SkillDetailPage({
 
           {/* Compatibility */}
           {skill.compatibility.length > 0 && (
-            <div className="p-4">
-              <h3 className="mb-3 text-xs font-medium text-muted-foreground">Works with</h3>
+            <div className="border-t border-border-subtle p-4">
+              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Works with</h3>
               <div className="flex flex-wrap gap-1.5">
                 {skill.compatibility.map((c) => (
                   <Badge key={c} variant="outline" className="text-xs font-normal">

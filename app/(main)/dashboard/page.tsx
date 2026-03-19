@@ -1,21 +1,23 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { SkillCard } from "@/components/skill-card";
 import { getSkills, getCategories, getSkillCounts } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
 import { SKILL_TYPE_LABELS, PER_PAGE } from "@/lib/constants";
 import { Upload, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { DashboardFilters } from "@/components/dashboard-filters";
+import { DashboardPreferenceApplier } from "@/components/dashboard-preference-applier";
+import { ViewToggle } from "@/components/view-toggle";
+import { SkillGrid } from "@/components/skill-grid";
 
-export const dynamic = "force-dynamic";
+
 
 const TABS: { label: string; type?: SkillType; mine?: boolean }[] = [
   { label: "All" },
   { label: "Skills", type: "skill" },
   { label: "MCP Servers", type: "mcp-server" },
-  { label: "Tools", type: "agent-tool" },
+  { label: "Agents", type: "agent-tool" },
   { label: "Prompts", type: "prompt-template" },
   { label: "Yours", mine: true },
 ];
@@ -61,12 +63,15 @@ export default async function DashboardPage({
   const params = await searchParams;
   const isMine = params.mine === "true";
 
+  const limit = params.limit ? Number(params.limit) : PER_PAGE;
+
   const filters: SearchFilters = {
     type: isMine ? undefined : (params.type as SkillType | undefined),
     category: params.category,
     author: isMine ? username || undefined : undefined,
     sort: (params.sort as SearchFilters["sort"]) ?? "newest",
     page: params.page ? Number(params.page) : 1,
+    limit,
   };
 
   // Fetch skills + categories + counts for tabs in parallel
@@ -77,21 +82,18 @@ export default async function DashboardPage({
   ]);
 
   const page = filters.page ?? 1;
-  const totalPages = Math.ceil(total / PER_PAGE);
+  const totalPages = Math.ceil(total / limit);
 
   const hasAnySkills = counts.total > 0;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
+      <Suspense>
+        <DashboardPreferenceApplier />
+      </Suspense>
       {/* Header */}
-      <div className="mb-6 flex items-end justify-between">
-        <h1 className="text-xl font-medium tracking-tight">Dashboard</h1>
-        <Link
-          href="/publish"
-          className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
-        >
-          Publish
-        </Link>
+      <div className="mb-6">
+        <h1 className="text-lg text-display">Dashboard</h1>
       </div>
 
       {/* Empty state — registry has no skills */}
@@ -100,12 +102,12 @@ export default async function DashboardPage({
           <Upload className="mx-auto mb-4 h-6 w-6 text-muted-foreground/40" />
           <p className="mb-1 text-sm font-medium">Your registry is empty</p>
           <p className="mb-5 text-xs text-muted-foreground">
-            Publish your first skill, MCP server, agent tool, or prompt
+            Publish your first skill, MCP server, agent, or prompt
             template.
           </p>
           <Link
             href="/publish"
-            className="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
+            className="btn-pill-lg"
           >
             Publish to registry
             <ArrowRight className="h-3.5 w-3.5" />
@@ -117,7 +119,7 @@ export default async function DashboardPage({
       {hasAnySkills && (
         <>
           {/* Tab bar */}
-          <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border">
+          <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border-subtle">
             {TABS.map((tab) => {
               const active = isActiveTab(tab, params);
               const count = tab.mine
@@ -129,15 +131,15 @@ export default async function DashboardPage({
                 <Link
                   key={tab.label}
                   href={buildTabHref(tab, params)}
-                  className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors ${
+                  className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-[13px] transition-all duration-100 ${
                     active
-                      ? "border-foreground font-medium text-foreground"
+                      ? "border-foreground/70 font-medium text-foreground"
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tab.label}
                   <span
-                    className={`font-mono text-xs ${active ? "text-foreground" : "text-muted-foreground/60"}`}
+                    className={`font-mono text-xs ${active ? "text-muted-foreground" : "text-muted-foreground/60"}`}
                   >
                     {count}
                   </span>
@@ -153,20 +155,17 @@ export default async function DashboardPage({
             </Suspense>
           </div>
 
-          {/* Results count */}
+          {/* Results count + view toggle */}
           <div className="mb-3 flex items-center justify-between">
             <span className="font-mono text-xs text-muted-foreground">
               {total} result{total !== 1 ? "s" : ""}
             </span>
+            <ViewToggle />
           </div>
 
           {/* Skill list */}
           {skills.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {skills.map((skill) => (
-                <SkillCard key={skill.slug} skill={skill} />
-              ))}
-            </div>
+            <SkillGrid skills={skills} />
           ) : (
             <div className="rounded-lg border border-dashed border-border py-16 text-center">
               <p className="text-sm text-muted-foreground">
@@ -181,18 +180,18 @@ export default async function DashboardPage({
               {page > 1 && (
                 <Link
                   href={`?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>).toString()}`}
-                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-1 text-muted-foreground interactive-ghost rounded-md px-2 py-1"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" /> Prev
                 </Link>
               )}
-              <span className="font-mono text-muted-foreground">
+              <span className="font-mono tabular-nums text-muted-foreground">
                 {page} / {totalPages}
               </span>
               {page < totalPages && (
                 <Link
                   href={`?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>).toString()}`}
-                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-1 text-muted-foreground interactive-ghost rounded-md px-2 py-1"
                 >
                   Next <ChevronRight className="h-3.5 w-3.5" />
                 </Link>

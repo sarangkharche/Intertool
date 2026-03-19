@@ -1,11 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { generateInstallCommands, upsertSkill } from "@/lib/registry";
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
+import { validateSkillInput } from "@/lib/validation";
+import { apiError } from "@/lib/api-utils";
+import { checkRateLimit, rateLimitResponse, rateLimitHeaders } from "@/lib/rate-limit";
+import { NextResponse } from "next/server";
 import type { McpTransport, SourceFormat, SkillType, SkillStatus } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   const authResult = await authenticateApi(request);
   if (!isAuthenticated(authResult)) return authResult;
+
+  // Rate limit: 10 publishes per minute per user
+  const rl = await checkRateLimit(`publish:${authResult.username}`, { limit: 10, windowSeconds: 60 });
+  if (!rl.allowed) return rateLimitResponse(rl);
 
   const formData = await request.formData();
 
@@ -24,11 +32,24 @@ export async function POST(request: NextRequest) {
   const transport = (formData.get("transport") as string) || undefined;
   const changelog = (formData.get("changelog") as string) || undefined;
 
-  if (!name || !slug || !type || !description || !category) {
-    return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 }
-    );
+  // Validate input
+  const validation = validateSkillInput({
+    slug,
+    name,
+    type,
+    description,
+    tags,
+    readme,
+    source_url: sourceUrl,
+    transport,
+  });
+
+  if (!validation.valid) {
+    return apiError("Validation failed", 400, validation.errors);
+  }
+
+  if (!category) {
+    return apiError("Category is required", 400);
   }
 
   const { username } = authResult;
@@ -69,11 +90,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { slug, message: "Skill published" },
-      { status: 201 }
+      { status: 201, headers: rateLimitHeaders(rl) }
     );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to publish";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

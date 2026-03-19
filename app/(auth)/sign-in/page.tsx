@@ -52,7 +52,7 @@ function SignInForm() {
 
       <div className="space-y-2">
         <button
-          className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
           onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -69,7 +69,7 @@ function SignInForm() {
               <div className="h-px flex-1 bg-border" />
             </div>
             <button
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
               onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">

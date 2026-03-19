@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { SKILL_TYPE_LABELS } from "@/lib/constants";
 import { SkillType } from "@/lib/types";
-import { Package, Search, LayoutDashboard, Plus, BookOpen } from "lucide-react";
+import { Package, LayoutDashboard, Plus, BookOpen } from "lucide-react";
 
 interface SkillResult {
   slug: string;
@@ -22,6 +22,9 @@ interface SkillResult {
   type: SkillType;
   description: string;
 }
+
+const CACHE_TTL = 10_000;
+const searchCache = new Map<string, { data: SkillResult[]; ts: number }>();
 
 export function CommandPalette() {
   const router = useRouter();
@@ -46,12 +49,25 @@ export function CommandPalette() {
       setResults([]);
       return;
     }
+
+    const cacheKey = q.trim().toLowerCase();
+    const cached = searchCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      setResults(cached.data);
+      return;
+    }
+    if (cached) {
+      setResults(cached.data);
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=8`);
       if (res.ok) {
         const data = await res.json();
-        setResults(Array.isArray(data) ? data : data.results ?? data.skills ?? []);
+        const items: SkillResult[] = Array.isArray(data) ? data : data.results ?? data.skills ?? [];
+        searchCache.set(cacheKey, { data: items, ts: Date.now() });
+        setResults(items);
       }
     } catch {
       // ignore
