@@ -309,7 +309,11 @@ export function PublishWizard({
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to publish");
+        const details = err.details as { field: string; message: string }[] | undefined;
+        const msg = details?.length
+          ? details.map((d) => `${d.field}: ${d.message}`).join("; ")
+          : err.error || "Failed to publish";
+        throw new Error(msg);
       }
 
       const data = await res.json();
