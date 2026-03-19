@@ -3,7 +3,7 @@ import type { SkillType, McpTransport } from "./types";
 const VALID_TYPES: SkillType[] = ["skill", "mcp-server", "agent-tool", "prompt-template"];
 const VALID_TRANSPORTS: McpTransport[] = ["stdio", "sse", "streamable-http"];
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
-const MAX_README_BYTES = 50 * 1024;
+const MAX_README_BYTES = 5 * 1024 * 1024;
 
 interface ValidationError {
   field: string;
@@ -76,7 +76,7 @@ export function validateSkillInput(input: {
 
   // readme
   if (input.readme && new TextEncoder().encode(input.readme).length > MAX_README_BYTES) {
-    errors.push({ field: "readme", message: "Readme must be at most 50KB" });
+    errors.push({ field: "readme", message: "Readme must be at most 5MB" });
   }
 
   // source_url

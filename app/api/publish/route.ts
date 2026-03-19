@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
   const slug = formData.get("slug") as string;
   const type = formData.get("type") as string;
   const description = formData.get("description") as string;
-  const readme = formData.get("readme") as string;
+  const readmeRaw = formData.get("readme");
+  const readme = typeof readmeRaw === "string" ? readmeRaw : "";
   const category = formData.get("category") as string;
   const tags = JSON.parse((formData.get("tags") as string) || "[]");
   const compatibility = JSON.parse(
