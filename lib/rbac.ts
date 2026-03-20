@@ -208,7 +208,7 @@ export async function ensureUserRecord(
       role,
       display_name: profile.display_name,
       provider: profile.provider,
-      avatar_url: profile.avatar_url,
+      avatar_url: profile.avatar_url ?? "",
       joined_at: now,
       last_seen_at: now,
     };
