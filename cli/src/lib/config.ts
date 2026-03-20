@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, chmodSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -28,4 +28,13 @@ export function saveConfig(config: Partial<Config>): void {
   const current = getConfig();
   const updated = { ...current, ...config };
   writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2));
+  chmodSync(CONFIG_FILE, 0o600);
+}
+
+export function clearToken(): void {
+  const current = getConfig();
+  delete current.token;
+  mkdirSync(CONFIG_DIR, { recursive: true });
+  writeFileSync(CONFIG_FILE, JSON.stringify(current, null, 2));
+  chmodSync(CONFIG_FILE, 0o600);
 }

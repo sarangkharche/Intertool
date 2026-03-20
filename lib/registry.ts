@@ -403,7 +403,7 @@ export async function getContributors(): Promise<{ name: string; count: number }
 
 export async function searchSkills(
   query: string
-): Promise<Pick<Skill, "slug" | "name" | "type" | "description">[]> {
+): Promise<Pick<Skill, "slug" | "name" | "type" | "description" | "author">[]> {
   const settings = await resolveSettings();
   if (!settings) return [];
 
@@ -415,7 +415,7 @@ export async function searchSkills(
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
-    .map((x) => ({ slug: x.skill.slug, name: x.skill.name, type: x.skill.type, description: x.skill.description }));
+    .map((x) => ({ slug: x.skill.slug, name: x.skill.name, type: x.skill.type, description: x.skill.description, author: x.skill.author }));
 }
 
 // ── Search scoring ──

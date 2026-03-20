@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Package, Plus, LogOut, LayoutDashboard, Sun, Moon, Search, Settings, Shield } from "lucide-react";
+import { Package, Plus, LogOut, LayoutDashboard, Sun, Moon, Search, Settings, Shield, BookOpen } from "lucide-react";
 import { CommandPalette } from "./command-palette";
 import { GITHUB_URL } from "@/lib/constants";
 
@@ -61,6 +61,13 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/docs"
+              className="flex h-7 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost"
+            >
+              <BookOpen className="h-3 w-3" aria-hidden="true" />
+              <span className="hidden sm:inline">Docs</span>
+            </Link>
             <a
               href={GITHUB_URL}
               target="_blank"

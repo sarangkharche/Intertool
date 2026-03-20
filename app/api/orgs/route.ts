@@ -49,7 +49,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Reserved slugs
-  const reserved = ["www", "api", "app", "admin", "dashboard", "docs", "help", "support", "status"];
+  const reserved = [
+    "www", "api", "app", "admin", "dashboard", "docs", "help",
+    "support", "status", "billing", "settings", "auth", "login",
+    "signup", "sign-in", "sign-up", "create-org",
+  ];
   if (reserved.includes(slug)) {
     return NextResponse.json({ error: "This name is reserved" }, { status: 409 });
   }

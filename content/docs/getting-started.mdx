@@ -1,0 +1,60 @@
+---
+title: Getting Started
+description: Set up the Intertool CLI and install your first skill.
+---
+
+## Prerequisites
+
+- Node.js 18+
+- A GitHub account that belongs to your organization
+- Your team's Intertool registry URL
+
+## Install the CLI
+
+```bash
+npm install -g intertool
+```
+
+## Authenticate
+
+Log in to your organization's registry:
+
+```bash
+intertool login --url https://your-registry.example.com
+```
+
+This opens a browser window for GitHub OAuth. Once authenticated, your token is stored locally at `~/.config/intertool/config.json`.
+
+## Verify
+
+```bash
+intertool whoami
+```
+
+## Search for skills
+
+```bash
+intertool search "code review"
+```
+
+## Install a skill
+
+```bash
+intertool install @team/code-review
+```
+
+For **skills**, **agent tools**, and **prompt templates**, this writes a `SKILL.md` file to `.claude/skills/<slug>/SKILL.md` in your current project.
+
+For **MCP servers**, it writes a `server.json` to `.claude/mcp-servers/<slug>/server.json` with the server configuration and install commands.
+
+## List installed skills
+
+```bash
+intertool list
+```
+
+## Next steps
+
+- [Publishing skills](/docs/publishing) to share your own work
+- [CLI reference](/docs/cli-reference) for all available commands
+- [API overview](/docs/api/overview) for programmatic access

@@ -1,0 +1,43 @@
+---
+title: Authentication
+description: How authentication works in the Intertool API.
+---
+
+## Overview
+
+Intertool uses GitHub OAuth for authentication. The API accepts bearer tokens issued during the OAuth flow.
+
+## CLI authentication
+
+The CLI handles authentication automatically:
+
+```bash
+intertool login --url https://your-registry.example.com
+```
+
+This opens a browser, completes the OAuth flow, and stores the token locally.
+
+## API token usage
+
+For direct API access, include the token as a Bearer header:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  https://your-registry.example.com/api/skills
+```
+
+## Roles
+
+Intertool supports three roles:
+
+| Role | Permissions |
+|------|------------|
+| **admin** | Full access: manage settings, users, all skills |
+| **member** | Publish, edit own skills, install any skill |
+| **viewer** | Browse and install skills (read-only) |
+
+Roles are assigned by admins in the registry settings. The first user to sign in becomes the admin.
+
+## GitHub org restriction
+
+Admins can restrict access to members of a specific GitHub organization. When enabled, only users who belong to the configured org can sign in.

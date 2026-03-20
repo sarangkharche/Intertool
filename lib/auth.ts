@@ -5,6 +5,7 @@ import Google from "next-auth/providers/google";
 import { getSettings, addOrgMember, getOAuthCredentialsSync } from "./settings";
 import { getOrgSlug, isSaasMode } from "./org";
 import { getGitHubUserOrgs } from "./github";
+import { ensureUserRecord } from "./rbac";
 
 // Resolve OAuth credentials from admin settings → env vars
 const oauthCreds = getOAuthCredentialsSync();
@@ -99,6 +100,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             await addOrgMember(orgSlug, githubLogin);
           }
         }
+      }
+
+      // Upsert user record for RBAC
+      try {
+        const orgSlugForRecord = await getOrgSlug();
+        if (account?.provider === "google") {
+          const email = (profile as { email?: string })?.email;
+          if (email) {
+            await ensureUserRecord(email, {
+              display_name: (profile as { name?: string })?.name ?? email,
+              provider: "google",
+              avatar_url: (profile as { picture?: string })?.picture,
+            }, orgSlugForRecord);
+          }
+        } else if (account?.provider === "github") {
+          const login = (profile as { login?: string })?.login;
+          if (login) {
+            await ensureUserRecord(login, {
+              display_name: (profile as { name?: string })?.name ?? login,
+              provider: "github",
+              avatar_url: (profile as { avatar_url?: string })?.avatar_url,
+            }, orgSlugForRecord);
+          }
+        }
+      } catch {
+        // Non-fatal: don't block sign-in if RBAC record fails
       }
 
       return true;

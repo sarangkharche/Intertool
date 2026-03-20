@@ -1,0 +1,30 @@
+---
+title: Intertool Documentation
+description: A private registry for AI agent skills, MCP servers, tools, and prompt templates.
+---
+
+Intertool is a self-hosted registry where teams share AI agent skills, MCP servers, agent tools, and prompt templates. Skills live in your own S3 bucket, access is controlled by GitHub OAuth, and everything installs with one CLI command.
+
+## What you can do
+
+- **Browse and search** skills published by your team
+- **Install skills** into Claude Code, Cursor, or any MCP-compatible client
+- **Publish** your own skills from SKILL.md files or server.json configs
+- **Manage access** with GitHub org-based authentication and RBAC
+
+## Quick start
+
+1. Sign in at your registry URL with GitHub
+2. Install the CLI: `npm install -g intertool`
+3. Authenticate: `intertool login --url https://your-registry.example.com`
+4. Search: `intertool search "code review"`
+5. Install: `intertool install @team/code-review`
+
+## Architecture
+
+Intertool is a Next.js application backed by:
+
+- **S3** for skill file storage
+- **Upstash Redis** for settings, rate limiting, and caching
+- **GitHub OAuth** for authentication
+- **Role-based access control** (admin, member, viewer)

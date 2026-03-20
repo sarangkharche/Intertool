@@ -1,0 +1,10 @@
+{
+  "title": "Docs",
+  "pages": [
+    "getting-started",
+    "publishing",
+    "cli-reference",
+    "---API---",
+    "...api"
+  ]
+}

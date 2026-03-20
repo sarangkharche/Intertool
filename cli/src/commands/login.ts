@@ -3,6 +3,7 @@ import { saveConfig, getConfig } from "../lib/config.js";
 import { createServer } from "http";
 import { exec } from "child_process";
 import { platform } from "os";
+import { bold, dim, check, cross, spinner } from "../lib/format.js";
 
 function openBrowser(url: string) {
   const cmd =
@@ -18,6 +19,11 @@ export const loginCommand = new Command("login")
   .description("Authenticate with your Intertool instance")
   .option("--url <url>", "Intertool instance URL")
   .option("--token <token>", "API key (skip browser flow)")
+  .addHelpText("after", `
+Examples:
+  $ intertool login --url https://registry.example.com
+  $ intertool login --url https://registry.example.com --token itk_abc123
+`)
   .action(async (opts) => {
     // If just setting URL without auth
     if (opts.url && !opts.token) {
@@ -27,8 +33,7 @@ export const loginCommand = new Command("login")
       saveConfig({ apiUrl: opts.url });
 
       if (config.token && hadUrl) {
-        // Already has a token, just updating URL
-        console.log(`Updated API URL to ${opts.url}`);
+        console.log(check(`Updated API URL to ${bold(opts.url)}`));
         return;
       }
 
@@ -42,27 +47,27 @@ export const loginCommand = new Command("login")
       const updates: Record<string, string> = { token: opts.token };
       if (opts.url) updates.apiUrl = opts.url;
       saveConfig(updates);
-      console.log("Saved. Token configured for CLI access.");
+      console.log(check("Token saved."));
       return;
     }
 
-    // No args — show current config or start auth
+    // No args — show current config or help
     const config = getConfig();
     if (config.token) {
-      console.log("Current config:");
-      console.log(`  URL:   ${config.apiUrl}`);
-      console.log(`  Token: ${"*".repeat(8)}`);
-      console.log(`\nRun 'intertool login --url <url>' to change instance.`);
+      console.log(`  ${dim("URL:")}    ${config.apiUrl}`);
+      console.log(`  ${dim("Token:")}  ${"*".repeat(8)}`);
+      console.log(dim(`\nRun 'intertool login --url <url>' to change instance.`));
     } else {
-      console.log("Not logged in.");
-      console.log(`\nUsage:`);
-      console.log(`  intertool login --url https://your-instance.com   # Browser auth`);
-      console.log(`  intertool login --url <url> --token <key>         # API key auth`);
+      console.log(dim("Not logged in.\n"));
+      console.log(`  intertool login --url https://your-instance.com   ${dim("# Browser auth")}`);
+      console.log(`  intertool login --url <url> --token <key>         ${dim("# API key auth")}`);
     }
   });
 
 async function browserAuth(apiUrl: string): Promise<void> {
   return new Promise((resolve) => {
+    let s: ReturnType<typeof spinner>;
+
     const server = createServer((req, res) => {
       const url = new URL(req.url ?? "/", `http://localhost`);
 
@@ -85,14 +90,15 @@ async function browserAuth(apiUrl: string): Promise<void> {
             </html>
           `);
 
-          console.log(`\nAuthenticated${username ? ` as ${username}` : ""}!`);
-          console.log(`Instance: ${apiUrl}`);
+          s?.stop(check(`Authenticated${username ? ` as ${bold(username)}` : ""}`));
+          console.log(dim(`  Instance: ${apiUrl}`));
 
           server.close();
           resolve();
         } else {
           res.writeHead(400, { "Content-Type": "text/plain" });
           res.end("Authentication failed — no token received.");
+          s?.stop(cross("Authentication failed. No token received."));
           server.close();
           resolve();
         }
@@ -106,7 +112,7 @@ async function browserAuth(apiUrl: string): Promise<void> {
     server.listen(0, () => {
       const addr = server.address();
       if (!addr || typeof addr === "string") {
-        console.error("Failed to start local server");
+        console.error(cross("Failed to start local server"));
         server.close();
         resolve();
         return;
@@ -115,14 +121,14 @@ async function browserAuth(apiUrl: string): Promise<void> {
       const port = addr.port;
       const authUrl = `${apiUrl}/api/cli-auth?port=${port}`;
 
-      console.log("Opening browser for authentication...");
-      console.log(`If it doesn't open, visit: ${authUrl}\n`);
+      s = spinner("Waiting for browser authentication...");
+      console.log(dim(`If it doesn't open, visit: ${authUrl}`));
       openBrowser(authUrl);
     });
 
     // Timeout after 2 minutes
     setTimeout(() => {
-      console.error("\nAuthentication timed out.");
+      s?.stop(cross("Authentication timed out."));
       server.close();
       resolve();
     }, 120_000);

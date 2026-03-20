@@ -170,16 +170,26 @@ export async function saveSettings(settings: RegistrySettings, orgSlug?: string)
 }
 
 /**
- * Check if a user is admin.
- * - Self-hosted: first user to configure becomes admin, or matches INTERTOOL_ADMIN env var
- * - SaaS: the user who created the org is admin
+ * Check if a user is admin (owner or admin role).
+ * Delegates to the RBAC system, with fallback to legacy admin_username check.
  */
 export async function isAdmin(username: string, orgSlug?: string): Promise<boolean> {
+  // Check RBAC system first
+  try {
+    const { getUserRole } = await import("./rbac");
+    const role = await getUserRole(username, orgSlug);
+    if (role === "owner" || role === "admin") return true;
+    if (role === "member") return false;
+    // role is null — fall through to legacy check
+  } catch {
+    // RBAC not available, fall through
+  }
+
+  // Legacy fallback
   const settings = await getSettings(orgSlug);
   if (!settings) return true; // no settings yet = anyone can set up
   if (!settings.admin_username) return true; // env-var config with no admin set
   if (settings.admin_username.toLowerCase() === username.toLowerCase()) return true;
-  // For Google-authed admins: check admin_email too
   if (settings.admin_email && settings.admin_email.toLowerCase() === username.toLowerCase()) return true;
   return false;
 }

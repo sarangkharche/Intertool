@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { createApiToken } from "@/lib/rbac";
+import { getOrgSlug } from "@/lib/org";
 
 /**
  * CLI auth flow:
  * 1. CLI opens browser to /api/cli-auth?port=XXXXX
- * 2. If user is signed in, redirect to CLI's local server with the API key
+ * 2. If user is signed in, generate a personal API token and redirect to CLI
  * 3. If not signed in, redirect to sign-in first, then back here
- *
- * The API key is the shared INTERTOOL_API_KEY. The user proves they're
- * a team member via GitHub OAuth, then gets the key for CLI access.
  */
 export async function GET(request: NextRequest) {
   const port = request.nextUrl.searchParams.get("port");
@@ -31,20 +30,17 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const apiKey = process.env.INTERTOOL_API_KEY;
-  if (!apiKey) {
-    return new NextResponse(
-      "INTERTOOL_API_KEY is not configured. Set it in your environment variables.",
-      { status: 500 }
-    );
-  }
-
   const username =
     (session.user as { username?: string }).username ??
     session.user.name ??
     "unknown";
 
+  const orgSlug = await getOrgSlug();
+
+  // Generate a personal API token for CLI use
+  const { raw } = await createApiToken(username, "CLI", orgSlug);
+
   return NextResponse.redirect(
-    `http://localhost:${port}/callback?token=${apiKey}&username=${encodeURIComponent(username)}`
+    `http://localhost:${portNum}/callback?token=${raw}&username=${encodeURIComponent(username)}`
   );
 }

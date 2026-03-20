@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api-utils";
 import { trackDownload } from "@/lib/analytics";
 import { getSettings } from "@/lib/settings";
 import { getOrgSlug } from "@/lib/org";
+import { hasPermission } from "@/lib/rbac";
 
 export async function GET(
   request: NextRequest,
@@ -47,8 +48,12 @@ export async function DELETE(
   if (authResult.username === "unknown") {
     return apiError("Cannot determine authenticated user", 403);
   }
-  if (skill.author.toLowerCase() !== authResult.username.toLowerCase()) {
-    return apiError("Only the skill author can delete this skill", 403);
+
+  const isAuthor = skill.author.toLowerCase() === authResult.username.toLowerCase();
+  const canDeleteAny = hasPermission(authResult.role, "skill:delete_any");
+
+  if (!isAuthor && !canDeleteAny) {
+    return apiError("Only the skill author or an admin can delete this skill", 403);
   }
 
   await deleteSkill(slug, skill.type);

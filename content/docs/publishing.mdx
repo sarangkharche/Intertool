@@ -1,0 +1,77 @@
+---
+title: Publishing Skills
+description: How to publish skills, MCP servers, and prompt templates to your registry.
+---
+
+## Supported types
+
+| Type | Description | Installed as |
+|------|-------------|--------------|
+| `skill` | Claude Code skill (SKILL.md) | `.claude/skills/<slug>/SKILL.md` |
+| `mcp-server` | MCP server configuration | `.claude/mcp-servers/<slug>/server.json` |
+| `agent-tool` | Standalone agent tool | `.claude/skills/<slug>/SKILL.md` |
+| `prompt-template` | Reusable prompt template | `.claude/skills/<slug>/SKILL.md` |
+
+## From the CLI
+
+Create a `SKILL.md` file with frontmatter:
+
+```markdown
+---
+name: My Code Reviewer
+type: skill
+description: Reviews PRs for common issues
+category: dev-tools
+tags: [code-review, quality]
+---
+
+You are a code reviewer. When asked to review code...
+```
+
+Then publish:
+
+```bash
+intertool publish SKILL.md
+```
+
+The CLI extracts metadata from frontmatter. You can override any field with flags:
+
+```bash
+intertool publish SKILL.md --name "My Skill" --type skill --category dev-tools
+```
+
+## From the web UI
+
+1. Sign in to your registry
+2. Click **Publish** in the header
+3. Fill in the metadata form
+4. Paste or write the skill content in the editor
+5. Submit
+
+## MCP servers
+
+For MCP servers, you can publish a `server.json`:
+
+```json
+{
+  "name": "My MCP Server",
+  "description": "Connects to internal APIs",
+  "transport": "stdio",
+  "install_commands": {
+    "claude": "claude mcp add my-server -- npx my-server",
+    "cursor": "Add to .cursor/mcp.json"
+  }
+}
+```
+
+```bash
+intertool publish server.json --type mcp-server --category integrations
+```
+
+## Updating a skill
+
+Re-publishing with the same slug updates the existing entry:
+
+```bash
+intertool update SKILL.md
+```

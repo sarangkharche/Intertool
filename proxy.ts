@@ -4,7 +4,7 @@ import { getToken } from "next-auth/jwt";
 const SAAS_DOMAIN = process.env.INTERTOOL_DOMAIN || "intertool.sh";
 
 /** Paths that bypass auth enforcement */
-const PUBLIC_PREFIXES = ["/sign-in", "/api/auth/", "/_next/", "/icon.svg"];
+const PUBLIC_PREFIXES = ["/sign-in", "/create-org", "/api/auth/", "/api/orgs/check", "/_next/", "/icon.svg"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));

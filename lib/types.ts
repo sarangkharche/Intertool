@@ -50,3 +50,32 @@ export interface SearchFilters {
   page?: number;
   limit?: number;
 }
+
+// ── RBAC ──
+
+export type OrgRole = "owner" | "admin" | "member";
+
+export interface OrgUser {
+  id: string;           // GitHub login or Google email, lowercase
+  role: OrgRole;
+  display_name: string;
+  provider: "github" | "google";
+  avatar_url?: string;
+  joined_at: string;    // ISO
+  last_seen_at: string; // ISO
+}
+
+export interface ApiToken {
+  hash: string;         // SHA-256 of raw token (storage key)
+  user_id: string;
+  org_slug?: string;
+  label: string;
+  created_at: string;
+}
+
+export type Permission =
+  | "skill:publish" | "skill:edit_own" | "skill:delete_own"
+  | "skill:edit_any" | "skill:delete_any"
+  | "members:invite" | "members:remove" | "members:change_role"
+  | "settings:manage" | "org:transfer_ownership"
+  | "tokens:manage_own" | "tokens:manage_any";

@@ -1,13 +1,42 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { isSaasMode, getOrgSlug } from "@/lib/org";
+import { getOrgForUser } from "@/lib/settings";
 import { Package, ArrowRight, Database, Shield, Zap } from "lucide-react";
 
 export default async function HomePage() {
   const session = await auth();
+  const orgSlug = await getOrgSlug();
 
-  // Signed-in users go straight to dashboard
   if (session?.user) {
+    const username = (session.user as { username?: string }).username;
+
+    // On a subdomain (org context exists): go to dashboard as usual
+    if (orgSlug) {
+      redirect("/dashboard");
+    }
+
+    // On bare domain in SaaS mode: route based on org membership
+    if (isSaasMode() && username) {
+      let userOrg: string | null = null;
+      try {
+        userOrg = await getOrgForUser(username);
+      } catch {
+        // Redis not configured locally: fall through to create-org
+      }
+      if (userOrg) {
+        // User has an org: send them to their subdomain
+        const domain = process.env.INTERTOOL_DOMAIN || "intertool.sh";
+        const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+        const port = process.env.NODE_ENV === "development" ? `:${process.env.PORT || 3000}` : "";
+        redirect(`${protocol}://${userOrg}.${domain}${port}`);
+      }
+      // User has no org: send them to create one
+      redirect("/create-org");
+    }
+
+    // Self-hosted or non-SaaS: go to dashboard
     redirect("/dashboard");
   }
 
@@ -40,7 +69,7 @@ export default async function HomePage() {
       </section>
 
       {/* Value props */}
-      <section className="border-t border-border-subtle pb-20 pt-16">
+      <section className="pb-20 pt-16">
         <div className="grid gap-8 sm:grid-cols-3">
           <div className="text-center">
             <Database className="mx-auto mb-3 h-5 w-5 text-muted-foreground/70" />

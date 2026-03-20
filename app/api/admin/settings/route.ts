@@ -5,6 +5,7 @@ import { getOrgSlug } from "@/lib/org";
 import { testConnection } from "@/lib/s3";
 import { isS3Configured } from "@/lib/s3";
 import { seedCategories } from "@/lib/registry";
+import { authorize } from "@/lib/rbac";
 
 export async function GET() {
   const session = await auth();
@@ -29,9 +30,13 @@ export async function GET() {
   const googleConfigured = !!(settings?.google_client_id || process.env.GOOGLE_CLIENT_ID);
   const githubConfigured = !!(settings?.github_client_id || process.env.GITHUB_ID);
 
+  const { getUserRole } = await import("@/lib/rbac");
+  const role = await getUserRole(username, orgSlug);
+
   return NextResponse.json({
     settings: safeSettings,
     is_admin: await isAdmin(username, orgSlug),
+    role: role ?? "member",
     needs_setup: !settings || !isS3Configured(settings),
     org_slug: orgSlug,
     google_client_configured: googleConfigured,
@@ -48,7 +53,11 @@ export async function PUT(request: NextRequest) {
 
   const username = (session.user as { username?: string }).username;
   const orgSlug = await getOrgSlug();
-  if (!username || !(await isAdmin(username, orgSlug))) {
+  if (!username) {
+    return NextResponse.json({ error: "Username required" }, { status: 400 });
+  }
+  const authz = await authorize(username, "settings:manage", orgSlug);
+  if (!authz.allowed) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
@@ -101,9 +110,10 @@ export async function POST(request: NextRequest) {
   }
 
   const orgSlug = await getOrgSlug();
-  if (!(await isAdmin(username, orgSlug))) {
+  const authz = await authorize(username, "settings:manage", orgSlug);
+  if (!authz.allowed) {
     return NextResponse.json(
-      { error: "Only the admin can change settings" },
+      { error: "Only admins can change settings" },
       { status: 403 }
     );
   }

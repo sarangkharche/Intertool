@@ -476,6 +476,41 @@ export default async function DesignSystemPage() {
         </Section>
 
         {/* ── Conventions ── */}
+        <Section title="Documentation (Fumadocs)">
+          <div className="space-y-4">
+            <SubSection title="Integration">
+              <div className="space-y-1.5">
+                <Token name="Framework" value="Fumadocs (fumadocs-core + fumadocs-ui + fumadocs-mdx)" />
+                <Token name="Route" value="app/docs/[[...slug]]/page.tsx — catch-all docs route" />
+                <Token name="Content" value="content/docs/*.mdx — MDX files with frontmatter" />
+                <Token name="Sidebar order" value="content/docs/meta.json + content/docs/api/meta.json" />
+                <Token name="Source config" value="source.config.ts → lib/source.ts (loader)" />
+              </div>
+            </SubSection>
+            <SubSection title="Color mapping">
+              <div className="space-y-1.5">
+                <Token name="fd-* tokens" value="Overridden in globals.css :root and .dark blocks" />
+                <Token name="fd-background" value="Matches --background (warm oklch)" />
+                <Token name="fd-border" value="Matches --border (warm oklch)" />
+                <Token name="fd-muted" value="Matches --muted (warm oklch)" />
+                <Token name="fd-primary" value="Mapped to foreground (not accent) for docs" />
+              </div>
+            </SubSection>
+            <SubSection title="Fonts">
+              <div className="space-y-1.5">
+                <Token name="--font-sans" value="Inter (set in :root for fumadocs to inherit)" />
+                <Token name="--font-mono" value="Geist Mono (set in :root for fumadocs to inherit)" />
+              </div>
+            </SubSection>
+            <SubSection title="LLM-friendly endpoints">
+              <div className="space-y-1.5">
+                <Token name="/llms.txt" value="Page index with titles, URLs, descriptions" />
+                <Token name="/llms-full.txt" value="Full concatenated markdown of all doc pages" />
+              </div>
+            </SubSection>
+          </div>
+        </Section>
+
         <Section title="Conventions">
           <div className="space-y-1.5">
             <Token name="Page heading" value="text-lg text-display (or text-xl for landing)" />

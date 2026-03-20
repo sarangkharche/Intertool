@@ -1,0 +1,64 @@
+---
+title: API Overview
+description: Programmatic access to the Intertool registry.
+---
+
+The Intertool API is available at your registry's base URL. All endpoints return JSON.
+
+## Base URL
+
+```
+https://your-registry.example.com/api
+```
+
+## Endpoints
+
+### List skills
+
+```
+GET /api/skills?page=1&limit=20&type=skill&q=search-term
+```
+
+Returns a paginated list of skills. Supports filtering by type, category, tags, and search query.
+
+### Get skill detail
+
+```
+GET /api/skills/:slug
+```
+
+Returns full skill metadata including the readme/content.
+
+### Download raw skill
+
+```
+GET /api/skills/:slug/raw
+```
+
+Returns the raw SKILL.md or server.json content with appropriate `Content-Disposition` header for direct download.
+
+### Search
+
+```
+GET /api/search?q=query&type=skill&category=dev-tools&limit=20
+```
+
+Full-text search across skill names, descriptions, and content. Supports rate limiting.
+
+### Publish
+
+```
+POST /api/publish
+Content-Type: multipart/form-data
+```
+
+Publishes or updates a skill. Requires authentication. See [Authentication](/docs/api/authentication) for details.
+
+### Admin settings
+
+```
+GET /api/admin/settings
+PUT /api/admin/settings
+```
+
+Manage registry-wide settings. Requires admin role.

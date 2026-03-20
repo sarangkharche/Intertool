@@ -1,0 +1,117 @@
+---
+title: Architecture
+description: Project structure, tech stack, data model, and SaaS mode.
+---
+
+## Tech stack
+
+- **Framework**: [Next.js 16](https://nextjs.org) with App Router, React 19, Turbopack
+- **Auth**: [NextAuth v5](https://authjs.dev) with GitHub OAuth
+- **Storage**: [AWS S3 SDK v3](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/) (any S3-compatible service)
+- **UI**: [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS 4](https://tailwindcss.com) + [Lucide](https://lucide.dev) icons
+- **Docs**: [Fumadocs](https://fumadocs.vercel.app) with MDX
+- **Fonts**: Inter (sans) + Geist Mono (monospace)
+- **Editor**: [@uiw/react-md-editor](https://github.com/uiwjs/react-md-editor) for markdown with preview
+- **CLI**: TypeScript with Commander.js, published as `intertool` on npm
+
+## Project structure
+
+```
+app/
+├── (auth)/sign-in/              # Sign-in page
+├── (main)/
+│   ├── settings/                # Admin settings, members, tokens
+│   ├── brand/                   # Brand kit page
+│   ├── browse/                  # Browse & filter registry
+│   ├── dashboard/               # User dashboard
+│   ├── design-system/           # Design system reference
+│   ├── publish/                 # Publish wizard (upload + manual)
+│   └── skills/[slug]/           # Skill detail, edit, versions
+├── api/
+│   ├── admin/settings/          # S3 config (GET/PUT/POST)
+│   ├── cli-auth/                # CLI authentication flow
+│   ├── import/                  # GitHub repo import
+│   ├── me/                      # Current user info
+│   ├── members/                 # Member management
+│   ├── orgs/                    # Org management (SaaS mode)
+│   ├── publish/                 # Publish API (form + bearer auth)
+│   ├── search/                  # Search API
+│   ├── skills/                  # Skills CRUD API
+│   └── tokens/                  # API token management
+├── docs/                        # Fumadocs route handler
+└── llms.txt/                    # LLM-friendly docs endpoint
+cli/
+├── src/
+│   ├── commands/                # CLI commands (install, publish, search, etc.)
+│   ├── lib/                     # API client, config, formatting
+│   └── index.ts                 # CLI entry point
+components/
+├── command-palette.tsx          # Cmd+K search
+├── edit-skill-form.tsx          # Edit skill form with versioning
+├── filter-sidebar.tsx           # Browse filters (type, category, sort)
+├── header.tsx                   # App header with nav, search, user menu
+├── footer.tsx                   # App footer
+├── markdown-editor.tsx          # Rich markdown editor
+├── publish-wizard.tsx           # Multi-step publish (upload + manual)
+├── skill-card.tsx               # Skill list card
+├── skill-readme.tsx             # Markdown renderer
+├── install-command.tsx          # Copy-to-clipboard install command
+└── ui/                          # shadcn/ui primitives
+content/
+└── docs/                        # MDX documentation pages
+lib/
+├── api-auth.ts                  # API auth (session + bearer token)
+├── auth.ts                      # NextAuth v5 config (GitHub OAuth)
+├── constants.ts                 # Type labels, colors, config
+├── org.ts                       # Org slug resolution (SaaS mode)
+├── rbac.ts                      # Role-based access control
+├── registry.ts                  # S3-backed data layer
+├── s3.ts                        # S3 client wrapper
+├── settings.ts                  # Settings store (file + env + KV)
+└── types.ts                     # TypeScript interfaces
+```
+
+## Data model
+
+All skill data lives in your S3 bucket:
+
+```
+s3://your-bucket/
+├── skills/{slug}/
+│   ├── skill.json              # current version
+│   └── versions/
+│       ├── 1.0.0.json          # version snapshots
+│       └── 1.0.1.json
+├── mcp-servers/{slug}/skill.json
+├── agent-tools/{slug}/skill.json
+├── prompt-templates/{slug}/skill.json
+├── _index.json                 # auto-rebuilt catalog
+└── _categories.json            # seeded on first setup
+```
+
+## Skill types
+
+| Type | S3 folder | Description | Auto-detected from |
+|---|---|---|---|
+| **Skill** | `skills/` | Claude Code skills | `SKILL.md`, `skill.yaml` |
+| **MCP Server** | `mcp-servers/` | Model Context Protocol servers | `server.json` |
+| **Agent Tool** | `agent-tools/` | Reusable tools for AI agents | `skill.yaml` |
+| **Prompt Template** | `prompt-templates/` | Shared prompt patterns | `skill.yaml` |
+
+## Access control
+
+Intertool uses role-based access control (RBAC) with three roles:
+
+| Role | Permissions |
+|---|---|
+| **Admin** | Full access: settings, members, tokens, publish, edit, delete |
+| **Member** | Publish and edit own skills, browse and install all |
+| **Viewer** | Browse and install only |
+
+The first user or the user specified in `INTERTOOL_ADMIN` is assigned the admin role. New users are assigned the member role by default in self-hosted mode.
+
+## SaaS mode
+
+Intertool supports multi-tenant SaaS mode with subdomain-based organization routing. Each organization gets its own subdomain (e.g., `acme.intertool.sh`) with isolated settings and data stored in Upstash Redis.
+
+SaaS mode is activated by setting `INTERTOOL_MODE=saas` and configuring Redis credentials.

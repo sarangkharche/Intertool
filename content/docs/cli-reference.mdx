@@ -1,0 +1,116 @@
+---
+title: CLI Reference
+description: Complete reference for all Intertool CLI commands.
+---
+
+## Global options
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output as JSON (for CI/CD pipelines) |
+| `--version` | Show CLI version |
+| `--help` | Show help |
+
+## Commands
+
+### `login`
+
+Authenticate with a registry instance.
+
+```bash
+intertool login --url https://your-registry.example.com
+```
+
+| Flag | Description |
+|------|-------------|
+| `--url <url>` | Registry instance URL (required) |
+| `--token <token>` | API key to skip the browser OAuth flow |
+
+Opens a browser for GitHub OAuth unless `--token` is provided. Stores credentials in `~/.config/intertool/config.json`.
+
+### `logout`
+
+Remove stored credentials.
+
+```bash
+intertool logout
+```
+
+### `whoami`
+
+Show the currently authenticated user and registry URL.
+
+```bash
+intertool whoami
+```
+
+### `search`
+
+Search for skills by keyword.
+
+```bash
+intertool search "code review"
+```
+
+### `install`
+
+Install a skill, MCP server, agent tool, or prompt template into the current project.
+
+```bash
+intertool install @team/skill-name
+```
+
+- **Skills / agent tools / prompt templates**: writes to `.claude/skills/<slug>/SKILL.md`
+- **MCP servers**: writes to `.claude/mcp-servers/<slug>/server.json`
+
+Automatically adds installed paths to `.gitignore`.
+
+### `remove` (alias: `rm`)
+
+Remove an installed skill or MCP server from the current project.
+
+```bash
+intertool remove skill-name
+```
+
+### `list` (alias: `ls`)
+
+List locally installed skills and MCP servers.
+
+```bash
+intertool list
+```
+
+### `info`
+
+Show detailed information about a skill.
+
+```bash
+intertool info skill-name
+```
+
+### `publish`
+
+Publish a skill to the registry.
+
+```bash
+intertool publish SKILL.md
+intertool publish server.json --type mcp-server --category integrations
+```
+
+| Flag | Description |
+|------|-------------|
+| `--name` | Skill name |
+| `--type` | Type: skill, mcp-server, agent-tool, prompt-template |
+| `--description` | Short description |
+| `--category` | Category slug |
+| `--tags` | Comma-separated tags |
+| `--source-url` | Source repository URL |
+
+### `update`
+
+Re-install a skill to get the latest version. Full update checking is not yet available.
+
+```bash
+intertool install @team/skill-name
+```

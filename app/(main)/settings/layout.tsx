@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Palette, Database, Webhook } from "lucide-react";
+import { Palette, Database, Users, Key } from "lucide-react";
 
 const personalLinks = [
   { href: "/settings/preferences", label: "Preferences", icon: Palette },
+  { href: "/settings/tokens", label: "API Tokens", icon: Key },
 ];
 
 const adminLinks = [
   { href: "/settings/admin", label: "Storage & Auth", icon: Database },
+  { href: "/settings/members", label: "Members", icon: Users },
 ];
 
 export default function SettingsLayout({

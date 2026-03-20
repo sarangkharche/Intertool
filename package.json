@@ -1,17 +1,43 @@
 {
-  "name": "intertool-setup",
+  "name": "intertool",
   "version": "0.1.0",
   "private": true,
+  "description": "A private, self-hosted registry for AI agent skills, MCP servers, agent tools, and prompt templates",
+  "homepage": "https://github.com/sarangkharche/Intertool",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sarangkharche/Intertool.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sarangkharche/Intertool/issues"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "skills",
+    "mcp",
+    "registry",
+    "claude-code",
+    "cursor",
+    "prompt-templates"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1011.0",
     "@base-ui/react": "^1.3.0",
     "@pierre/diffs": "^1.1.1",
+    "@types/mdx": "^2.0.13",
     "@uiw/react-md-editor": "^4.0.11",
     "@upstash/redis": "^1.37.0",
     "class-variance-authority": "^0.7.1",
@@ -19,6 +45,9 @@
     "cmdk": "^1.1.1",
     "commander": "^14.0.3",
     "framer-motion": "^12.38.0",
+    "fumadocs-core": "^16.7.0",
+    "fumadocs-mdx": "^14.2.11",
+    "fumadocs-ui": "^16.7.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.577.0",
     "motion": "^12.38.0",
@@ -44,6 +73,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.7",
+    "prettier": "^3.8.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

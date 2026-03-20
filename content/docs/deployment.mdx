@@ -1,0 +1,130 @@
+---
+title: Deployment
+description: Deploy Intertool to Vercel or any Node.js host with S3 storage.
+---
+
+## S3 setup
+
+Intertool stores all skill data in an S3-compatible bucket. Create a bucket in any of these services:
+
+| Service | Endpoint URL | Notes |
+|---|---|---|
+| **AWS S3** | *(leave blank)* | Default, no endpoint needed |
+| **MinIO** | `http://localhost:9000` | Local dev, self-hosted |
+| **Cloudflare R2** | `https://<account>.r2.cloudflarestorage.com` | No egress fees |
+| **Wasabi** | `https://s3.wasabisys.com` | Cheap storage |
+| **DigitalOcean Spaces** | `https://<region>.digitaloceanspaces.com` | Simple setup |
+| **Backblaze B2** | `https://s3.<region>.backblazeb2.com` | Very cheap |
+
+For S3-compatible services, set `S3_ENDPOINT` in your env or enter the endpoint URL in the admin UI.
+
+### Create an IAM user (AWS)
+
+1. Go to **IAM > Users > Create user** (e.g. `intertool-s3`)
+2. Attach a policy with `s3:*` on your bucket ARN:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": "s3:*",
+    "Resource": [
+      "arn:aws:s3:::your-bucket-name",
+      "arn:aws:s3:::your-bucket-name/*"
+    ]
+  }]
+}
+```
+
+3. Create an access key under **Security credentials > Create access key > Application running outside AWS**
+4. Save the Access Key ID and Secret Access Key
+
+### Configure in Intertool
+
+**Option A: Admin UI** (local dev, Docker)
+
+Go to Settings, enter your bucket name, region, access key, and secret key. Click **Test Connection** to verify, then **Save & activate**.
+
+**Option B: Environment variables** (Vercel, read-only filesystem)
+
+```bash
+S3_BUCKET=your-bucket-name
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=AKIA...
+S3_SECRET_ACCESS_KEY=your-secret-key
+S3_ENDPOINT=  # only for non-AWS services
+```
+
+## Using MinIO (fully local, no AWS)
+
+```bash
+docker run -p 9000:9000 -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  minio/minio server /data --console-address ":9001"
+```
+
+Create a bucket at `localhost:9001`, then configure in Settings:
+
+| Field | Value |
+|---|---|
+| Bucket | `intertool` |
+| Region | `us-east-1` |
+| Access Key ID | `minioadmin` |
+| Secret Access Key | `minioadmin` |
+| Endpoint URL | `http://localhost:9000` |
+
+## Deploy to Vercel
+
+### 1. Deploy
+
+```bash
+npx vercel link
+npx vercel deploy
+```
+
+### 2. Set environment variables
+
+```bash
+vercel env add AUTH_SECRET              # openssl rand -base64 32
+vercel env add GITHUB_ID               # from GitHub OAuth app
+vercel env add GITHUB_SECRET           # from GitHub OAuth app
+vercel env add S3_BUCKET               # your-bucket-name
+vercel env add S3_REGION               # us-east-1
+vercel env add S3_ACCESS_KEY_ID        # AKIA...
+vercel env add S3_SECRET_ACCESS_KEY    # your secret key
+```
+
+### 3. Update GitHub OAuth callback
+
+Change the callback URL in your GitHub OAuth app to:
+
+```
+https://your-app.vercel.app/api/auth/callback/github
+```
+
+### 4. Deploy to production
+
+```bash
+npx vercel --prod
+```
+
+On Vercel, S3 credentials must be set via environment variables since the filesystem is read-only. The Settings UI still works for testing connections.
+
+## Environment variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `AUTH_SECRET` | Yes | -- | NextAuth secret (`openssl rand -base64 32`) |
+| `AUTH_TRUST_HOST` | Yes | -- | Set to `true` |
+| `GITHUB_ID` | Yes | -- | GitHub OAuth client ID |
+| `GITHUB_SECRET` | Yes | -- | GitHub OAuth client secret |
+| `S3_BUCKET` | Vercel | -- | S3 bucket name |
+| `S3_REGION` | Vercel | `us-east-1` | S3 region |
+| `S3_ACCESS_KEY_ID` | Vercel | -- | S3 access key |
+| `S3_SECRET_ACCESS_KEY` | Vercel | -- | S3 secret key |
+| `S3_ENDPOINT` | No | -- | Custom endpoint for S3-compatible services |
+| `S3_SESSION_TOKEN` | No | -- | AWS session token (temporary credentials only) |
+| `INTERTOOL_ADMIN` | No | -- | GitHub username of admin user |
+| `INTERTOOL_API_KEY` | No | -- | API key for CLI/API publishing |
