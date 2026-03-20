@@ -96,8 +96,12 @@ export default function MembersPage() {
         body: JSON.stringify({ identifier: id }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        let msg = "Failed to add member";
+        try {
+          const err = await res.json();
+          msg = err.error || msg;
+        } catch {}
+        throw new Error(msg);
       }
       toast.success(`Added ${id}`);
       setInviteId("");
@@ -117,8 +121,12 @@ export default function MembersPage() {
         body: JSON.stringify({ role }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        let msg = "Failed to change role";
+        try {
+          const err = await res.json();
+          msg = err.error || msg;
+        } catch {}
+        throw new Error(msg);
       }
       toast.success(`Changed ${id} to ${role}`);
       fetchMembers();
@@ -133,8 +141,12 @@ export default function MembersPage() {
         method: "DELETE",
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error);
+        let msg = "Failed to remove member";
+        try {
+          const err = await res.json();
+          msg = err.error || msg;
+        } catch {}
+        throw new Error(msg);
       }
       toast.success(`Removed ${id}`);
       fetchMembers();

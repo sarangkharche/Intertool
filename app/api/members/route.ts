@@ -57,21 +57,26 @@ export async function POST(request: NextRequest) {
   }
 
   // Pre-provision user record (they'll get full profile on first sign-in)
-  const user = await ensureUserRecord(
-    identifier,
-    {
-      display_name: identifier,
-      provider: identifier.includes("@") ? "google" : "github",
-    },
-    orgSlug
-  );
+  try {
+    const user = await ensureUserRecord(
+      identifier,
+      {
+        display_name: identifier,
+        provider: identifier.includes("@") ? "google" : "github",
+      },
+      orgSlug
+    );
 
-  // Set the requested role (ensureUserRecord defaults to member)
-  if (role !== user.role && role !== "owner") {
-    const { setUserRole } = await import("@/lib/rbac");
-    await setUserRole(identifier, role, orgSlug);
-    user.role = role;
+    // Set the requested role (ensureUserRecord defaults to member)
+    if (role !== user.role && role !== "owner") {
+      const { setUserRole } = await import("@/lib/rbac");
+      await setUserRole(identifier, role, orgSlug);
+      user.role = role;
+    }
+
+    return NextResponse.json({ member: user }, { status: 201 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to add member";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json({ member: user }, { status: 201 });
 }
