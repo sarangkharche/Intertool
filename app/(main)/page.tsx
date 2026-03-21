@@ -59,12 +59,18 @@ export default async function HomePage() {
             href="/sign-in"
             className="btn-pill-lg"
           >
-            Sign in with GitHub
+            Get started
             <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+          <Link
+            href="/sign-in"
+            className="btn-ghost"
+          >
+            Sign in
           </Link>
         </div>
         <p className="mt-4 text-xs text-muted-foreground/60">
-          Admin sets up the org. Team members sign in and share.
+          Free to start. Set up your registry in under a minute.
         </p>
       </section>
 
