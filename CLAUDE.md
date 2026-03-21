@@ -15,3 +15,7 @@ Key doc files:
 - `content/docs/api/authentication.mdx` — Auth and roles
 
 Sidebar order is controlled by `content/docs/meta.json` and `content/docs/api/meta.json`.
+
+## Aliases
+
+- **acp** — `git add -A && git commit && git push`. Stage all files, commit with a descriptive message, and push to origin.
