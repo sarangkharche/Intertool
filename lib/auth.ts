@@ -5,7 +5,8 @@ import Google from "next-auth/providers/google";
 import { getSettings, addOrgMember, getOAuthCredentialsSync } from "./settings";
 import { getOrgSlug, isSaasMode } from "./org";
 import { getGitHubUserOrgs } from "./github";
-import { ensureUserRecord } from "./rbac";
+import { ensureUserRecord, setUserRole } from "./rbac";
+import { getInvitationByEmail, acceptInvitation } from "./invitations";
 
 // Resolve OAuth credentials from admin settings → env vars
 const oauthCreds = getOAuthCredentialsSync();
@@ -126,6 +127,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       } catch {
         // Non-fatal: don't block sign-in if RBAC record fails
+      }
+
+      // Auto-accept pending invitation if email matches
+      try {
+        const invOrgSlug = await getOrgSlug();
+        let userEmail: string | undefined;
+        if (account?.provider === "google") {
+          userEmail = (profile as { email?: string })?.email?.toLowerCase();
+        } else if (account?.provider === "github") {
+          // GitHub profile may include email
+          userEmail = (profile as { email?: string })?.email?.toLowerCase();
+        }
+        if (userEmail) {
+          const pendingInvite = await getInvitationByEmail(userEmail, invOrgSlug);
+          if (pendingInvite) {
+            const identifier = account?.provider === "github"
+              ? (profile as { login?: string })?.login ?? userEmail
+              : userEmail;
+            await acceptInvitation(pendingInvite.token, {
+              display_name: (profile as { name?: string })?.name ?? identifier,
+              provider: account?.provider as "github" | "google",
+              avatar_url: (profile as { avatar_url?: string; picture?: string })?.avatar_url
+                ?? (profile as { picture?: string })?.picture,
+            });
+            // Set the invited role on the user record
+            await setUserRole(identifier, pendingInvite.role, invOrgSlug);
+          }
+        }
+      } catch {
+        // Non-fatal: don't block sign-in if invitation auto-accept fails
       }
 
       return true;

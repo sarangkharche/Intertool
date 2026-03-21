@@ -32,12 +32,64 @@ Intertool supports three roles:
 
 | Role | Permissions |
 |------|------------|
-| **admin** | Full access: manage settings, users, all skills |
+| **owner** | Full access: manage settings, users, all skills, transfer ownership |
+| **admin** | Manage settings, users, all skills |
 | **member** | Publish, edit own skills, install any skill |
-| **viewer** | Browse and install skills (read-only) |
 
-Roles are assigned by admins in the registry settings. The first user to sign in becomes the admin.
+Roles are assigned by admins in the registry settings. The first user to sign in becomes the owner.
 
 ## GitHub org restriction
 
 Admins can restrict access to members of a specific GitHub organization. When enabled, only users who belong to the configured org can sign in.
+
+## Member invitations
+
+Admins can invite new members by email. The invited person receives an email with a link to accept or decline the invitation.
+
+### How it works
+
+1. An admin enters an email address in **Settings > Members** and clicks **Invite**
+2. The invitee receives an email with an "Accept Invitation" link
+3. Clicking the link opens the invitation page at `/invite?token=...`
+4. The invitee signs in via OAuth (GitHub or Google) and accepts the invitation
+5. They are added as a member with the role specified by the admin
+
+Invitations expire after **7 days**. Admins can revoke pending invitations at any time.
+
+### Auto-accept
+
+If the invitee's OAuth email matches the invitation email, the invitation is automatically accepted during sign-in. No manual acceptance is needed.
+
+### Email transport configuration
+
+One of the following must be configured for invitations to work:
+
+**Resend (recommended)**
+
+Set the `RESEND_API_KEY` environment variable with your [Resend](https://resend.com) API key.
+
+**SMTP (self-hosted fallback)**
+
+Set all of the following environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `SMTP_HOST` | SMTP server hostname |
+| `SMTP_PORT` | SMTP port (default: 587) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password |
+
+**Optional**
+
+| Variable | Description |
+|----------|-------------|
+| `EMAIL_FROM` | Sender address (default: `noreply@{your-domain}`) |
+
+### API endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/members` | Send an invitation (`{ "email": "...", "role": "member" }`) |
+| `GET` | `/api/invitations/[token]` | View invitation details (public) |
+| `POST` | `/api/invitations/[token]` | Accept or decline (`{ "action": "accept" }` or `{ "action": "decline" }`) |
+| `DELETE` | `/api/invitations/[token]` | Revoke an invitation (admin only) |

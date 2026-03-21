@@ -558,7 +558,7 @@ export function PublishWizard({
 
         {/* Quick Step 1: Review & Edit */}
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {sourceFormat && (
               <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                 <Sparkles className="h-3 w-3 text-primary" />
@@ -582,27 +582,40 @@ export function PublishWizard({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Name</label>
-                <Input
-                  placeholder="My Skill"
-                  value={name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Slug</label>
-                <Input
-                  placeholder="my-skill"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  className="h-8 font-mono text-sm"
-                />
-              </div>
+            {/* Name — full width, slug shown as derived hint */}
+            <div className="space-y-1.5">
+              <label className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}>
+                Name <span className="text-destructive/50">*</span>
+              </label>
+              <Input
+                placeholder="e.g. Code Review Agent"
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className="h-9 text-sm"
+                autoFocus
+              />
+              {slug && (
+                <p className="font-mono text-[11px] text-muted-foreground/50">
+                  {slug}
+                </p>
+              )}
             </div>
 
+            {/* Description — right after name, natural sequence */}
+            <div className="space-y-1.5">
+              <label className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}>
+                Description <span className="text-destructive/50">*</span>
+              </label>
+              <Textarea
+                placeholder="Brief summary of what this does"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                className="text-sm"
+              />
+            </div>
+
+            {/* Type + Category in a row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Type</label>
@@ -610,7 +623,7 @@ export function PublishWizard({
                   value={type}
                   onValueChange={(v) => setType(v as SkillType)}
                 >
-                  <SelectTrigger className="h-8 text-sm">
+                  <SelectTrigger className="h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -623,15 +636,15 @@ export function PublishWizard({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">
-                  Category
+                <label className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}>
+                  Category <span className="text-destructive/50">*</span>
                 </label>
                 <Select
                   value={category}
                   onValueChange={(v) => setCategory(v ?? "")}
                 >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select" />
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((c) => (
@@ -644,19 +657,7 @@ export function PublishWizard({
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">
-                Description
-              </label>
-              <Textarea
-                placeholder="What does this do?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                className="text-sm"
-              />
-            </div>
-
+            {/* Transport — only for MCP servers */}
             {type === "mcp-server" && (
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">
@@ -666,7 +667,7 @@ export function PublishWizard({
                   value={transport}
                   onValueChange={(v) => setTransport(v as McpTransport)}
                 >
-                  <SelectTrigger className="h-8 text-sm">
+                  <SelectTrigger className="h-9 text-sm">
                     <SelectValue placeholder="Select transport" />
                   </SelectTrigger>
                   <SelectContent>
@@ -680,39 +681,44 @@ export function PublishWizard({
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Tags</label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add tag..."
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addTag())
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {tags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
-                      className="gap-1 text-xs font-normal"
-                    >
-                      {tag}
-                      <button
-                        onClick={() => setTags(tags.filter((t) => t !== tag))}
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </Badge>
-                  ))}
+            {/* Optional fields separator */}
+            <div className="border-t border-border pt-4">
+              {/* Tags */}
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Tags</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type a tag and press Enter"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && (e.preventDefault(), addTag())
+                    }
+                    className="h-9 text-sm"
+                  />
                 </div>
-              )}
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="gap-1 text-xs font-normal"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => setTags(tags.filter((t) => t !== tag))}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* Works with */}
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">
                 Works with
@@ -962,32 +968,33 @@ export function PublishWizard({
 
       {/* Step 2: Details */}
       {effectiveStep === 2 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Name</label>
-              <Input
-                placeholder="My Skill"
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Slug</label>
-              <Input
-                placeholder="my-skill"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                className="h-8 font-mono text-sm"
-              />
-            </div>
+        <div className="space-y-5">
+          {/* Name — full width, slug shown as derived hint */}
+          <div className="space-y-1.5">
+            <label className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}>
+              Name <span className="text-destructive/50">*</span>
+            </label>
+            <Input
+              placeholder="e.g. Code Review Agent"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              className="h-9 text-sm"
+              autoFocus
+            />
+            {slug && (
+              <p className="font-mono text-[11px] text-muted-foreground/50">
+                {slug}
+              </p>
+            )}
           </div>
 
+          {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Description</label>
+            <label className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}>
+              Description <span className="text-destructive/50">*</span>
+            </label>
             <Textarea
-              placeholder="What does this do?"
+              placeholder="Brief summary of what this does"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -995,6 +1002,7 @@ export function PublishWizard({
             />
           </div>
 
+          {/* README */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs text-muted-foreground">README</label>
@@ -1011,14 +1019,17 @@ export function PublishWizard({
             />
           </div>
 
+          {/* Category */}
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Category</label>
+            <label className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}>
+              Category <span className="text-destructive/50">*</span>
+            </label>
             <Select
               value={category}
               onValueChange={(v) => setCategory(v ?? "")}
             >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Select" />
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((c) => (
@@ -1039,7 +1050,7 @@ export function PublishWizard({
                 value={transport}
                 onValueChange={(v) => setTransport(v as McpTransport)}
               >
-                <SelectTrigger className="h-8 text-sm">
+                <SelectTrigger className="h-9 text-sm">
                   <SelectValue placeholder="Select transport" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1053,64 +1064,67 @@ export function PublishWizard({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Tags</label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add tag..."
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && (e.preventDefault(), addTag())
-                }
-                className="h-8 text-sm"
-              />
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-1">
-                {tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="gap-1 text-xs font-normal"
-                  >
-                    {tag}
-                    <button
-                      onClick={() => setTags(tags.filter((t) => t !== tag))}
-                    >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  </Badge>
-                ))}
+          {/* Optional fields */}
+          <div className="border-t border-border pt-4 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Tags</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Type a tag and press Enter"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), addTag())
+                  }
+                  className="h-9 text-sm"
+                />
               </div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Works with</label>
-            <div className="flex flex-wrap gap-1.5">
-              {["Claude Code", "Cursor", "VS Code", "Windsurf", "CLI"].map(
-                (item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() =>
-                      setCompatibility((prev) =>
-                        prev.includes(item)
-                          ? prev.filter((c) => c !== item)
-                          : [...prev, item]
-                      )
-                    }
-                    className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
-                      compatibility.includes(item)
-                        ? "border-foreground/20 bg-muted text-foreground"
-                        : "border-border text-muted-foreground hover:border-foreground/10"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                )
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="gap-1 text-xs font-normal"
+                    >
+                      {tag}
+                      <button
+                        onClick={() => setTags(tags.filter((t) => t !== tag))}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
               )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Works with</label>
+              <div className="flex flex-wrap gap-1.5">
+                {["Claude Code", "Cursor", "VS Code", "Windsurf", "CLI"].map(
+                  (item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() =>
+                        setCompatibility((prev) =>
+                          prev.includes(item)
+                            ? prev.filter((c) => c !== item)
+                            : [...prev, item]
+                        )
+                      }
+                      className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                        compatibility.includes(item)
+                          ? "border-foreground/20 bg-muted text-foreground"
+                          : "border-border text-muted-foreground hover:border-foreground/10"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+              </div>
             </div>
           </div>
 

@@ -11,6 +11,11 @@ import { DashboardPreferenceApplier } from "@/components/dashboard-preference-ap
 import { DashboardPagination } from "@/components/dashboard-pagination";
 import { ViewToggle } from "@/components/view-toggle";
 import { SkillGrid } from "@/components/skill-grid";
+import { OnboardingHints } from "@/components/onboarding-hints";
+import { getSettings } from "@/lib/settings";
+import { isS3Configured } from "@/lib/s3";
+import { getUserRole, listMembers } from "@/lib/rbac";
+import { getOrgSlug } from "@/lib/org";
 
 
 
@@ -75,16 +80,23 @@ export default async function DashboardPage({
     limit,
   };
 
-  // Fetch skills + categories + counts for tabs in parallel
+  // Fetch skills + categories + counts + onboarding state in parallel
+  const orgSlug = await getOrgSlug();
   let skills: Awaited<ReturnType<typeof getSkills>>["skills"] = [];
   let total = 0;
   let categories: Awaited<ReturnType<typeof getCategories>> = [];
   let counts: Awaited<ReturnType<typeof getSkillCounts>> = { total: 0, byType: {}, mine: 0 };
+  let settings: Awaited<ReturnType<typeof getSettings>> = null;
+  let members: Awaited<ReturnType<typeof listMembers>> = [];
+  let userRole: Awaited<ReturnType<typeof getUserRole>> = "member";
   try {
-    [{ skills, total }, categories, counts] = await Promise.all([
+    [{ skills, total }, categories, counts, settings, members, userRole] = await Promise.all([
       getSkills(filters),
       getCategories(),
       getSkillCounts(username || undefined),
+      getSettings(orgSlug),
+      listMembers(orgSlug),
+      getUserRole(username || "", orgSlug),
     ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
@@ -104,6 +116,14 @@ export default async function DashboardPage({
       <div className="mb-6">
         <h1 className="text-lg text-display">Dashboard</h1>
       </div>
+
+      {/* Onboarding hints */}
+      <OnboardingHints
+        s3Configured={isS3Configured(settings)}
+        memberCount={members.length}
+        skillCount={counts.total}
+        isAdmin={userRole === "admin" || userRole === "owner"}
+      />
 
       {/* Empty state — registry has no skills */}
       {!hasAnySkills && (

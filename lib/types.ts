@@ -79,3 +79,15 @@ export type Permission =
   | "members:invite" | "members:remove" | "members:change_role"
   | "settings:manage" | "org:transfer_ownership"
   | "tokens:manage_own" | "tokens:manage_any";
+
+// ── Invitations ──
+
+export interface Invitation {
+  token: string;
+  email: string;
+  role: OrgRole;
+  invited_by: string;
+  org_slug?: string;
+  created_at: string;
+  expires_at: string;
+}
