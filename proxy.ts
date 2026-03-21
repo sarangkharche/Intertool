@@ -51,6 +51,17 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // Local dev: extract org slug from *.localhost (e.g., storio.localhost:3000 → storio)
+  if (isSaas() && !orgSlug) {
+    const hostWithoutPort = host.split(":")[0];
+    if (hostWithoutPort.endsWith(".localhost") && hostWithoutPort !== "localhost") {
+      const sub = hostWithoutPort.replace(".localhost", "").split(".")[0];
+      if (sub && sub !== "www") {
+        orgSlug = sub;
+      }
+    }
+  }
+
   // Detect bare domain in SaaS mode (no subdomain)
   const isBareDomain = isSaas() && !orgSlug && (
     host === SAAS_DOMAIN ||
@@ -87,8 +98,10 @@ export async function proxy(request: NextRequest) {
         // Has org: redirect to their subdomain
         const protocol = request.nextUrl.protocol;
         const port = request.nextUrl.port ? `:${request.nextUrl.port}` : "";
+        const hostWithoutPort = host.split(":")[0];
+        const baseDomain = hostWithoutPort === "localhost" ? "localhost" : SAAS_DOMAIN;
         return NextResponse.redirect(
-          new URL(`${protocol}//${userOrg}.${SAAS_DOMAIN}${port}${pathname}`)
+          new URL(`${protocol}//${userOrg}.${baseDomain}${port}${pathname}`)
         );
       }
     }
