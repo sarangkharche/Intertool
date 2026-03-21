@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
 import { revokeToken, getUserRole, hasPermission } from "@/lib/rbac";
 
+export const dynamic = "force-dynamic";
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ hash: string }> }
@@ -38,5 +40,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -30,6 +30,7 @@ import {
 import { SkillType, Category, SourceFormat, McpTransport } from "@/lib/types";
 import { SKILL_TYPE_LABELS } from "@/lib/constants";
 import { MarkdownEditor } from "@/components/markdown-editor";
+import { useDraftPersistence, type DraftState } from "@/components/hooks/use-draft-persistence";
 import { toast } from "sonner";
 
 const MANUAL_STEPS_FULL = ["Type", "Files", "Details", "Review"];
@@ -80,6 +81,53 @@ export function PublishWizard({
 
   // Quick share — GitHub URL
   const [githubUrl, setGithubUrl] = useState("");
+
+  // Slug availability
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  const [checkingSlug, setCheckingSlug] = useState(false);
+
+  // Draft auto-save
+  const getDraftState = useCallback(
+    () => ({
+      type, name, slug, description, readme, category,
+      tags, compatibility, sourceUrl, sourceFormat, transport,
+    }),
+    [type, name, slug, description, readme, category, tags, compatibility, sourceUrl, sourceFormat, transport],
+  );
+  const restoreDraftState = useCallback((draft: DraftState) => {
+    setType(draft.type as SkillType);
+    setName(draft.name);
+    setSlug(draft.slug);
+    setDescription(draft.description);
+    setReadme(draft.readme);
+    setCategory(draft.category);
+    setTags(draft.tags);
+    setCompatibility(draft.compatibility);
+    setSourceUrl(draft.sourceUrl);
+    if (draft.sourceFormat) setSourceFormat(draft.sourceFormat as SourceFormat);
+    if (draft.transport) setTransport(draft.transport as McpTransport);
+  }, []);
+  const { saveDraft, clearDraft } = useDraftPersistence(getDraftState, restoreDraftState);
+
+  // Auto-save on state changes
+  useEffect(() => { saveDraft(); }, [type, name, slug, description, readme, category, tags, compatibility, sourceUrl, sourceFormat, transport, saveDraft]);
+
+  // Slug availability check (debounced)
+  useEffect(() => {
+    if (!slug || slug.length < 2) { setSlugAvailable(null); return; }
+    setCheckingSlug(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/skills/${slug}`);
+        setSlugAvailable(res.status === 404);
+      } catch {
+        setSlugAvailable(null);
+      } finally {
+        setCheckingSlug(false);
+      }
+    }, 500);
+    return () => { clearTimeout(timer); setCheckingSlug(false); };
+  }, [slug]);
 
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase();
@@ -319,6 +367,7 @@ export function PublishWizard({
 
       const data = await res.json();
       setPublishedSlug(data.slug);
+      clearDraft();
       toast.success("Skill published");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to publish");
@@ -982,9 +1031,18 @@ export function PublishWizard({
               autoFocus
             />
             {slug && (
-              <p className="font-mono text-[11px] text-muted-foreground/50">
-                {slug}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-mono text-[11px] text-muted-foreground/50">
+                  {slug}
+                </p>
+                {checkingSlug ? (
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/40" />
+                ) : slugAvailable === true ? (
+                  <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                ) : slugAvailable === false ? (
+                  <X className="h-3 w-3 text-destructive" />
+                ) : null}
+              </div>
             )}
           </div>
 

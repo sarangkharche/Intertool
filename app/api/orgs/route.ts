@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { isSaasMode } from "@/lib/org";
 import { createOrg, orgExists, getOrgForUser } from "@/lib/settings";
 
+export const dynamic = "force-dynamic";
+
 /** POST = create a new org (SaaS mode only) */
 export async function POST(request: NextRequest) {
   if (!isSaasMode()) {
@@ -91,5 +93,7 @@ export async function GET() {
   }
 
   const orgSlug = await getOrgForUser(username);
-  return NextResponse.json({ org: orgSlug });
+  return NextResponse.json({ org: orgSlug }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { apiGet } from "../lib/api.js";
-import { bold, dim, cyan, cross, isJsonMode, spinner } from "../lib/format.js";
+import { bold, dim, cyan, cross, isJsonMode, spinner, table } from "../lib/format.js";
 
 interface SearchResult {
   slug: string;
@@ -39,12 +39,16 @@ Examples:
       }
 
       console.log(`Found ${results.length} result(s):\n`);
-      for (const r of results) {
-        const author = r.author ?? "unknown";
-        const typeLabel = dim(`[${r.type}]`.padEnd(18));
-        console.log(`  ${bold(r.name)}  ${typeLabel}  ${cyan(`@${author}/${r.slug}`)}`);
-        console.log(`  ${dim(r.description)}\n`);
-      }
+      table(
+        ["Name", "Type", "Author", "Description"],
+        results.map((r) => [
+          r.name,
+          r.type,
+          `@${r.author ?? "unknown"}`,
+          r.description.length > 50 ? r.description.slice(0, 47) + "..." : r.description,
+        ]),
+      );
+      console.log();
     } catch (err) {
       s.stop();
       console.error(

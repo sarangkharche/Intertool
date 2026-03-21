@@ -34,12 +34,20 @@ export function DownloadStats({ slug }: DownloadStatsProps) {
   if (!stats || stats.total === 0) return null;
 
   return (
-    <div className="flex items-center justify-between">
-      <span className="flex items-center gap-1.5 text-muted-foreground">
-        <Download className="h-3 w-3" />
-        Downloads
-      </span>
-      <span className="font-mono text-xs">{formatCount(stats.total)}</span>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <Download className="h-3 w-3" />
+          Downloads
+        </span>
+        <span className="font-mono text-xs">{formatCount(stats.total)}</span>
+      </div>
+      {stats.week > 0 && (
+        <div className="flex items-center justify-between pl-[18px]">
+          <span className="text-xs text-muted-foreground/70">This week</span>
+          <span className="font-mono text-xs text-muted-foreground">{formatCount(stats.week)}</span>
+        </div>
+      )}
     </div>
   );
 }

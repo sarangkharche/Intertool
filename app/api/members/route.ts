@@ -7,6 +7,8 @@ import { sendInvitationEmail, getEmailTransport } from "@/lib/email";
 import { getSettings } from "@/lib/settings";
 import type { OrgRole } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
@@ -27,6 +29,8 @@ export async function GET() {
       created_at: inv.created_at,
       expires_at: inv.expires_at,
     })),
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }
 

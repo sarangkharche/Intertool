@@ -46,7 +46,7 @@ export interface SearchFilters {
   type?: SkillType;
   category?: string;
   author?: string;
-  sort?: "newest" | "name";
+  sort?: "newest" | "name" | "relevance" | "downloads";
   page?: number;
   limit?: number;
 }

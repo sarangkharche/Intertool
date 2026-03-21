@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+@import "highlight.js/styles/github-dark-dimmed.min.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -338,6 +339,56 @@
 }
 
 @layer components {
+  /* Markdown prose — replaces @tailwindcss/typography for Tailwind v4 */
+  .skill-prose {
+    @apply text-sm leading-relaxed text-foreground;
+  }
+  .skill-prose h1 { @apply mt-8 mb-3 text-xl font-semibold tracking-tight text-foreground; }
+  .skill-prose h2 { @apply mt-6 mb-2 text-base font-semibold tracking-tight text-foreground; }
+  .skill-prose h3 { @apply mt-4 mb-2 text-sm font-semibold tracking-tight text-foreground; }
+  .skill-prose h4 { @apply mt-3 mb-1 text-sm font-medium text-foreground; }
+  .skill-prose h1:first-child,
+  .skill-prose h2:first-child,
+  .skill-prose h3:first-child { @apply mt-0; }
+  .skill-prose p { @apply mb-3; }
+  .skill-prose a { @apply text-primary no-underline; }
+  .skill-prose a:hover { @apply underline; }
+  .skill-prose strong { @apply font-semibold text-foreground; }
+  .skill-prose ul { @apply mb-3 list-disc pl-5; }
+  .skill-prose ol { @apply mb-3 list-decimal pl-5; }
+  .skill-prose li { @apply mb-1; }
+  .skill-prose li > ul,
+  .skill-prose li > ol { @apply mt-1 mb-0; }
+  .skill-prose blockquote {
+    @apply mb-3 border-l-2 border-border pl-3 text-muted-foreground italic;
+  }
+  .skill-prose code {
+    @apply rounded bg-muted px-1 py-0.5 text-[13px] font-mono;
+  }
+  .skill-prose pre {
+    @apply mb-3 overflow-x-auto rounded-lg border border-border/60 bg-muted p-4;
+  }
+  .skill-prose pre code {
+    @apply bg-transparent p-0 text-[13px] leading-relaxed;
+  }
+  .skill-prose img {
+    @apply my-3 max-w-full rounded-lg;
+  }
+  .skill-prose table {
+    @apply mb-3 w-full text-sm;
+  }
+  .skill-prose th {
+    @apply border-b border-border py-1.5 text-left text-xs font-medium text-muted-foreground;
+  }
+  .skill-prose td {
+    @apply border-b border-border/50 py-1.5;
+  }
+  .skill-prose hr {
+    @apply my-6 border-border;
+  }
+  .skill-prose input[type="checkbox"] {
+    @apply mr-1.5 align-middle;
+  }
   /* Display heading: semibold + tight tracking for page titles */
   .text-display {
     @apply font-semibold tracking-tight;

@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
 import { createApiToken, listUserTokens, getUserRole } from "@/lib/rbac";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
@@ -24,7 +26,9 @@ export async function GET() {
     created_at: t.created_at,
   }));
 
-  return NextResponse.json({ tokens: safeTokens });
+  return NextResponse.json({ tokens: safeTokens }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export async function POST(request: NextRequest) {

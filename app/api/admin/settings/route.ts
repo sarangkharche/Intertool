@@ -7,6 +7,8 @@ import { isS3Configured } from "@/lib/s3";
 import { seedCategories } from "@/lib/registry";
 import { authorize } from "@/lib/rbac";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
@@ -41,6 +43,8 @@ export async function GET() {
     org_slug: orgSlug,
     google_client_configured: googleConfigured,
     github_client_configured: githubConfigured,
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }
 

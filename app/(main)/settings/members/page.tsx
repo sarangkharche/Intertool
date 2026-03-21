@@ -80,7 +80,7 @@ export default function MembersPage() {
 
   const fetchMembers = useCallback(async () => {
     try {
-      const res = await fetch("/api/members");
+      const res = await fetch("/api/members", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load members");
       const data = await res.json();
       setMembers(data.members);

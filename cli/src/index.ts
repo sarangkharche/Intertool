@@ -14,6 +14,8 @@ import { logoutCommand } from "./commands/logout.js";
 import { listCommand } from "./commands/list.js";
 import { removeCommand } from "./commands/remove.js";
 import { infoCommand } from "./commands/info.js";
+import { initCommand } from "./commands/init.js";
+import { completionsCommand } from "./commands/completions.js";
 import { red } from "./lib/format.js";
 
 // Read version from package.json
@@ -48,6 +50,8 @@ program.addCommand(listCommand);
 program.addCommand(infoCommand);
 program.addCommand(publishCommand);
 program.addCommand(updateCommand);
+program.addCommand(initCommand);
+program.addCommand(completionsCommand);
 
 // Show help when run with no arguments
 if (process.argv.length <= 2) {

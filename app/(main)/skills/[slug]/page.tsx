@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillReadme } from "@/components/skill-readme";
 import { InstallCommand } from "@/components/install-command";
 import { TypeBadge } from "@/components/skill-card";
-import { getSkillBySlug, getSkillVersions } from "@/lib/registry";
-import { Calendar, Download, ExternalLink, GitCompareArrows, Pencil } from "lucide-react";
+import { getSkillBySlug, getSkillVersions, getRelatedSkills } from "@/lib/registry";
+import { Calendar, Clock, Download, ExternalLink, GitCompareArrows, Pencil } from "lucide-react";
 import { ShareButton } from "@/components/share-button";
 import { DeleteSkillButton } from "@/components/delete-skill-button";
 import { DownloadStats } from "@/components/download-stats";
@@ -23,9 +23,10 @@ export default async function SkillDetailPage({
 
   const { slug } = await params;
 
-  const [skill, versions] = await Promise.all([
+  const [skill, versions, relatedSkills] = await Promise.all([
     getSkillBySlug(slug),
     getSkillVersions(slug),
+    getRelatedSkills(slug),
   ]);
   if (!skill) notFound();
   const username = (session?.user as { username?: string } | undefined)?.username;
@@ -256,6 +257,7 @@ export default async function SkillDetailPage({
                   </span>
                 </div>
               )}
+              <FreshnessBadge date={skill.updated_at ?? skill.created_at} />
               <DownloadStats slug={skill.slug} />
               {skill.transport && (
                 <div className="flex items-center justify-between">
@@ -317,6 +319,63 @@ export default async function SkillDetailPage({
           )}
         </aside>
       </div>
+
+      {/* Related Skills */}
+      {relatedSkills.length > 0 && (
+        <div className="mt-12">
+          <h2 className="mb-4 text-sm font-medium text-muted-foreground">Related Skills</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {relatedSkills.map((rs) => (
+              <Link
+                key={rs.slug}
+                href={`/skills/${rs.slug}`}
+                className="rounded-lg border border-border/60 p-3 transition-colors hover:border-border hover:bg-muted/20"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{rs.name}</span>
+                  <TypeBadge type={rs.type} />
+                </div>
+                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{rs.description}</p>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground/60">@{rs.author}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FreshnessBadge({ date }: { date: string }) {
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  let label: string;
+  let colorClass: string;
+
+  if (days < 1) {
+    label = "Updated today";
+    colorClass = "text-emerald-600 dark:text-emerald-400";
+  } else if (days < 30) {
+    label = `Updated ${rtf.format(-days, "day")}`;
+    colorClass = "text-emerald-600 dark:text-emerald-400";
+  } else if (days < 90) {
+    const weeks = Math.floor(days / 7);
+    label = `Updated ${rtf.format(-weeks, "week")}`;
+    colorClass = "text-amber-600 dark:text-amber-400";
+  } else {
+    const months = Math.floor(days / 30);
+    label = `Updated ${rtf.format(-months, "month")}`;
+    colorClass = "text-muted-foreground/60";
+  }
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="flex items-center gap-1.5 text-muted-foreground">
+        <Clock className="h-3 w-3" />
+        Freshness
+      </span>
+      <span className={`text-xs font-medium ${colorClass}`}>{label}</span>
     </div>
   );
 }

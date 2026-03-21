@@ -203,22 +203,49 @@ export async function getSkills(
     const authorLower = filters.author.toLowerCase();
     skills = skills.filter((s) => s.author.toLowerCase() === authorLower);
   }
+
+  // Parse structured filters from query string (e.g. "type:mcp-server tag:ai")
+  let freeTextQuery = "";
   if (filters.query) {
-    const q = filters.query.toLowerCase();
+    const parsed = parseSearchQuery(filters.query);
+    freeTextQuery = parsed.text;
+    if (parsed.filters.type) {
+      skills = skills.filter((s) => s.type === parsed.filters.type);
+    }
+    if (parsed.filters.tag) {
+      const ft = parsed.filters.tag;
+      skills = skills.filter((s) => s.tags.some((t) => t.toLowerCase() === ft));
+    }
+    if (parsed.filters.author) {
+      const fa = parsed.filters.author;
+      skills = skills.filter((s) => s.author.toLowerCase() === fa);
+    }
+  }
+
+  // Free-text scoring
+  if (freeTextQuery) {
+    const q = freeTextQuery.toLowerCase();
     const scored = skills
       .map((s) => ({ skill: s, score: scoreSkill(s, q) }))
       .filter((x) => x.score > 0);
     scored.sort((a, b) => b.score - a.score);
     skills = scored.map((x) => x.skill);
+  } else if (filters.query && !freeTextQuery) {
+    // Query had only structured filters, no free text — keep all filtered results
   }
 
-  // Sort (only when not searching — search uses relevance)
-  if (!filters.query) {
-    if (filters.sort === "name") {
+  // Sort
+  const sort = filters.sort ?? (filters.query ? "relevance" : "newest");
+  if (sort !== "relevance" || !filters.query) {
+    if (sort === "name") {
       skills.sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      skills.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else if (sort === "newest" || sort === "relevance") {
+      // Default: newest first (relevance already sorted above)
+      if (!filters.query) {
+        skills.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
     }
+    // "downloads" sort would need download stats integration; fallback to newest
   }
 
   const total = skills.length;
@@ -407,15 +434,66 @@ export async function searchSkills(
   const settings = await resolveSettings();
   if (!settings) return [];
 
-  const q = query.toLowerCase();
+  const parsed = parseSearchQuery(query);
   const all = await fetchIndex(settings);
-  return all
-    .filter((s) => s.status === "published")
-    .map((s) => ({ skill: s, score: scoreSkill(s, q) }))
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
+  let skills = all.filter((s) => s.status === "published");
+
+  // Apply structured filters
+  if (parsed.filters.type) {
+    skills = skills.filter((s) => s.type === parsed.filters.type);
+  }
+  if (parsed.filters.tag) {
+    const ft = parsed.filters.tag;
+    skills = skills.filter((s) => s.tags.some((t) => t.toLowerCase() === ft));
+  }
+  if (parsed.filters.author) {
+    const fa = parsed.filters.author;
+    skills = skills.filter((s) => s.author.toLowerCase() === fa);
+  }
+
+  // Score by free text
+  if (parsed.text) {
+    const q = parsed.text.toLowerCase();
+    return skills
+      .map((s) => ({ skill: s, score: scoreSkill(s, q) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+      .map((x) => ({ slug: x.skill.slug, name: x.skill.name, type: x.skill.type, description: x.skill.description, author: x.skill.author }));
+  }
+
+  // No free text, just filters — return first 10
+  return skills
     .slice(0, 10)
-    .map((x) => ({ slug: x.skill.slug, name: x.skill.name, type: x.skill.type, description: x.skill.description, author: x.skill.author }));
+    .map((s) => ({ slug: s.slug, name: s.name, type: s.type, description: s.description, author: s.author }));
+}
+
+// ── Search query parsing ──
+
+interface ParsedQuery {
+  text: string;
+  filters: {
+    type?: string;
+    tag?: string;
+    author?: string;
+  };
+}
+
+export function parseSearchQuery(raw: string): ParsedQuery {
+  const filters: ParsedQuery["filters"] = {};
+  const textParts: string[] = [];
+
+  for (const part of raw.split(/\s+/)) {
+    const match = part.match(/^(type|tag|author):(.+)$/i);
+    if (match) {
+      const key = match[1].toLowerCase() as keyof ParsedQuery["filters"];
+      filters[key] = match[2].toLowerCase();
+    } else if (part) {
+      textParts.push(part);
+    }
+  }
+
+  return { text: textParts.join(" "), filters };
 }
 
 // ── Search scoring ──
@@ -437,44 +515,119 @@ function levenshtein(a: string, b: string): number {
   return matrix[b.length][a.length];
 }
 
+/** Score a single token against a field value. Higher = better. */
+function scoreToken(token: string, field: string): number {
+  if (field === token) return 20; // exact match
+  // Word boundary match: token starts a word in the field
+  const wordBoundary = new RegExp(`(?:^|[\\s\\-_])${escapeRegex(token)}`);
+  if (wordBoundary.test(field)) return 10;
+  // Prefix: field word starts with token
+  const words = field.split(/[-\s_]+/);
+  for (const w of words) {
+    if (w.startsWith(token)) return 8;
+  }
+  // Substring
+  if (field.includes(token)) return 4;
+  return 0;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function scoreSkill(skill: Skill, query: string): number {
+  const tokens = query.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return 0;
+
   const name = skill.name.toLowerCase();
+  const slug = skill.slug.toLowerCase();
   const desc = skill.description.toLowerCase();
   const tags = skill.tags.map((t) => t.toLowerCase());
+  const author = skill.author.toLowerCase();
 
-  let score = 0;
+  let totalScore = 0;
+  let allTokensMatch = true;
 
-  // Name scoring
-  if (name === query) {
-    score += 100;
-  } else if (name.startsWith(query)) {
-    score += 50;
-  } else if (name.includes(query)) {
-    score += 20;
-  }
+  for (const token of tokens) {
+    let bestTokenScore = 0;
 
-  // Tag scoring
-  for (const tag of tags) {
-    if (tag === query) score += 15;
-    else if (tag.includes(query)) score += 8;
-  }
+    // Name: highest weight (3x)
+    bestTokenScore = Math.max(bestTokenScore, scoreToken(token, name) * 3);
+    bestTokenScore = Math.max(bestTokenScore, scoreToken(token, slug) * 3);
 
-  // Description scoring
-  if (desc.includes(query)) score += 5;
+    // Tags: 2x weight
+    for (const tag of tags) {
+      bestTokenScore = Math.max(bestTokenScore, scoreToken(token, tag) * 2);
+    }
 
-  // Fuzzy matching for queries > 3 chars with no exact matches
-  if (score === 0 && query.length > 3) {
-    // Check against name words and tags
-    const candidates = [name, ...name.split(/[-\s]+/), ...tags];
-    for (const candidate of candidates) {
-      if (candidate.length > 0 && levenshtein(query, candidate) <= 2) {
-        score += 10;
-        break;
+    // Author: 1.5x
+    bestTokenScore = Math.max(bestTokenScore, scoreToken(token, author) * 1.5);
+
+    // Description: 1x
+    bestTokenScore = Math.max(bestTokenScore, scoreToken(token, desc));
+
+    if (bestTokenScore === 0) {
+      allTokensMatch = false;
+      // Fuzzy fallback on name/tags only for tokens > 3 chars
+      if (token.length > 3) {
+        const candidates = [name, ...name.split(/[-\s_]+/), ...tags];
+        for (const c of candidates) {
+          if (c.length > 0 && levenshtein(token, c) <= 2) {
+            bestTokenScore = 3;
+            break;
+          }
+        }
       }
     }
+
+    totalScore += bestTokenScore;
   }
 
-  return score;
+  // AND semantics: if any token has zero match (even fuzzy), penalize heavily
+  if (!allTokensMatch) totalScore = Math.floor(totalScore * 0.3);
+
+  return totalScore;
+}
+
+/** Return related skills by tag overlap and shared category, excluding the given slug. */
+export async function getRelatedSkills(
+  slug: string,
+  limit = 4
+): Promise<Pick<Skill, "slug" | "name" | "type" | "description" | "author">[]> {
+  const settings = await resolveSettings();
+  if (!settings) return [];
+
+  const all = await fetchIndex(settings);
+  const current = all.find((s) => s.slug === slug);
+  if (!current) return [];
+
+  const published = all.filter((s) => s.status === "published" && s.slug !== slug);
+  const currentTags = new Set(current.tags.map((t) => t.toLowerCase()));
+
+  const scored = published.map((s) => {
+    let score = 0;
+    // Tag overlap
+    for (const tag of s.tags) {
+      if (currentTags.has(tag.toLowerCase())) score += 3;
+    }
+    // Same category
+    if (s.category_slug && s.category_slug === current.category_slug) score += 2;
+    // Same type
+    if (s.type === current.type) score += 1;
+    return { skill: s, score };
+  });
+
+  return scored
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((x) => ({
+      slug: x.skill.slug,
+      name: x.skill.name,
+      type: x.skill.type,
+      description: x.skill.description,
+      author: x.skill.author,
+    }));
 }
 
 /** Bump a semver patch: "1.0.0" → "1.0.1" */

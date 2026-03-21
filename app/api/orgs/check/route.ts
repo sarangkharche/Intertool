@@ -14,6 +14,8 @@ const RESERVED_SLUGS = [
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
+export const dynamic = "force-dynamic";
+
 /** GET /api/orgs/check?slug=xxx — check slug availability (no auth required) */
 export async function GET(request: NextRequest) {
   if (!isSaasMode()) {
@@ -46,5 +48,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ available: false, reason: "Already taken" });
   }
 
-  return NextResponse.json({ available: true });
+  return NextResponse.json({ available: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

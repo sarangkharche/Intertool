@@ -20,6 +20,29 @@ export function isJsonMode(): boolean {
   return process.argv.includes("--json");
 }
 
+/** Print a table with aligned columns. */
+export function table(
+  headers: string[],
+  rows: string[][],
+  opts: { indent?: number } = {},
+): void {
+  const indent = " ".repeat(opts.indent ?? 2);
+  const widths = headers.map((h, i) =>
+    Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)),
+  );
+
+  const headerLine = headers
+    .map((h, i) => bold(h.padEnd(widths[i])))
+    .join("  ");
+  console.log(`${indent}${headerLine}`);
+  console.log(`${indent}${widths.map((w) => dim("─".repeat(w))).join("  ")}`);
+
+  for (const row of rows) {
+    const line = row.map((cell, i) => cell.padEnd(widths[i])).join("  ");
+    console.log(`${indent}${line}`);
+  }
+}
+
 interface Spinner {
   stop(finalText?: string): void;
 }

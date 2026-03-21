@@ -21,6 +21,7 @@ interface SkillResult {
   name: string;
   type: SkillType;
   description: string;
+  author?: string;
 }
 
 const CACHE_TTL = 10_000;
@@ -107,12 +108,15 @@ export function CommandPalette() {
                 value={`skill-${skill.slug}`}
                 onSelect={() => navigate(`/skills/${skill.slug}`)}
               >
-                <Package className="h-4 w-4 text-muted-foreground" />
-                <div className="flex flex-1 items-center gap-2">
-                  <span>{skill.name}</span>
-                  <Badge variant="outline" className="text-[10px]">
-                    {SKILL_TYPE_LABELS[skill.type]}
-                  </Badge>
+                <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span>{skill.name}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {SKILL_TYPE_LABELS[skill.type]}
+                    </Badge>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground/70">{skill.description}</p>
                 </div>
               </CommandItem>
             ))}
@@ -136,6 +140,13 @@ export function CommandPalette() {
           </CommandItem>
         </CommandGroup>
       </CommandList>
+      <div className="border-t border-border/60 px-3 py-1.5">
+        <p className="text-[10px] text-muted-foreground/50">
+          <kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">↵</kbd> to open
+          {" · "}
+          <kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">esc</kbd> to close
+        </p>
+      </div>
     </CommandDialog>
   );
 }

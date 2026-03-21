@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { readdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { bold, dim, cyan, isJsonMode } from "../lib/format.js";
+import { bold, dim, cyan, isJsonMode, table } from "../lib/format.js";
 
 interface InstalledItem {
   name: string;
@@ -57,8 +57,8 @@ export const listCommand = new Command("list")
     }
 
     console.log(bold(`${items.length} installed:\n`));
-    for (const item of items) {
-      const typeLabel = dim(`[${item.type}]`.padEnd(14));
-      console.log(`  ${cyan(item.name)}  ${typeLabel}  ${dim(item.path)}`);
-    }
+    table(
+      ["Name", "Type", "Path"],
+      items.map((item) => [item.name, item.type, item.path]),
+    );
   });

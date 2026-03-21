@@ -4,6 +4,8 @@ import { getOrgSlug } from "@/lib/org";
 import { authorize, getUserRole, setUserRole, removeMember } from "@/lib/rbac";
 import type { OrgRole } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -57,7 +59,9 @@ export async function PATCH(
   }
 
   await setUserRole(targetId, newRole, orgSlug);
-  return NextResponse.json({ ok: true, role: newRole });
+  return NextResponse.json({ ok: true, role: newRole }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export async function DELETE(
@@ -100,5 +104,7 @@ export async function DELETE(
   }
 
   await removeMember(targetId, orgSlug);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

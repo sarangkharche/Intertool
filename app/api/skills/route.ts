@@ -4,6 +4,8 @@ import { SearchFilters, SkillType } from "@/lib/types";
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
 import { checkRateLimit, rateLimitResponse, rateLimitHeaders } from "@/lib/rate-limit";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const authResult = await authenticateApi(request);
   if (!isAuthenticated(authResult)) return authResult;
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   const headers: Record<string, string> = {
     ...rateLimitHeaders(rl),
-    "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+    "Cache-Control": "no-store",
   };
   if (links.length > 0) headers["Link"] = links.join(", ");
 
