@@ -21,6 +21,7 @@ function formatCount(n: number): string {
 
 export function DownloadStats({ slug }: DownloadStatsProps) {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/skills/${slug}/stats`)
@@ -28,8 +29,23 @@ export function DownloadStats({ slug }: DownloadStatsProps) {
       .then((data) => {
         if (data) setStats(data as Stats);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Download className="h-3 w-3" />
+            Downloads
+          </span>
+          <div className="h-3.5 w-8 animate-pulse rounded bg-muted" />
+        </div>
+      </div>
+    );
+  }
 
   if (!stats || stats.total === 0) return null;
 
@@ -54,6 +70,7 @@ export function DownloadStats({ slug }: DownloadStatsProps) {
 
 export function DownloadBadge({ slug }: DownloadStatsProps) {
   const [total, setTotal] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/skills/${slug}/stats`)
@@ -61,8 +78,18 @@ export function DownloadBadge({ slug }: DownloadStatsProps) {
       .then((data) => {
         if (data && (data as Stats).total > 0) setTotal((data as Stats).total);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [slug]);
+
+  if (loading) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <Download className="h-3 w-3" />
+        <span className="inline-block h-3 w-6 animate-pulse rounded bg-muted" />
+      </span>
+    );
+  }
 
   if (total === null) return null;
 

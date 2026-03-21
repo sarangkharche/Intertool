@@ -21,8 +21,8 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const isAdmin = !!session?.user;
+  const { data: session, status } = useSession();
+  const isAdmin = status === "loading" || !!session?.user;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">

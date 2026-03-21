@@ -70,16 +70,19 @@ function isDismissed(id: string): boolean {
 }
 
 export function OnboardingHints(props: Props) {
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
+    const dismissed = new Set<string>();
+    try {
+      for (const hint of HINTS) {
+        if (localStorage.getItem(`hint-dismissed:${hint.id}`) === "true") dismissed.add(hint.id);
+      }
+    } catch {}
+    return dismissed;
+  });
   const [mounted, setMounted] = useState(false);
   const toastFired = useRef(false);
 
   useEffect(() => {
-    const dismissed = new Set<string>();
-    for (const hint of HINTS) {
-      if (isDismissed(hint.id)) dismissed.add(hint.id);
-    }
-    setDismissedIds(dismissed);
     setMounted(true);
   }, []);
 

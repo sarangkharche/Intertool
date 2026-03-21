@@ -37,10 +37,57 @@ if (oauthCreds.google) {
   );
 }
 
+// Share session cookies across subdomains (e.g., *.localhost, *.intertool.sh)
+const SAAS_DOMAIN = process.env.INTERTOOL_DOMAIN || "intertool.sh";
+const isLocal = process.env.NODE_ENV === "development";
+const cookieDomain = isLocal ? ".localhost" : `.${SAAS_DOMAIN}`;
+const useSecure = !isLocal;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   pages: {
     signIn: "/sign-in",
+  },
+  cookies: {
+    sessionToken: {
+      name: isLocal ? "authjs.session-token" : "__Secure-authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecure,
+        domain: cookieDomain,
+      },
+    },
+    callbackUrl: {
+      name: isLocal ? "authjs.callback-url" : "__Secure-authjs.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecure,
+        domain: cookieDomain,
+      },
+    },
+    csrfToken: {
+      name: isLocal ? "authjs.csrf-token" : "__Host-authjs.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecure,
+      },
+    },
+    pkceCodeVerifier: {
+      name: isLocal ? "authjs.pkce.code_verifier" : "__Secure-authjs.pkce.code_verifier",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecure,
+        maxAge: 900,
+      },
+    },
   },
   callbacks: {
     async signIn({ account, profile }) {

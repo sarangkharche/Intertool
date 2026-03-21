@@ -13,12 +13,19 @@ const PUBLIC_PREFIXES = [
 /** Paths that are only accessible on bare domain (no org context needed) */
 const BARE_DOMAIN_PATHS = ["/sign-in", "/create-org", "/api/auth/", "/api/orgs"];
 
+/** Auth paths that MUST run on the bare domain to avoid PKCE cookie issues */
+const AUTH_PATHS = ["/sign-in", "/api/auth/"];
+
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
 function isBareDomainPath(pathname: string): boolean {
   return BARE_DOMAIN_PATHS.some((p) => pathname.startsWith(p));
+}
+
+function isAuthPath(pathname: string): boolean {
+  return AUTH_PATHS.some((p) => pathname.startsWith(p));
 }
 
 /** Check if a user has an org via Upstash REST (lightweight, no SDK needed) */
@@ -68,6 +75,21 @@ export async function proxy(request: NextRequest) {
     host === `www.${SAAS_DOMAIN}` ||
     host.startsWith("localhost")
   );
+
+  // Redirect auth paths on subdomains to bare domain to avoid PKCE cookie mismatch.
+  // OAuth flow (PKCE cookies, callback URL) must all happen on the same origin.
+  if (orgSlug && isAuthPath(pathname)) {
+    const protocol = request.nextUrl.protocol;
+    const port = request.nextUrl.port ? `:${request.nextUrl.port}` : "";
+    const hostWithoutPort = host.split(":")[0];
+    const baseDomain = hostWithoutPort.endsWith(".localhost") ? "localhost" : SAAS_DOMAIN;
+    const bareUrl = new URL(`${protocol}//${baseDomain}${port}${pathname}${request.nextUrl.search}`);
+    // Preserve the subdomain as a redirect target after auth
+    if (pathname === "/sign-in") {
+      bareUrl.searchParams.set("callbackUrl", `${protocol}//${orgSlug}.${baseDomain}${port}/`);
+    }
+    return NextResponse.redirect(bareUrl);
+  }
 
   // Skip auth checks for public paths
   if (isPublicPath(pathname)) {

@@ -27,6 +27,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=JSON.parse(localStorage.getItem("intertool-prefs")||"{}");if(p.accentColor&&p.accentColor!=="blue")document.documentElement.setAttribute("data-accent",p.accentColor);if(p.density==="compact")document.documentElement.setAttribute("data-density","compact")}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <Providers>
           {children}

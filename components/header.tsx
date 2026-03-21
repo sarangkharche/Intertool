@@ -19,7 +19,7 @@ import { GITHUB_URL } from "@/lib/constants";
 
 export function Header() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
   const user = session?.user;
 
@@ -88,7 +88,12 @@ export function Header() {
               <Moon className="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" aria-hidden="true" />
             </button>
 
-            {user ? (
+            {status === "loading" ? (
+              <div className="flex items-center gap-3">
+                <div className="hidden h-4 w-12 animate-pulse rounded bg-muted sm:block" />
+                <div className="h-7 w-7 animate-pulse rounded-full bg-muted" />
+              </div>
+            ) : user ? (
               <>
                 <Link
                   href="/publish"
