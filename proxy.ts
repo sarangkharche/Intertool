@@ -2,12 +2,40 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const SAAS_DOMAIN = process.env.INTERTOOL_DOMAIN || "intertool.sh";
+const isSaas = () => process.env.INTERTOOL_MODE === "saas";
 
-/** Paths that bypass auth enforcement */
-const PUBLIC_PREFIXES = ["/sign-in", "/create-org", "/api/auth/", "/api/orgs/check", "/_next/", "/icon.svg"];
+/** Paths that bypass auth and SaaS org checks */
+const PUBLIC_PREFIXES = [
+  "/sign-in", "/create-org", "/api/auth/", "/api/orgs",
+  "/_next/", "/icon.svg", "/docs", "/llms",
+];
+
+/** Paths that are only accessible on bare domain (no org context needed) */
+const BARE_DOMAIN_PATHS = ["/sign-in", "/create-org", "/api/auth/", "/api/orgs"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+function isBareDomainPath(pathname: string): boolean {
+  return BARE_DOMAIN_PATHS.some((p) => pathname.startsWith(p));
+}
+
+/** Check if a user has an org via Upstash REST (lightweight, no SDK needed) */
+async function getUserOrg(username: string): Promise<string | null> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  try {
+    const res = await fetch(`${url}/get/user:${username}:org`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    return data.result ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -16,12 +44,19 @@ export async function proxy(request: NextRequest) {
   let orgSlug: string | undefined;
 
   // Extract org slug from subdomain (e.g., storio.intertool.sh → storio)
-  if (process.env.INTERTOOL_MODE === "saas" && host.endsWith(`.${SAAS_DOMAIN}`)) {
+  if (isSaas() && host.endsWith(`.${SAAS_DOMAIN}`)) {
     const sub = host.replace(`.${SAAS_DOMAIN}`, "").split(".")[0];
     if (sub && sub !== "www") {
       orgSlug = sub;
     }
   }
+
+  // Detect bare domain in SaaS mode (no subdomain)
+  const isBareDomain = isSaas() && !orgSlug && (
+    host === SAAS_DOMAIN ||
+    host === `www.${SAAS_DOMAIN}` ||
+    host.startsWith("localhost")
+  );
 
   // Skip auth checks for public paths
   if (isPublicPath(pathname)) {
@@ -31,6 +66,35 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
     return NextResponse.next();
+  }
+
+  // SaaS bare domain: signed-in users must have an org or go to /create-org
+  if (isBareDomain && !isBareDomainPath(pathname)) {
+    const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+
+    if (!token) {
+      // Not signed in: let them see the landing page at /
+      if (pathname === "/") return NextResponse.next();
+      // Any other page: redirect to sign-in
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+
+    // Signed in: check if they have an org
+    const username = token.username as string | undefined;
+    if (username) {
+      const userOrg = await getUserOrg(username);
+      if (userOrg) {
+        // Has org: redirect to their subdomain
+        const protocol = request.nextUrl.protocol;
+        const port = request.nextUrl.port ? `:${request.nextUrl.port}` : "";
+        return NextResponse.redirect(
+          new URL(`${protocol}//${userOrg}.${SAAS_DOMAIN}${port}${pathname}`)
+        );
+      }
+    }
+
+    // No org: redirect to create-org (unless already there)
+    return NextResponse.redirect(new URL("/create-org", request.url));
   }
 
   // GitHub org enforcement — only when GITHUB_ORG is configured
