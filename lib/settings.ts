@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Redis } from "@upstash/redis";
 import { isSaasMode } from "./org";
+import { setUserRole, ensureUserRecord } from "./rbac";
 
 const SETTINGS_PATH = path.resolve(process.cwd(), "registry", "settings.json");
 
@@ -265,6 +266,13 @@ export async function createOrg(orgSlug: string, orgName: string, adminUsername:
   };
   await getRedis().set(kvKey(orgSlug), settings);
   await getRedis().set(`user:${adminUsername}:org`, orgSlug);
+
+  // Ensure the creator is owner in RBAC
+  await ensureUserRecord(adminUsername, {
+    display_name: adminUsername,
+    provider: "github",
+  }, orgSlug);
+  await setUserRole(adminUsername, "owner", orgSlug);
 }
 
 /** Get the org slug for a user (SaaS mode) */
