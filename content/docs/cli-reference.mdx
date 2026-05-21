@@ -111,6 +111,8 @@ intertool publish server.json --type mcp-server --category integrations
 | `--tags` | Comma-separated tags |
 | `--source-url` | Source repository URL |
 
+If the registry requires admin review for new submissions, `publish` succeeds but the item is submitted for review. It will not appear in search or install results until an owner or admin approves it.
+
 ### `update`
 
 Check installed Intertool items and reinstall any that have a newer registry version.

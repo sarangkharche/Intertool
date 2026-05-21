@@ -50,6 +50,14 @@ intertool publish SKILL.md --name "My Skill" --type skill --category dev-tools
 
 Uploaded package files are stored with the registry item and installed by the CLI into the item's local install directory.
 
+## Review and approval
+
+Admins can enable **Require admin review** in **Settings > Storage & Auth > Governance**. When enabled, new submissions from members are saved with `review` status instead of becoming immediately installable.
+
+Pending submissions appear in **Review**. Owners and admins can approve a submission, which changes it to `published`, or archive it. Browse, search, CLI install, and API list results only include `published` items.
+
+Updates to already-published items remain versioned immediately. A future pending-revision flow can extend review to updates without taking the currently published version offline.
+
 ## MCP servers
 
 For MCP servers, you can publish a `server.json`:
