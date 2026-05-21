@@ -10,7 +10,10 @@ export default function TeamsLoading() {
         </div>
         <div className="p-4 space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between rounded-md border p-3">
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-md border p-3"
+            >
               <div className="h-4 w-28 animate-pulse rounded bg-muted" />
               <div className="h-5 w-16 animate-pulse rounded-full bg-muted/50" />
             </div>

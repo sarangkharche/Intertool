@@ -6,6 +6,10 @@ import { trackDownload } from "@/lib/analytics";
 import { getSettings } from "@/lib/settings";
 import { getOrgSlug } from "@/lib/org";
 import { hasPermission } from "@/lib/rbac";
+import { noStoreHeaders } from "@/lib/cache-control";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export async function GET(
   request: NextRequest,
@@ -26,9 +30,7 @@ export async function GET(
   trackDownload(slug, settings).catch(() => {});
 
   return NextResponse.json(skill, {
-    headers: {
-      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-    },
+    headers: noStoreHeaders(),
   });
 }
 
@@ -49,13 +51,17 @@ export async function DELETE(
     return apiError("Cannot determine authenticated user", 403);
   }
 
-  const isAuthor = skill.author.toLowerCase() === authResult.username.toLowerCase();
+  const isAuthor =
+    skill.author.toLowerCase() === authResult.username.toLowerCase();
   const canDeleteAny = hasPermission(authResult.role, "skill:delete_any");
 
   if (!isAuthor && !canDeleteAny) {
-    return apiError("Only the skill author or an admin can delete this skill", 403);
+    return apiError(
+      "Only the skill author or an admin can delete this skill",
+      403
+    );
   }
 
   await deleteSkill(slug, skill.type);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true }, { headers: noStoreHeaders() });
 }

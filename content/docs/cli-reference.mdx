@@ -21,12 +21,14 @@ Authenticate with a registry instance.
 intertool login --url https://your-registry.example.com
 ```
 
+For SaaS registries, pass the organization path, such as `https://intertool.sh/example-org`.
+
 | Flag | Description |
 |------|-------------|
 | `--url <url>` | Registry instance URL (required) |
 | `--token <token>` | API key to skip the browser OAuth flow |
 
-Opens a browser for GitHub OAuth unless `--token` is provided. Stores credentials in `~/.config/intertool/config.json`.
+Opens a browser for OAuth unless `--token` is provided. Stores credentials in `~/.intertool/config.json`.
 
 ### `logout`
 
@@ -62,6 +64,8 @@ intertool install @team/skill-name
 
 - **Skills / agent tools / prompt templates**: writes to `.claude/skills/<slug>/SKILL.md`
 - **MCP servers**: writes to `.claude/mcp-servers/<slug>/server.json`
+- **Package files**: downloads attached files into the same install directory
+- **Metadata**: writes `.intertool.json` so `intertool update` can compare versions
 
 Automatically adds installed paths to `.gitignore`.
 
@@ -109,8 +113,11 @@ intertool publish server.json --type mcp-server --category integrations
 
 ### `update`
 
-Re-install a skill to get the latest version. Full update checking is not yet available.
+Check installed Intertool items and reinstall any that have a newer registry version.
 
 ```bash
-intertool install @team/skill-name
+intertool update
+intertool update @team/skill-name
 ```
+
+When no name is provided, Intertool scans `.claude/skills/*/.intertool.json` and `.claude/mcp-servers/*/.intertool.json`.

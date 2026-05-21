@@ -4,14 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import {
-  Key,
-  Loader2,
-  Plus,
-  Trash2,
-  Copy,
-  Check,
-} from "lucide-react";
+import { Key, Loader2, Plus, Trash2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface TokenInfo {
@@ -73,7 +66,9 @@ export default function TokensPage() {
       setLabel("");
       fetchTokens();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create token");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create token"
+      );
     } finally {
       setCreating(false);
     }
@@ -89,7 +84,9 @@ export default function TokensPage() {
       toast.success("Token revoked");
       fetchTokens();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to revoke token");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to revoke token"
+      );
     }
   };
 
@@ -114,7 +111,8 @@ export default function TokensPage() {
       <div className="mb-6">
         <h1 className="text-lg text-display">API Tokens</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Personal tokens for CLI and API access. Tokens are shown only once at creation.
+          Personal tokens for CLI and API access. Tokens are shown only once at
+          creation.
         </p>
       </div>
 
@@ -122,7 +120,7 @@ export default function TokensPage() {
       {newToken && (
         <div className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
           <p className="mb-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-            Token created. Copy it now; it won't be shown again.
+            Token created. Copy it now; it won&apos;t be shown again.
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 truncate rounded-md border border-border bg-background px-3 py-1.5 font-mono text-xs">
@@ -171,10 +169,7 @@ export default function TokensPage() {
       {/* Token list */}
       <div className="rounded-lg border border-border bg-card divide-y divide-border-subtle">
         {tokens.map((token) => (
-          <div
-            key={token.hash}
-            className="flex items-center gap-3 px-4 py-3"
-          >
+          <div key={token.hash} className="flex items-center gap-3 px-4 py-3">
             <Key className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 
             <div className="min-w-0 flex-1">

@@ -4,7 +4,11 @@ import { useTheme } from "next-themes";
 import { usePreferences, UserPreferences } from "@/lib/use-preferences";
 import { Sun, Moon, Monitor, LayoutDashboard, Search } from "lucide-react";
 
-const ACCENT_COLORS: { value: UserPreferences["accentColor"]; label: string; class: string }[] = [
+const ACCENT_COLORS: {
+  value: UserPreferences["accentColor"];
+  label: string;
+  class: string;
+}[] = [
   { value: "blue", label: "Blue", class: "bg-[oklch(0.545_0.195_260)]" },
   { value: "violet", label: "Violet", class: "bg-[oklch(0.55_0.2_290)]" },
   { value: "green", label: "Green", class: "bg-[oklch(0.55_0.17_155)]" },
@@ -33,7 +37,9 @@ export default function PreferencesPage() {
         <div className="space-y-5 p-4">
           {/* Theme */}
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Theme</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Theme
+            </label>
             <div className="inline-flex rounded-md border border-border">
               {[
                 { value: "light", label: "Light", icon: Sun },
@@ -58,7 +64,9 @@ export default function PreferencesPage() {
 
           {/* Accent color */}
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Accent color</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Accent color
+            </label>
             <p className="mb-3 text-[11px] text-muted-foreground/60">
               Tints buttons, links, and focus rings.
             </p>
@@ -88,7 +96,9 @@ export default function PreferencesPage() {
         <div className="space-y-5 p-4">
           {/* Density */}
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Density</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Density
+            </label>
             <p className="mb-3 text-[11px] text-muted-foreground/60">
               Adjusts spacing in skill cards and lists.
             </p>
@@ -111,7 +121,9 @@ export default function PreferencesPage() {
 
           {/* Default view */}
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Default view</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Default view
+            </label>
             <p className="mb-3 text-[11px] text-muted-foreground/60">
               How skills appear on the dashboard.
             </p>
@@ -142,19 +154,23 @@ export default function PreferencesPage() {
         <div className="space-y-5 p-4">
           {/* Default tab */}
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Default tab</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Default tab
+            </label>
             <p className="mb-3 text-[11px] text-muted-foreground/60">
               Which tab opens when you visit the dashboard.
             </p>
             <div className="inline-flex flex-wrap rounded-md border border-border">
-              {([
-                { value: "all", label: "All" },
-                { value: "skill", label: "Skills" },
-                { value: "mcp-server", label: "MCP Servers" },
-                { value: "agent-tool", label: "Agents" },
-                { value: "prompt-template", label: "Prompts" },
-                { value: "mine", label: "Yours" },
-              ] as const).map((opt) => (
+              {(
+                [
+                  { value: "all", label: "All" },
+                  { value: "skill", label: "Skills" },
+                  { value: "mcp-server", label: "MCP Servers" },
+                  { value: "agent-tool", label: "Agents" },
+                  { value: "prompt-template", label: "Prompts" },
+                  { value: "mine", label: "Yours" },
+                ] as const
+              ).map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setPreference("defaultTab", opt.value)}
@@ -172,7 +188,9 @@ export default function PreferencesPage() {
 
           {/* Default sort */}
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Default sort</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Default sort
+            </label>
             <div className="inline-flex rounded-md border border-border">
               {(["newest", "name"] as const).map((opt) => (
                 <button
@@ -192,7 +210,9 @@ export default function PreferencesPage() {
 
           {/* Items per page */}
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Items per page</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Items per page
+            </label>
             <div className="inline-flex rounded-md border border-border">
               {([12, 24, 48] as const).map((opt) => (
                 <button
@@ -219,15 +239,23 @@ export default function PreferencesPage() {
         </div>
         <div className="space-y-5 p-4">
           <div>
-            <label className="mb-2 block text-xs text-muted-foreground">Default landing page</label>
+            <label className="mb-2 block text-xs text-muted-foreground">
+              Default landing page
+            </label>
             <p className="mb-3 text-[11px] text-muted-foreground/60">
               Where to go after signing in.
             </p>
             <div className="inline-flex rounded-md border border-border">
-              {([
-                { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-                { value: "search", label: "Search", icon: Search },
-              ] as const).map((opt) => (
+              {(
+                [
+                  {
+                    value: "dashboard",
+                    label: "Dashboard",
+                    icon: LayoutDashboard,
+                  },
+                  { value: "search", label: "Search", icon: Search },
+                ] as const
+              ).map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setPreference("landingPage", opt.value)}

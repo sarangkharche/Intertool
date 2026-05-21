@@ -9,7 +9,10 @@ export default function PublishLoading() {
         <div className="mb-2 h-4 w-16 animate-pulse rounded bg-muted/60" />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-lg border border-border bg-muted/30" />
+            <div
+              key={i}
+              className="h-20 animate-pulse rounded-lg border border-border bg-muted/30"
+            />
           ))}
         </div>
       </div>

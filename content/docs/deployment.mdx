@@ -118,6 +118,7 @@ On Vercel, S3 credentials must be set via environment variables since the filesy
 |---|---|---|---|
 | `AUTH_SECRET` | Yes | -- | NextAuth secret (`openssl rand -base64 32`) |
 | `AUTH_TRUST_HOST` | Yes | -- | Set to `true` |
+| `AUTH_URL` | Production | -- | Public app URL used for auth redirects and emails |
 | `GITHUB_ID` | Yes | -- | GitHub OAuth client ID |
 | `GITHUB_SECRET` | Yes | -- | GitHub OAuth client secret |
 | `S3_BUCKET` | Vercel | -- | S3 bucket name |
@@ -128,3 +129,12 @@ On Vercel, S3 credentials must be set via environment variables since the filesy
 | `S3_SESSION_TOKEN` | No | -- | AWS session token (temporary credentials only) |
 | `INTERTOOL_ADMIN` | No | -- | GitHub username of admin user |
 | `INTERTOOL_API_KEY` | No | -- | API key for CLI/API publishing |
+| `CRON_SECRET` | Production | -- | Bearer token required for scheduled `/api/analytics` calls |
+| `RESEND_API_KEY` | Invitations | -- | Recommended email transport for member invitations |
+| `EMAIL_FROM` | No | `noreply@{AUTH_URL host}` | Sender address for invitation emails |
+| `UPSTASH_REDIS_REST_URL` | Scale/SaaS | -- | Redis URL for SaaS mode, distributed locks, rate limits, and analytics |
+| `UPSTASH_REDIS_REST_TOKEN` | Scale/SaaS | -- | Redis REST token |
+
+In SaaS mode, organization creation depends on Upstash Redis. If the Redis URL or token is missing or unreachable, `/create-org` will show a registry storage error and the create action will stay disabled until Redis is reachable.
+
+For local SaaS development only, set `INTERTOOL_LOCAL_SAAS_FALLBACK=true` to store org metadata, memberships, invitations, and API tokens in local files under `registry/` instead of Redis.

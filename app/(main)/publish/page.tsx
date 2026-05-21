@@ -4,7 +4,12 @@ import { PublishWizard } from "@/components/publish-wizard";
 import { getCategories } from "@/lib/registry";
 import { SkillType } from "@/lib/types";
 
-const VALID_TYPES: SkillType[] = ["skill", "mcp-server", "agent-tool", "prompt-template"];
+const VALID_TYPES: SkillType[] = [
+  "skill",
+  "mcp-server",
+  "agent-tool",
+  "prompt-template",
+];
 
 export default async function PublishPage({
   searchParams,
@@ -27,7 +32,10 @@ export default async function PublishPage({
       <p className="mb-8 text-sm text-muted-foreground">
         Submit a skill, MCP server, tool, or prompt template to the registry.
       </p>
-      <PublishWizard categories={categories} preselectedType={preselectedType} />
+      <PublishWizard
+        categories={categories}
+        preselectedType={preselectedType}
+      />
     </div>
   );
 }

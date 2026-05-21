@@ -38,9 +38,7 @@ export function SkillReadme({
   className?: string;
 }) {
   return (
-    <div
-      className={cn("skill-prose max-w-none", className)}
-    >
+    <div className={cn("skill-prose max-w-none", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}

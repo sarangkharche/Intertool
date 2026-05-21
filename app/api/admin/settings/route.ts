@@ -24,28 +24,39 @@ export async function GET() {
     ? {
         ...settings,
         s3_secret_access_key: "********",
-        github_client_secret: settings.github_client_secret ? "********" : undefined,
-        google_client_secret: settings.google_client_secret ? "********" : undefined,
+        github_client_secret: settings.github_client_secret
+          ? "********"
+          : undefined,
+        google_client_secret: settings.google_client_secret
+          ? "********"
+          : undefined,
       }
     : null;
 
-  const googleConfigured = !!(settings?.google_client_id || process.env.GOOGLE_CLIENT_ID);
-  const githubConfigured = !!(settings?.github_client_id || process.env.GITHUB_ID);
+  const googleConfigured = !!(
+    settings?.google_client_id || process.env.GOOGLE_CLIENT_ID
+  );
+  const githubConfigured = !!(
+    settings?.github_client_id || process.env.GITHUB_ID
+  );
 
   const { getUserRole } = await import("@/lib/rbac");
   const role = await getUserRole(username, orgSlug);
 
-  return NextResponse.json({
-    settings: safeSettings,
-    is_admin: await isAdmin(username, orgSlug),
-    role: role ?? "member",
-    needs_setup: !settings || !isS3Configured(settings),
-    org_slug: orgSlug,
-    google_client_configured: googleConfigured,
-    github_client_configured: githubConfigured,
-  }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  return NextResponse.json(
+    {
+      settings: safeSettings,
+      is_admin: await isAdmin(username, orgSlug),
+      role: role ?? "member",
+      needs_setup: !settings || !isS3Configured(settings),
+      org_slug: orgSlug,
+      google_client_configured: googleConfigured,
+      github_client_configured: githubConfigured,
+    },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }
 
 /** PUT = test connection without saving */
@@ -72,7 +83,14 @@ export async function PUT(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { s3_bucket, s3_region, s3_access_key_id, s3_secret_access_key, s3_endpoint, s3_session_token } = body;
+  const {
+    s3_bucket,
+    s3_region,
+    s3_access_key_id,
+    s3_secret_access_key,
+    s3_endpoint,
+    s3_session_token,
+  } = body;
 
   if (!s3_bucket || !s3_access_key_id || !s3_secret_access_key) {
     return NextResponse.json(
@@ -107,10 +125,7 @@ export async function POST(request: NextRequest) {
 
   const username = (session.user as { username?: string }).username;
   if (!username) {
-    return NextResponse.json(
-      { error: "Username required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Username required" }, { status: 400 });
   }
 
   const orgSlug = await getOrgSlug();
@@ -157,9 +172,15 @@ export async function POST(request: NextRequest) {
 
   // Validate: if enabling Google auth, at least one domain is required
   if (google_auth_enabled === true) {
-    if (!Array.isArray(google_allowed_domains) || google_allowed_domains.length === 0) {
+    if (
+      !Array.isArray(google_allowed_domains) ||
+      google_allowed_domains.length === 0
+    ) {
       return NextResponse.json(
-        { error: "At least one allowed domain is required when enabling Google auth" },
+        {
+          error:
+            "At least one allowed domain is required when enabling Google auth",
+        },
         { status: 400 }
       );
     }
@@ -191,16 +212,15 @@ export async function POST(request: NextRequest) {
   const newSettings = {
     admin_username: existing?.admin_username || username,
     admin_email:
-      provider === "google"
-        ? username
-        : existing?.admin_email || undefined,
+      provider === "google" ? username : existing?.admin_email || undefined,
     configured_at: new Date().toISOString(),
     s3_bucket,
     s3_region: s3_region || "us-east-1",
     s3_access_key_id,
     s3_secret_access_key: secret,
     s3_endpoint: s3_endpoint || undefined,
-    s3_session_token: s3_session_token || existing?.s3_session_token || undefined,
+    s3_session_token:
+      s3_session_token || existing?.s3_session_token || undefined,
     org_slug: orgSlug,
     org_name: existing?.org_name,
     github_client_id:
@@ -222,9 +242,7 @@ export async function POST(request: NextRequest) {
         ? google_allowed_domains
         : existing?.google_allowed_domains,
     github_org:
-      github_org !== undefined
-        ? github_org || undefined
-        : existing?.github_org,
+      github_org !== undefined ? github_org || undefined : existing?.github_org,
     github_org_required:
       github_org_required !== undefined
         ? github_org_required
@@ -234,19 +252,26 @@ export async function POST(request: NextRequest) {
         ? webhook_url || undefined
         : existing?.webhook_url,
     webhook_events:
-      webhook_events !== undefined
-        ? webhook_events
-        : existing?.webhook_events,
+      webhook_events !== undefined ? webhook_events : existing?.webhook_events,
   };
 
-  await saveSettings(newSettings, orgSlug);
-
-  // Test connection before seeding
+  // Test connection before saving so a bad update does not poison runtime config.
   const connTest = await testConnection(newSettings);
   if (!connTest.ok) {
     return NextResponse.json(
-      { error: `Settings saved but S3 connection failed: ${connTest.error}` },
+      { error: `S3 connection failed: ${connTest.error}` },
       { status: 422 }
+    );
+  }
+
+  const saved = await saveSettings(newSettings, orgSlug);
+  if (!saved) {
+    return NextResponse.json(
+      {
+        error:
+          "Settings could not be saved. Configure writable storage, Redis, or environment variables.",
+      },
+      { status: 500 }
     );
   }
 

@@ -25,7 +25,11 @@ export const whoamiCommand = new Command("whoami")
 
       if (isJsonMode()) {
         console.log(
-          JSON.stringify({ authenticated: true, username: me.username, apiUrl: config.apiUrl })
+          JSON.stringify({
+            authenticated: true,
+            username: me.username,
+            apiUrl: config.apiUrl,
+          })
         );
       } else {
         console.log(check(`Logged in as ${bold(me.username)}`));
@@ -33,7 +37,12 @@ export const whoamiCommand = new Command("whoami")
       }
     } catch {
       if (isJsonMode()) {
-        console.log(JSON.stringify({ authenticated: false, error: "Token invalid or expired" }));
+        console.log(
+          JSON.stringify({
+            authenticated: false,
+            error: "Token invalid or expired",
+          })
+        );
       } else {
         console.log(cross("Token invalid or expired."));
         console.log(dim(`Run: intertool login --url <url>`));

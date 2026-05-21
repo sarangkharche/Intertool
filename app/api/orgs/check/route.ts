@@ -3,13 +3,38 @@ import { isSaasMode } from "@/lib/org";
 import { orgExists } from "@/lib/settings";
 
 function hasRedis(): boolean {
-  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return !!(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  );
 }
 
 const RESERVED_SLUGS = [
-  "www", "api", "app", "admin", "dashboard", "docs", "help",
-  "support", "status", "billing", "settings", "auth", "login",
-  "signup", "sign-in", "sign-up", "create-org",
+  "www",
+  "api",
+  "app",
+  "admin",
+  "auth",
+  "billing",
+  "brand",
+  "browse",
+  "create-org",
+  "dashboard",
+  "design-system",
+  "docs",
+  "help",
+  "invite",
+  "login",
+  "publish",
+  "review",
+  "search",
+  "settings",
+  "signup",
+  "sign-in",
+  "sign-up",
+  "skills",
+  "status",
+  "support",
+  "teams",
 ];
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -35,7 +60,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (RESERVED_SLUGS.includes(slug)) {
-    return NextResponse.json({ available: false, reason: "This name is reserved" });
+    return NextResponse.json({
+      available: false,
+      reason: "This name is reserved",
+    });
   }
 
   if (!hasRedis()) {
@@ -43,12 +71,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ available: true });
   }
 
-  const exists = await orgExists(slug);
+  let exists = false;
+  try {
+    exists = await orgExists(slug);
+  } catch {
+    return NextResponse.json(
+      {
+        available: false,
+        reason:
+          "Registry storage is unavailable. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.",
+      },
+      { status: 503 }
+    );
+  }
+
   if (exists) {
     return NextResponse.json({ available: false, reason: "Already taken" });
   }
 
-  return NextResponse.json({ available: true }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  return NextResponse.json(
+    { available: true },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }

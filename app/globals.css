@@ -304,19 +304,51 @@
 }
 
 /* Accent color overrides */
-[data-accent="violet"] { --primary: oklch(0.55 0.2 290); --ring: oklch(0.55 0.2 290); }
-[data-accent="green"]  { --primary: oklch(0.55 0.17 155); --ring: oklch(0.55 0.17 155); }
-[data-accent="orange"] { --primary: oklch(0.65 0.18 55);  --ring: oklch(0.65 0.18 55); }
-[data-accent="rose"]   { --primary: oklch(0.55 0.2 10);   --ring: oklch(0.55 0.2 10); }
+[data-accent="violet"] {
+  --primary: oklch(0.55 0.2 290);
+  --ring: oklch(0.55 0.2 290);
+}
+[data-accent="green"] {
+  --primary: oklch(0.55 0.17 155);
+  --ring: oklch(0.55 0.17 155);
+}
+[data-accent="orange"] {
+  --primary: oklch(0.65 0.18 55);
+  --ring: oklch(0.65 0.18 55);
+}
+[data-accent="rose"] {
+  --primary: oklch(0.55 0.2 10);
+  --ring: oklch(0.55 0.2 10);
+}
 
-.dark[data-accent="violet"], .dark [data-accent="violet"] { --primary: oklch(0.65 0.22 290); --ring: oklch(0.65 0.22 290); }
-.dark[data-accent="green"], .dark [data-accent="green"]   { --primary: oklch(0.65 0.19 155); --ring: oklch(0.65 0.19 155); }
-.dark[data-accent="orange"], .dark [data-accent="orange"] { --primary: oklch(0.72 0.19 55);  --ring: oklch(0.72 0.19 55); }
-.dark[data-accent="rose"], .dark [data-accent="rose"]     { --primary: oklch(0.65 0.22 10);  --ring: oklch(0.65 0.22 10); }
+.dark[data-accent="violet"],
+.dark [data-accent="violet"] {
+  --primary: oklch(0.65 0.22 290);
+  --ring: oklch(0.65 0.22 290);
+}
+.dark[data-accent="green"],
+.dark [data-accent="green"] {
+  --primary: oklch(0.65 0.19 155);
+  --ring: oklch(0.65 0.19 155);
+}
+.dark[data-accent="orange"],
+.dark [data-accent="orange"] {
+  --primary: oklch(0.72 0.19 55);
+  --ring: oklch(0.72 0.19 55);
+}
+.dark[data-accent="rose"],
+.dark [data-accent="rose"] {
+  --primary: oklch(0.65 0.22 10);
+  --ring: oklch(0.65 0.22 10);
+}
 
 /* Density: compact spacing */
-[data-density="compact"] .skill-card { padding: 0.5rem 0.75rem; }
-[data-density="compact"] .skill-card .line-clamp-2 { display: none; }
+[data-density="compact"] .skill-card {
+  padding: 0.5rem 0.75rem;
+}
+[data-density="compact"] .skill-card .line-clamp-2 {
+  display: none;
+}
 
 @layer base {
   * {
@@ -330,10 +362,14 @@
   }
 
   /* Snappy interactive defaults */
-  button, [role="button"], a, select {
+  button,
+  [role="button"],
+  a,
+  select {
     @apply cursor-pointer;
   }
-  button:disabled, [role="button"][aria-disabled="true"] {
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
     @apply cursor-not-allowed;
   }
 }
@@ -343,22 +379,48 @@
   .skill-prose {
     @apply text-sm leading-relaxed text-foreground;
   }
-  .skill-prose h1 { @apply mt-8 mb-3 text-xl font-semibold tracking-tight text-foreground; }
-  .skill-prose h2 { @apply mt-6 mb-2 text-base font-semibold tracking-tight text-foreground; }
-  .skill-prose h3 { @apply mt-4 mb-2 text-sm font-semibold tracking-tight text-foreground; }
-  .skill-prose h4 { @apply mt-3 mb-1 text-sm font-medium text-foreground; }
+  .skill-prose h1 {
+    @apply mt-8 mb-3 text-xl font-semibold tracking-tight text-foreground;
+  }
+  .skill-prose h2 {
+    @apply mt-6 mb-2 text-base font-semibold tracking-tight text-foreground;
+  }
+  .skill-prose h3 {
+    @apply mt-4 mb-2 text-sm font-semibold tracking-tight text-foreground;
+  }
+  .skill-prose h4 {
+    @apply mt-3 mb-1 text-sm font-medium text-foreground;
+  }
   .skill-prose h1:first-child,
   .skill-prose h2:first-child,
-  .skill-prose h3:first-child { @apply mt-0; }
-  .skill-prose p { @apply mb-3; }
-  .skill-prose a { @apply text-primary no-underline; }
-  .skill-prose a:hover { @apply underline; }
-  .skill-prose strong { @apply font-semibold text-foreground; }
-  .skill-prose ul { @apply mb-3 list-disc pl-5; }
-  .skill-prose ol { @apply mb-3 list-decimal pl-5; }
-  .skill-prose li { @apply mb-1; }
+  .skill-prose h3:first-child {
+    @apply mt-0;
+  }
+  .skill-prose p {
+    @apply mb-3;
+  }
+  .skill-prose a {
+    @apply text-primary no-underline;
+  }
+  .skill-prose a:hover {
+    @apply underline;
+  }
+  .skill-prose strong {
+    @apply font-semibold text-foreground;
+  }
+  .skill-prose ul {
+    @apply mb-3 list-disc pl-5;
+  }
+  .skill-prose ol {
+    @apply mb-3 list-decimal pl-5;
+  }
+  .skill-prose li {
+    @apply mb-1;
+  }
   .skill-prose li > ul,
-  .skill-prose li > ol { @apply mt-1 mb-0; }
+  .skill-prose li > ol {
+    @apply mt-1 mb-0;
+  }
   .skill-prose blockquote {
     @apply mb-3 border-l-2 border-border pl-3 text-muted-foreground italic;
   }

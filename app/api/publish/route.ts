@@ -1,18 +1,50 @@
 import { NextRequest } from "next/server";
-import { generateInstallCommands, upsertSkill } from "@/lib/registry";
+import {
+  generateInstallCommands,
+  getSkillBySlug,
+  replaceSkillFiles,
+  upsertSkill,
+} from "@/lib/registry";
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
 import { validateSkillInput } from "@/lib/validation";
 import { apiError } from "@/lib/api-utils";
-import { checkRateLimit, rateLimitResponse, rateLimitHeaders } from "@/lib/rate-limit";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  rateLimitHeaders,
+} from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
-import type { McpTransport, SourceFormat, SkillType, SkillStatus } from "@/lib/types";
+import { hasPermission } from "@/lib/rbac";
+import type {
+  McpTransport,
+  SourceFormat,
+  SkillType,
+  SkillStatus,
+} from "@/lib/types";
+
+function isUploadedFile(value: FormDataEntryValue): value is File {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "name" in value &&
+    "size" in value &&
+    "arrayBuffer" in value
+  );
+}
 
 export async function POST(request: NextRequest) {
   const authResult = await authenticateApi(request);
   if (!isAuthenticated(authResult)) return authResult;
 
+  if (!hasPermission(authResult.role, "skill:publish")) {
+    return apiError("You do not have permission to publish skills", 403);
+  }
+
   // Rate limit: 10 publishes per minute per user
-  const rl = await checkRateLimit(`publish:${authResult.username}`, { limit: 10, windowSeconds: 60 });
+  const rl = await checkRateLimit(`publish:${authResult.username}`, {
+    limit: 10,
+    windowSeconds: 60,
+  });
   if (!rl.allowed) return rateLimitResponse(rl);
 
   const formData = await request.formData();
@@ -33,7 +65,9 @@ export async function POST(request: NextRequest) {
   }
   let compatibility: string[];
   try {
-    compatibility = JSON.parse((formData.get("compatibility") as string) || "[]");
+    compatibility = JSON.parse(
+      (formData.get("compatibility") as string) || "[]"
+    );
   } catch {
     compatibility = [];
   }
@@ -42,6 +76,10 @@ export async function POST(request: NextRequest) {
   const sourceFormat = (formData.get("source_format") as string) || undefined;
   const transport = (formData.get("transport") as string) || undefined;
   const changelog = (formData.get("changelog") as string) || undefined;
+  const uploadedFiles = formData
+    .getAll("files")
+    .filter(isUploadedFile)
+    .filter((file) => file.size > 0);
 
   // Validate input
   const validation = validateSkillInput({
@@ -64,6 +102,24 @@ export async function POST(request: NextRequest) {
   }
 
   const { username } = authResult;
+  const existingSkill = await getSkillBySlug(slug);
+  if (existingSkill) {
+    if (existingSkill.type !== type) {
+      return apiError("A published item cannot change type", 409);
+    }
+
+    const isAuthor =
+      existingSkill.author.toLowerCase() === username.toLowerCase();
+    const canEdit =
+      (isAuthor && hasPermission(authResult.role, "skill:edit_own")) ||
+      hasPermission(authResult.role, "skill:edit_any");
+    if (!canEdit) {
+      return apiError(
+        "Only the item author or an admin can update this item",
+        403
+      );
+    }
+  }
 
   const installCommands = generateInstallCommands({
     type,
@@ -74,6 +130,22 @@ export async function POST(request: NextRequest) {
   });
 
   try {
+    const files =
+      uploadedFiles.length > 0
+        ? await replaceSkillFiles(
+            slug,
+            type,
+            await Promise.all(
+              uploadedFiles.map(async (file) => ({
+                path: file.name,
+                size: file.size,
+                contentType: file.type || "application/octet-stream",
+                body: new Uint8Array(await file.arrayBuffer()),
+              }))
+            )
+          )
+        : (existingSkill?.files ?? []);
+
     await upsertSkill(
       {
         slug,
@@ -93,6 +165,7 @@ export async function POST(request: NextRequest) {
         source_url: sourceUrl,
         source_format: sourceFormat as SourceFormat | undefined,
         transport: transport as McpTransport | undefined,
+        files: files.length > 0 ? files : undefined,
         status: "published" as SkillStatus,
         created_at: new Date().toISOString(),
       },

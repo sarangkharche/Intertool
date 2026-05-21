@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSkills } from "@/lib/registry";
 import { auth } from "@/lib/auth";
+import { noStoreHeaders } from "@/lib/cache-control";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -26,9 +30,12 @@ export async function GET(request: NextRequest) {
     typeCounts[s.type] = (typeCounts[s.type] ?? 0) + 1;
   }
 
-  return NextResponse.json({
-    total_skills: total,
-    by_type: typeCounts,
-    aggregated_at: new Date().toISOString(),
-  });
+  return NextResponse.json(
+    {
+      total_skills: total,
+      by_type: typeCounts,
+      aggregated_at: new Date().toISOString(),
+    },
+    { headers: noStoreHeaders() }
+  );
 }

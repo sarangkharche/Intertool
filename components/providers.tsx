@@ -6,13 +6,14 @@ import { RootProvider } from "fumadocs-ui/provider/next";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
       <SessionProvider>
-        <RootProvider
-          theme={{ enabled: false }}
-        >
-          {children}
-        </RootProvider>
+        <RootProvider theme={{ enabled: false }}>{children}</RootProvider>
       </SessionProvider>
     </ThemeProvider>
   );

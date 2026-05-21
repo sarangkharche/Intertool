@@ -44,9 +44,11 @@ intertool publish SKILL.md --name "My Skill" --type skill --category dev-tools
 
 1. Sign in to your registry
 2. Click **Publish** in the header
-3. Fill in the metadata form
-4. Paste or write the skill content in the editor
-5. Submit
+3. Choose a type or use the quick import flow
+4. Upload `SKILL.md`, `server.json`, `.zip`, `.yaml`, `.md`, or `.txt` files, or import from a GitHub repository
+5. Review the detected metadata, edit the README, and submit
+
+Uploaded package files are stored with the registry item and installed by the CLI into the item's local install directory.
 
 ## MCP servers
 
@@ -56,10 +58,10 @@ For MCP servers, you can publish a `server.json`:
 {
   "name": "My MCP Server",
   "description": "Connects to internal APIs",
-  "transport": "stdio",
-  "install_commands": {
-    "claude": "claude mcp add my-server -- npx my-server",
-    "cursor": "Add to .cursor/mcp.json"
+  "transport": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["my-server"]
   }
 }
 ```
@@ -73,5 +75,11 @@ intertool publish server.json --type mcp-server --category integrations
 Re-publishing with the same slug updates the existing entry:
 
 ```bash
-intertool update SKILL.md
+intertool publish SKILL.md
+```
+
+Each update creates a version snapshot. To update a locally installed item to the latest registry version, run:
+
+```bash
+intertool update @team/my-code-reviewer
 ```

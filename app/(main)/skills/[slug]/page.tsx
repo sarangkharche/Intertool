@@ -6,12 +6,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillReadme } from "@/components/skill-readme";
 import { InstallCommand } from "@/components/install-command";
 import { TypeBadge } from "@/components/skill-card";
-import { getSkillBySlug, getSkillVersions, getRelatedSkills } from "@/lib/registry";
-import { Calendar, Clock, Download, ExternalLink, GitCompareArrows, Pencil } from "lucide-react";
+import {
+  getSkillBySlug,
+  getSkillVersions,
+  getRelatedSkills,
+} from "@/lib/registry";
+import {
+  Calendar,
+  Clock,
+  Download,
+  ExternalLink,
+  GitCompareArrows,
+  Pencil,
+} from "lucide-react";
 import { ShareButton } from "@/components/share-button";
 import { DeleteSkillButton } from "@/components/delete-skill-button";
 import { DownloadStats } from "@/components/download-stats";
-
+import { getOrgSlug } from "@/lib/org";
+import { getUserRole, hasPermission } from "@/lib/rbac";
 
 export default async function SkillDetailPage({
   params,
@@ -29,8 +41,16 @@ export default async function SkillDetailPage({
     getRelatedSkills(slug),
   ]);
   if (!skill) notFound();
-  const username = (session?.user as { username?: string } | undefined)?.username;
-  const isAuthor = username && skill.author.toLowerCase() === username.toLowerCase();
+  const username = (session?.user as { username?: string } | undefined)
+    ?.username;
+  const isAuthor =
+    username && skill.author.toLowerCase() === username.toLowerCase();
+  const orgSlug = await getOrgSlug();
+  const role = username ? await getUserRole(username, orgSlug) : null;
+  const canEdit =
+    isAuthor || (role ? hasPermission(role, "skill:edit_any") : false);
+  const canDelete =
+    isAuthor || (role ? hasPermission(role, "skill:delete_any") : false);
 
   const installCommands = skill.install_commands ?? {};
   const primaryInstallCmd =
@@ -42,9 +62,19 @@ export default async function SkillDetailPage({
     <div className="mx-auto max-w-5xl px-4 py-8">
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1.5 font-mono text-xs text-muted-foreground/70">
-        <Link href="/" className="hover:text-foreground transition-colors duration-100">registry</Link>
+        <Link
+          href="/"
+          className="hover:text-foreground transition-colors duration-100"
+        >
+          registry
+        </Link>
         <span>/</span>
-        <Link href="/browse" className="hover:text-foreground transition-colors duration-100">skills</Link>
+        <Link
+          href="/browse"
+          className="hover:text-foreground transition-colors duration-100"
+        >
+          skills
+        </Link>
         <span>/</span>
         <span className="text-foreground">{skill.slug}</span>
       </nav>
@@ -81,15 +111,17 @@ export default async function SkillDetailPage({
               >
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
               </a>
-              {isAuthor && (
+              {canEdit && (
+                <Link
+                  href={`/skills/${skill.slug}/edit`}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+                  aria-label="Edit"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              )}
+              {canDelete && (
                 <>
-                  <Link
-                    href={`/skills/${skill.slug}/edit`}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Link>
                   <DeleteSkillButton slug={skill.slug} />
                 </>
               )}
@@ -108,8 +140,12 @@ export default async function SkillDetailPage({
           {/* Tabs */}
           <Tabs defaultValue="readme">
             <TabsList>
-              <TabsTrigger value="readme" className="text-sm">Content</TabsTrigger>
-              <TabsTrigger value="install" className="text-sm">Install</TabsTrigger>
+              <TabsTrigger value="readme" className="text-sm">
+                Content
+              </TabsTrigger>
+              <TabsTrigger value="install" className="text-sm">
+                Install
+              </TabsTrigger>
               <TabsTrigger value="versions" className="text-sm">
                 Versions ({versions.length})
               </TabsTrigger>
@@ -160,6 +196,31 @@ export default async function SkillDetailPage({
                     </p>
                   </div>
                 )}
+
+                {skill.files && skill.files.length > 0 && (
+                  <div className="mt-4 rounded-md bg-muted/50 px-3 py-2.5">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      Package files
+                    </p>
+                    <div className="space-y-1">
+                      {skill.files.map((file) => (
+                        <a
+                          key={file.path}
+                          href={`/api/skills/${skill.slug}/files/${file.path
+                            .split("/")
+                            .map(encodeURIComponent)
+                            .join("/")}`}
+                          className="flex items-center justify-between gap-3 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+                        >
+                          <span className="truncate">{file.path}</span>
+                          <span className="shrink-0">
+                            {Math.ceil(file.size / 1024)} KB
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -167,7 +228,8 @@ export default async function SkillDetailPage({
               {versions.length > 0 ? (
                 <div className="space-y-0 rounded-lg border border-border">
                   {versions.map((v, i) => {
-                    const toVersion = i === 0 ? "current" : versions[i - 1].version;
+                    const toVersion =
+                      i === 0 ? "current" : versions[i - 1].version;
                     return (
                       <div
                         key={v.version}
@@ -177,13 +239,20 @@ export default async function SkillDetailPage({
                           <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm font-medium">v{v.version}</span>
+                              <span className="font-mono text-sm font-medium">
+                                v{v.version}
+                              </span>
                               <span className="text-xs text-muted-foreground">
-                                {new Date(v.created_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
+                                {new Date(v.created_at).toLocaleDateString(
+                                  "en-US",
+                                  { dateStyle: "medium" }
+                                )}
                               </span>
                             </div>
                             {v.changelog && (
-                              <p className="mt-1 text-sm text-muted-foreground">{v.changelog}</p>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {v.changelog}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -191,7 +260,10 @@ export default async function SkillDetailPage({
                           href={`/skills/${slug}/versions/diff?from=${v.version}&to=${toVersion}`}
                           className="shrink-0 inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
                         >
-                          <GitCompareArrows className="h-3 w-3" aria-hidden="true" />
+                          <GitCompareArrows
+                            className="h-3 w-3"
+                            aria-hidden="true"
+                          />
                           Diff
                         </Link>
                       </div>
@@ -211,7 +283,9 @@ export default async function SkillDetailPage({
         <aside className="rounded-lg border border-border/60">
           {/* Author */}
           <div className="p-4">
-            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Author</h3>
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              Author
+            </h3>
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
                 {skill.author.slice(0, 2).toUpperCase()}
@@ -224,7 +298,8 @@ export default async function SkillDetailPage({
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors duration-100"
                 >
-                  GitHub <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
+                  GitHub{" "}
+                  <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
                 </a>
               </div>
             </div>
@@ -232,7 +307,9 @@ export default async function SkillDetailPage({
 
           {/* Details */}
           <div className="border-t border-border-subtle p-4">
-            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Details</h3>
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              Details
+            </h3>
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -240,7 +317,9 @@ export default async function SkillDetailPage({
                   Published
                 </span>
                 <span className="font-mono text-xs">
-                  {new Date(skill.created_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
+                  {new Date(skill.created_at).toLocaleDateString("en-US", {
+                    dateStyle: "medium",
+                  })}
                 </span>
               </div>
               {skill.version && (
@@ -253,7 +332,9 @@ export default async function SkillDetailPage({
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Updated</span>
                   <span className="font-mono text-xs">
-                    {new Date(skill.updated_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
+                    {new Date(skill.updated_at).toLocaleDateString("en-US", {
+                      dateStyle: "medium",
+                    })}
                   </span>
                 </div>
               )}
@@ -268,7 +349,17 @@ export default async function SkillDetailPage({
               {skill.source_format && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Format</span>
-                  <span className="font-mono text-xs">{skill.source_format.replace("-", " ")}</span>
+                  <span className="font-mono text-xs">
+                    {skill.source_format.replace("-", " ")}
+                  </span>
+                </div>
+              )}
+              {skill.files && skill.files.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Files</span>
+                  <span className="font-mono text-xs">
+                    {skill.files.length}
+                  </span>
                 </div>
               )}
             </div>
@@ -277,7 +368,9 @@ export default async function SkillDetailPage({
           {/* Source */}
           {skill.source_url && (
             <div className="border-t border-border-subtle p-4">
-              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Source</h3>
+              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                Source
+              </h3>
               <a
                 href={skill.source_url}
                 target="_blank"
@@ -293,10 +386,16 @@ export default async function SkillDetailPage({
           {/* Tags */}
           {skill.tags.length > 0 && (
             <div className="border-t border-border-subtle p-4">
-              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Tags</h3>
+              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                Tags
+              </h3>
               <div className="flex flex-wrap gap-1.5">
                 {skill.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs font-normal">
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="text-xs font-normal"
+                  >
                     {tag}
                   </Badge>
                 ))}
@@ -307,10 +406,16 @@ export default async function SkillDetailPage({
           {/* Compatibility */}
           {skill.compatibility.length > 0 && (
             <div className="border-t border-border-subtle p-4">
-              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">Works with</h3>
+              <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                Works with
+              </h3>
               <div className="flex flex-wrap gap-1.5">
                 {skill.compatibility.map((c) => (
-                  <Badge key={c} variant="outline" className="text-xs font-normal">
+                  <Badge
+                    key={c}
+                    variant="outline"
+                    className="text-xs font-normal"
+                  >
                     {c}
                   </Badge>
                 ))}
@@ -323,7 +428,9 @@ export default async function SkillDetailPage({
       {/* Related Skills */}
       {relatedSkills.length > 0 && (
         <div className="mt-12">
-          <h2 className="mb-4 text-sm font-medium text-muted-foreground">Related Skills</h2>
+          <h2 className="mb-4 text-sm font-medium text-muted-foreground">
+            Related Skills
+          </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {relatedSkills.map((rs) => (
               <Link
@@ -335,8 +442,12 @@ export default async function SkillDetailPage({
                   <span className="text-sm font-medium">{rs.name}</span>
                   <TypeBadge type={rs.type} />
                 </div>
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{rs.description}</p>
-                <p className="mt-1 font-mono text-[10px] text-muted-foreground/60">@{rs.author}</p>
+                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                  {rs.description}
+                </p>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground/60">
+                  @{rs.author}
+                </p>
               </Link>
             ))}
           </div>
@@ -346,8 +457,13 @@ export default async function SkillDetailPage({
   );
 }
 
+function daysSince(date: string): number {
+  // Server-rendered relative freshness is intentionally calculated at request time.
+  return Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+}
+
 function FreshnessBadge({ date }: { date: string }) {
-  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+  const days = daysSince(date);
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
   let label: string;

@@ -13,7 +13,7 @@ A private, self-hosted registry for AI agent skills, MCP servers, agent tools, a
 - **Publish** via web UI, CLI, or API with drag-and-drop SKILL.md files or GitHub import
 - **Install** with generated commands for Claude Code, Cursor, and CLI
 - **Versioning** with automatic snapshots and changelogs
-- **GitHub OAuth** with role-based access control (admin, member, viewer)
+- **GitHub OAuth** with role-based access control (owner, admin, member)
 - **CLI** for search, install, publish, and management from the terminal
 - **Dark mode** default with light mode toggle
 
@@ -31,6 +31,7 @@ No database. Settings stored in a local JSON file or environment variables. All 
 s3://your-bucket/
 ├── skills/{slug}/
 │   ├── skill.json              ← current version
+│   ├── files/                  ← optional package files
 │   └── versions/
 │       ├── 1.0.0.json          ← version snapshots
 │       └── 1.0.1.json
@@ -55,11 +56,11 @@ npm install
 
 Go to [github.com/settings/developers](https://github.com/settings/developers) → **New OAuth App**:
 
-| Field | Value |
-|---|---|
-| Application name | Intertool (dev) |
-| Homepage URL | `http://localhost:3000` |
-| Callback URL | `http://localhost:3000/api/auth/callback/github` |
+| Field            | Value                                            |
+| ---------------- | ------------------------------------------------ |
+| Application name | Intertool (dev)                                  |
+| Homepage URL     | `http://localhost:3000`                          |
+| Callback URL     | `http://localhost:3000/api/auth/callback/github` |
 
 Save the **Client ID** and **Client Secret**.
 

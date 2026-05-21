@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getSkillBySlug, getSkillVersion, getSkillVersions } from "@/lib/registry";
+import {
+  getSkillBySlug,
+  getSkillVersion,
+  getSkillVersions,
+} from "@/lib/registry";
 import { ArrowLeft } from "lucide-react";
 import { VersionDiff } from "@/components/version-diff";
 import { VersionPicker } from "./version-picker";
@@ -30,7 +34,8 @@ export default async function DiffPage({
   ]);
 
   const oldContent = oldVer?.readme ?? "";
-  const newContent = to === "current" ? (skill.readme ?? "") : (newVer?.readme ?? "");
+  const newContent =
+    to === "current" ? (skill.readme ?? "") : (newVer?.readme ?? "");
   const newLabel = to === "current" ? (skill.version ?? to) : to;
 
   // Build snapshot data for metadata diffs

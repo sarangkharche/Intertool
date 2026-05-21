@@ -2,12 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
 import { listMembers, authorize, ensureUserRecord } from "@/lib/rbac";
-import { listPendingInvitations, createInvitation, getInvitationByEmail } from "@/lib/invitations";
+import {
+  listPendingInvitations,
+  createInvitation,
+  getInvitationByEmail,
+} from "@/lib/invitations";
 import { sendInvitationEmail, getEmailTransport } from "@/lib/email";
 import { getSettings } from "@/lib/settings";
 import type { OrgRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+function publicBaseUrl(): string {
+  const raw =
+    process.env.AUTH_URL ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000";
+  return raw.startsWith("http://") || raw.startsWith("https://")
+    ? raw
+    : `https://${raw}`;
+}
 
 export async function GET() {
   const session = await auth();
@@ -15,23 +30,35 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const username =
+    (session.user as { username?: string }).username ??
+    session.user.name ??
+    "unknown";
   const orgSlug = await getOrgSlug();
+  const authz = await authorize(username, "members:invite", orgSlug);
+  if (!authz.allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const members = await listMembers(orgSlug);
   const invitations = await listPendingInvitations(orgSlug);
 
-  return NextResponse.json({
-    members,
-    invitations: invitations.map((inv) => ({
-      token: inv.token,
-      email: inv.email,
-      role: inv.role,
-      invited_by: inv.invited_by,
-      created_at: inv.created_at,
-      expires_at: inv.expires_at,
-    })),
-  }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  return NextResponse.json(
+    {
+      members,
+      invitations: invitations.map((inv) => ({
+        token: inv.token,
+        email: inv.email,
+        role: inv.role,
+        invited_by: inv.invited_by,
+        created_at: inv.created_at,
+        expires_at: inv.expires_at,
+      })),
+    },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -62,7 +89,7 @@ export async function POST(request: NextRequest) {
   if (!["member", "admin"].includes(role)) {
     return NextResponse.json(
       { error: "Role must be 'member' or 'admin'" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -70,21 +97,30 @@ export async function POST(request: NextRequest) {
   const email = body.email?.trim().toLowerCase();
   if (email) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid email address" },
+        { status: 400 }
+      );
     }
 
     // Check email transport
     if (!getEmailTransport()) {
       return NextResponse.json(
-        { error: "Email transport not configured. Set RESEND_API_KEY or SMTP_HOST." },
-        { status: 422 },
+        {
+          error:
+            "Email transport not configured. Set RESEND_API_KEY or SMTP_HOST.",
+        },
+        { status: 422 }
       );
     }
 
     // Check if already a member
     const members = await listMembers(orgSlug);
     if (members.some((m) => m.id === email)) {
-      return NextResponse.json({ error: "This user is already a member" }, { status: 409 });
+      return NextResponse.json(
+        { error: "This user is already a member" },
+        { status: 409 }
+      );
     }
 
     // Check for existing invitation
@@ -92,23 +128,29 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { error: "An invitation is already pending for this email" },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
     const invitation = await createInvitation(email, role, username, orgSlug);
 
-    const baseUrl = process.env.NEXTAUTH_URL || `https://${process.env.VERCEL_URL}`;
+    const baseUrl = publicBaseUrl();
     const acceptUrl = `${baseUrl}/invite?token=${invitation.token}`;
 
     const settings = await getSettings(orgSlug);
     const registryName = settings?.org_name || "Intertool Registry";
 
-    const result = await sendInvitationEmail(email, username, registryName, role, acceptUrl);
+    const result = await sendInvitationEmail(
+      email,
+      username,
+      registryName,
+      role,
+      acceptUrl
+    );
     if (!result.success) {
       return NextResponse.json(
         { error: `Failed to send email: ${result.error}` },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -122,17 +164,14 @@ export async function POST(request: NextRequest) {
           expires_at: invitation.expires_at,
         },
       },
-      { status: 201 },
+      { status: 201 }
     );
   }
 
   // Legacy: identifier-based pre-provisioning (for CLI backward compat)
   const identifier = body.identifier?.trim().toLowerCase();
   if (!identifier) {
-    return NextResponse.json(
-      { error: "email is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "email is required" }, { status: 400 });
   }
 
   try {
@@ -142,7 +181,7 @@ export async function POST(request: NextRequest) {
         display_name: identifier,
         provider: identifier.includes("@") ? "google" : "github",
       },
-      orgSlug,
+      orgSlug
     );
 
     if (role !== user.role && role !== "owner") {

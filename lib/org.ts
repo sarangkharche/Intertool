@@ -1,7 +1,9 @@
 import { headers } from "next/headers";
 
+const ORG_COOKIE = "intertool.org";
+
 /**
- * Returns true if running in SaaS mode (intertool.sh).
+ * Returns true if running in SaaS mode.
  * Set INTERTOOL_MODE=saas in env to enable multi-tenant mode.
  */
 export function isSaasMode(): boolean {
@@ -9,8 +11,35 @@ export function isSaasMode(): boolean {
 }
 
 /**
+ * Development-only fallback for exercising SaaS org flows without remote Redis.
+ * Production must fail fast when Redis is unavailable.
+ */
+export function isLocalSaasFallbackMode(): boolean {
+  return (
+    isSaasMode() &&
+    process.env.NODE_ENV !== "production" &&
+    process.env.INTERTOOL_LOCAL_SAAS_FALLBACK === "true"
+  );
+}
+
+function readCookie(
+  cookieHeader: string | null,
+  name: string
+): string | undefined {
+  if (!cookieHeader) return undefined;
+  for (const part of cookieHeader.split(";")) {
+    const [rawKey, ...rawValue] = part.trim().split("=");
+    if (rawKey === name) {
+      return decodeURIComponent(rawValue.join("="));
+    }
+  }
+  return undefined;
+}
+
+/**
  * Get the org slug for the current request.
- * - SaaS mode: reads from x-org-slug header (set by proxy.ts from subdomain)
+ * - SaaS mode: reads x-org-slug set by proxy.ts for /{org} routes.
+ * - API calls without a path prefix fall back to the active org cookie.
  * - Self-hosted mode: returns undefined (single tenant)
  */
 export async function getOrgSlug(): Promise<string | undefined> {
@@ -18,7 +47,7 @@ export async function getOrgSlug(): Promise<string | undefined> {
 
   try {
     const h = await headers();
-    return h.get("x-org-slug") || undefined;
+    return h.get("x-org-slug") || readCookie(h.get("cookie"), ORG_COOKIE);
   } catch {
     // Not in a request context (build time, etc.)
     return undefined;

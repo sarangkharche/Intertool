@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 export interface UserPreferences {
   accentColor: "blue" | "violet" | "green" | "orange" | "rose";
   density: "compact" | "comfortable";
   defaultView: "grid" | "list";
-  defaultTab: "all" | "skill" | "mcp-server" | "agent-tool" | "prompt-template" | "mine";
+  defaultTab:
+    | "all"
+    | "skill"
+    | "mcp-server"
+    | "agent-tool"
+    | "prompt-template"
+    | "mine";
   defaultSort: "newest" | "name";
   itemsPerPage: 12 | 24 | 48;
   landingPage: "dashboard" | "search";
@@ -83,7 +89,10 @@ export function usePreferences(): [
       listeners.forEach((l) => l());
       // Dispatch storage event for cross-tab sync
       window.dispatchEvent(
-        new StorageEvent("storage", { key: STORAGE_KEY, newValue: JSON.stringify(next) })
+        new StorageEvent("storage", {
+          key: STORAGE_KEY,
+          newValue: JSON.stringify(next),
+        })
       );
     },
     []

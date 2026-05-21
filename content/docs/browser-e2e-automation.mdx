@@ -1,0 +1,96 @@
+---
+title: Browser E2E Automation
+description: Playwright workflow, coverage map, and automation conventions for Intertool.
+---
+
+Intertool uses Playwright for browser automation and E2E tests. The suite starts small with public smoke coverage and should grow around complete product workflows.
+
+## Quick start
+
+Install the Chromium browser once:
+
+```bash
+npm run test:e2e:install
+```
+
+Run E2E tests:
+
+```bash
+npm run test:e2e
+```
+
+Run against an existing app instead of letting Playwright start `npm run dev`:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
+```
+
+The managed Playwright dev server uses `127.0.0.1:3000` by default and reuses an existing server there. Override it with `PLAYWRIGHT_PORT` only when no other Next dev server is running for this repository.
+
+Debug locally:
+
+```bash
+npm run test:e2e:headed
+npm run test:e2e:ui
+npm run test:e2e:report
+```
+
+## Current coverage
+
+The initial suite in `tests/e2e/public.spec.ts` covers:
+
+- unauthenticated home page rendering
+- sign-in page rendering
+- `/docs`
+- `/llms.txt`
+- `/llms-full.txt`
+
+These tests are intentionally fixture-light so they can run on a new checkout.
+
+## Coverage roadmap
+
+Add tests around workflows, not isolated components:
+
+| Area | Scenarios |
+|---|---|
+| Public discovery | Home, browse, search filters, category routes, docs, LLM endpoints |
+| Auth | Sign-in errors, OAuth provider visibility, invitation acceptance, org creation |
+| Admin setup | S3 settings validation, owner/admin access, non-admin denial |
+| Publishing | Manual publish, `SKILL.md` upload, `server.json` upload, GitHub import, package files, validation errors |
+| Registry items | Detail page, install command copy, raw download, package file download, edit, versions, diff |
+| CLI/API | CLI login token mode, search, publish, install, update, API token auth, RBAC failures |
+| SaaS mode | `/{org}` routing, reserved route protection, org cookie API fallback, local SaaS fallback |
+
+## Authenticated tests
+
+Do not depend on real OAuth for CI. Add a deterministic auth setup before broad authenticated coverage.
+
+Recommended pattern:
+
+1. Add a test-only auth bypass guarded by `NODE_ENV === "test"` or a dedicated env var that is never enabled in production.
+2. Seed a user with the needed role and org state.
+3. Save browser state to `tests/e2e/.auth/user.json`.
+4. Reuse that state from workflow tests.
+
+The `.auth` directory is ignored by git.
+
+## Browser automation conventions
+
+- Prefer accessible locators: `getByRole`, `getByLabel`, `getByText`.
+- Add `data-testid` only when a control has no stable accessible role or name.
+- Assert user-visible outcomes and network responses, not internal implementation details.
+- Use Playwright request contexts for text endpoints, file downloads, and API contract checks.
+- Keep tests deterministic by avoiding shared S3 buckets unless the test owns setup and cleanup.
+- Capture traces on retry and screenshots on failure. The config already enables both.
+
+## Local storage fixtures
+
+Public tests should not need S3. Publish, install, and package-file tests need isolated storage.
+
+Good local options:
+
+- local SaaS fallback with `INTERTOOL_MODE=saas` and `INTERTOOL_LOCAL_SAAS_FALLBACK=true`
+- an S3-compatible test bucket with unique object prefixes per test run
+- a future registry storage adapter that can point to a temporary local fixture
+
+Any fixture that writes credentials or tokens must stay out of git.

@@ -2,11 +2,22 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Category, SkillType } from "@/lib/types";
 import { SKILL_TYPE_LABELS } from "@/lib/constants";
 
-const SKILL_TYPES: SkillType[] = ["skill", "mcp-server", "agent-tool", "prompt-template"];
+const SKILL_TYPES: SkillType[] = [
+  "skill",
+  "mcp-server",
+  "agent-tool",
+  "prompt-template",
+];
 
 export function FilterSidebar({ categories }: { categories: Category[] }) {
   const router = useRouter();

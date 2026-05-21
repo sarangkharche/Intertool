@@ -3,7 +3,7 @@ title: Intertool Documentation
 description: A private registry for AI agent skills, MCP servers, tools, and prompt templates.
 ---
 
-Intertool is a self-hosted registry where teams share AI agent skills, MCP servers, agent tools, and prompt templates. Skills live in your own S3 bucket, access is controlled by GitHub OAuth, and everything installs with one CLI command.
+Intertool is a self-hosted registry where teams share AI agent skills, MCP servers, agent tools, and prompt templates. Skills and package files live in your own S3 bucket, access is controlled by OAuth and RBAC, and everything installs with one CLI command.
 
 ## What you can do
 
@@ -26,5 +26,5 @@ Intertool is a Next.js application backed by:
 
 - **S3** for skill file storage
 - **Upstash Redis** for settings, rate limiting, and caching
-- **GitHub OAuth** for authentication
-- **Role-based access control** (admin, member, viewer)
+- **GitHub OAuth** for authentication, with optional Google Workspace auth
+- **Role-based access control** (owner, admin, member)

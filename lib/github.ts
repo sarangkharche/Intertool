@@ -2,7 +2,9 @@
  * Fetch the GitHub organizations the authenticated user belongs to.
  * Requires `read:org` scope on the access token.
  */
-export async function getGitHubUserOrgs(accessToken: string): Promise<string[]> {
+export async function getGitHubUserOrgs(
+  accessToken: string
+): Promise<string[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
 

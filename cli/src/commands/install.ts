@@ -1,9 +1,16 @@
 import { Command } from "commander";
-import { apiGet } from "../lib/api.js";
+import { apiDownload, apiGet } from "../lib/api.js";
 import { getConfig } from "../lib/config.js";
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { dirname, join, resolve, sep } from "path";
 import { bold, dim, check, cross, isJsonMode, spinner } from "../lib/format.js";
+
+interface SkillFile {
+  path: string;
+  size: number;
+  content_type: string;
+  sha256: string;
+}
 
 interface Skill {
   slug: string;
@@ -14,85 +21,53 @@ interface Skill {
   readme: string;
   install_commands: Record<string, string>;
   transport?: string;
+  version?: string;
+  files?: SkillFile[];
+}
+
+interface InstallMetadata {
+  slug: string;
+  name: string;
+  type: string;
+  author: string;
+  version?: string;
+  registry: string;
+  installed_at: string;
+  files: SkillFile[];
+}
+
+export interface InstallResult {
+  installed: true;
+  path: string;
+  metadataPath: string;
+  downloadedFiles: string[];
+  skill: {
+    slug: string;
+    name: string;
+    type: string;
+    version?: string;
+  };
+  install_commands?: Record<string, string>;
 }
 
 export const installCommand = new Command("install")
   .description("Install a skill, MCP server, agent tool, or prompt template")
   .argument("<name>", "Skill name (e.g., @team/skill-name)")
-  .addHelpText("after", `
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ intertool install @team/code-review
   $ intertool install my-skill --json
-`)
+`
+  )
   .action(async (name: string) => {
-    const slug = name.replace(/^@[^/]+\//, "");
-    const config = getConfig();
-
-    if (!config.token) {
-      console.error(cross("Not logged in. Run: intertool login --url <url>"));
-      process.exit(1);
-    }
-
     const s = spinner(`Fetching ${name}...`);
 
     try {
-      const skill = (await apiGet(`/api/skills/${slug}`)) as Skill;
+      const result = await installItem(name);
       s.stop();
-
-      switch (skill.type) {
-        case "skill":
-        case "prompt-template":
-        case "agent-tool": {
-          const skillDir = join(process.cwd(), ".claude", "skills", slug);
-          mkdirSync(skillDir, { recursive: true });
-          writeFileSync(join(skillDir, "SKILL.md"), skill.readme);
-          ensureGitignore();
-
-          if (isJsonMode()) {
-            console.log(JSON.stringify({ installed: true, path: `.claude/skills/${slug}/SKILL.md`, skill: { slug: skill.slug, name: skill.name, type: skill.type } }));
-          } else {
-            console.log(check(`${bold(skill.name)} installed`));
-            console.log(dim(`  ${skill.description}`));
-            console.log(dim(`  .claude/skills/${slug}/SKILL.md`));
-          }
-          break;
-        }
-
-        case "mcp-server": {
-          const cmds = skill.install_commands ?? {};
-          const mcpDir = join(process.cwd(), ".claude", "mcp-servers", slug);
-          mkdirSync(mcpDir, { recursive: true });
-          writeFileSync(
-            join(mcpDir, "server.json"),
-            JSON.stringify(
-              {
-                name: skill.name,
-                description: skill.description,
-                transport: skill.transport,
-                install_commands: skill.install_commands,
-              },
-              null,
-              2
-            )
-          );
-          ensureGitignore();
-
-          if (isJsonMode()) {
-            console.log(JSON.stringify({ installed: true, path: `.claude/mcp-servers/${slug}/server.json`, skill: { slug: skill.slug, name: skill.name, type: skill.type }, install_commands: cmds }));
-          } else {
-            console.log(check(`${bold(skill.name)} saved`));
-            console.log(dim(`  .claude/mcp-servers/${slug}/server.json\n`));
-            for (const [platform, cmd] of Object.entries(cmds)) {
-              console.log(`  ${dim(platform + ":")}  $ ${cmd}`);
-            }
-          }
-          break;
-        }
-
-        default:
-          console.error(cross(`Unknown type: ${skill.type}`));
-          process.exit(1);
-      }
+      printInstallResult(result);
     } catch (err) {
       s.stop();
       console.error(
@@ -101,6 +76,137 @@ Examples:
       process.exit(1);
     }
   });
+
+export async function installItem(name: string): Promise<InstallResult> {
+  const slug = name.replace(/^@[^/]+\//, "");
+  const config = getConfig();
+
+  if (!config.token) {
+    throw new Error("Not logged in. Run: intertool login --url <url>");
+  }
+
+  const skill = (await apiGet(`/api/skills/${slug}`)) as Skill;
+  const rootDir = installRoot(skill, slug);
+  mkdirSync(rootDir, { recursive: true });
+
+  switch (skill.type) {
+    case "skill":
+    case "prompt-template":
+    case "agent-tool":
+      writeFileSync(join(rootDir, "SKILL.md"), skill.readme);
+      break;
+    case "mcp-server":
+      writeFileSync(
+        join(rootDir, "server.json"),
+        JSON.stringify(
+          {
+            name: skill.name,
+            description: skill.description,
+            transport: skill.transport,
+            install_commands: skill.install_commands,
+          },
+          null,
+          2
+        )
+      );
+      break;
+    default:
+      throw new Error(`Unknown type: ${skill.type}`);
+  }
+
+  const downloadedFiles = await downloadPackageFiles(skill, rootDir);
+  const metadataPath = join(rootDir, ".intertool.json");
+  const metadata: InstallMetadata = {
+    slug: skill.slug,
+    name: skill.name,
+    type: skill.type,
+    author: skill.author,
+    version: skill.version,
+    registry: config.apiUrl,
+    installed_at: new Date().toISOString(),
+    files: skill.files ?? [],
+  };
+  writeFileSync(metadataPath, JSON.stringify(metadata, null, 2) + "\n");
+  ensureGitignore();
+
+  return {
+    installed: true,
+    path: relativeInstallPath(skill.type, slug),
+    metadataPath: `${relativeInstallPath(skill.type, slug)}/.intertool.json`,
+    downloadedFiles,
+    skill: {
+      slug: skill.slug,
+      name: skill.name,
+      type: skill.type,
+      version: skill.version,
+    },
+    install_commands:
+      skill.type === "mcp-server" ? (skill.install_commands ?? {}) : undefined,
+  };
+}
+
+function printInstallResult(result: InstallResult): void {
+  if (isJsonMode()) {
+    console.log(JSON.stringify(result));
+    return;
+  }
+
+  console.log(check(`${bold(result.skill.name)} installed`));
+  if (result.skill.version) {
+    console.log(dim(`  Version: ${result.skill.version}`));
+  }
+  console.log(dim(`  ${result.path}`));
+  if (result.downloadedFiles.length > 0) {
+    console.log(dim(`  Package files: ${result.downloadedFiles.length}`));
+  }
+
+  for (const [platform, cmd] of Object.entries(result.install_commands ?? {})) {
+    console.log(`  ${dim(platform + ":")}  $ ${cmd}`);
+  }
+}
+
+function installRoot(skill: Skill, slug: string): string {
+  return join(
+    process.cwd(),
+    skill.type === "mcp-server" ? ".claude/mcp-servers" : ".claude/skills",
+    slug
+  );
+}
+
+function relativeInstallPath(type: string, slug: string): string {
+  return type === "mcp-server"
+    ? `.claude/mcp-servers/${slug}`
+    : `.claude/skills/${slug}`;
+}
+
+async function downloadPackageFiles(
+  skill: Skill,
+  rootDir: string
+): Promise<string[]> {
+  const downloaded: string[] = [];
+
+  for (const file of skill.files ?? []) {
+    const outputPath = resolveInside(rootDir, file.path);
+    mkdirSync(dirname(outputPath), { recursive: true });
+    const encodedPath = file.path.split("/").map(encodeURIComponent).join("/");
+    const body = await apiDownload(
+      `/api/skills/${skill.slug}/files/${encodedPath}`
+    );
+    writeFileSync(outputPath, Buffer.from(body));
+    downloaded.push(file.path);
+  }
+
+  return downloaded;
+}
+
+function resolveInside(rootDir: string, relativePath: string): string {
+  const root = resolve(rootDir);
+  const target = resolve(root, relativePath);
+  if (target !== root && target.startsWith(root + sep)) return target;
+  throw new Error(
+    `Refusing to write outside install directory: ${relativePath}`
+  );
+}
 
 /** Add .claude/skills/ and .claude/mcp-servers/ to .gitignore if not present */
 function ensureGitignore() {
@@ -114,7 +220,8 @@ function ensureGitignore() {
       if (missing.length === 0) return;
       writeFileSync(
         gitignorePath,
-        content.trimEnd() + `\n\n# Intertool (org-internal)\n${missing.join("\n")}\n`
+        content.trimEnd() +
+          `\n\n# Intertool (org-internal)\n${missing.join("\n")}\n`
       );
     } else {
       writeFileSync(

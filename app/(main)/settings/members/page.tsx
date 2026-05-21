@@ -27,20 +27,23 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { OrgUser, OrgRole, Invitation } from "@/lib/types";
+import type { OrgUser, OrgRole } from "@/lib/types";
 
 const ROLE_BADGE: Record<OrgRole, { label: string; className: string }> = {
   owner: {
     label: "Owner",
-    className: "bg-amber-500/8 text-amber-700 dark:text-amber-400 border-amber-500/15",
+    className:
+      "bg-amber-500/8 text-amber-700 dark:text-amber-400 border-amber-500/15",
   },
   admin: {
     label: "Admin",
-    className: "bg-blue-500/8 text-blue-700 dark:text-blue-400 border-blue-500/15",
+    className:
+      "bg-blue-500/8 text-blue-700 dark:text-blue-400 border-blue-500/15",
   },
   member: {
     label: "Member",
-    className: "bg-zinc-500/8 text-zinc-600 dark:text-zinc-400 border-zinc-500/15",
+    className:
+      "bg-zinc-500/8 text-zinc-600 dark:text-zinc-400 border-zinc-500/15",
   },
 };
 
@@ -85,12 +88,12 @@ export default function MembersPage() {
       const data = await res.json();
       setMembers(data.members);
       setInvitations(data.invitations ?? []);
-      const me = data.members.find(
-        (m: OrgUser) => m.id === username
-      );
+      const me = data.members.find((m: OrgUser) => m.id === username);
       setCurrentRole(me?.role ?? null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load members");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load members"
+      );
     } finally {
       setLoading(false);
     }
@@ -211,7 +214,8 @@ export default function MembersPage() {
       <div className="mb-6">
         <h1 className="text-lg text-display">Members</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {members.length} member{members.length !== 1 ? "s" : ""} in this registry
+          {members.length} member{members.length !== 1 ? "s" : ""} in this
+          registry
         </p>
       </div>
 
@@ -303,13 +307,13 @@ export default function MembersPage() {
           const isOwner = member.role === "owner";
 
           return (
-            <div
-              key={member.id}
-              className="flex items-center gap-3 px-4 py-3"
-            >
+            <div key={member.id} className="flex items-center gap-3 px-4 py-3">
               <Avatar className="h-8 w-8">
                 {member.avatar_url && (
-                  <AvatarImage src={member.avatar_url} alt={member.display_name} />
+                  <AvatarImage
+                    src={member.avatar_url}
+                    alt={member.display_name}
+                  />
                 )}
                 <AvatarFallback className="text-xs">
                   {member.display_name.slice(0, 2).toUpperCase()}
@@ -322,7 +326,9 @@ export default function MembersPage() {
                     {member.display_name}
                   </p>
                   {isMe && (
-                    <span className="text-[10px] text-muted-foreground">(you)</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      (you)
+                    </span>
                   )}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">

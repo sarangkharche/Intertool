@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { isLocalSaasFallbackMode } from "./org";
 
 let redis: import("@upstash/redis").Redis | null = null;
 
 async function getRedis() {
+  if (isLocalSaasFallbackMode()) return null;
   if (redis) return redis;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -39,7 +41,10 @@ export async function checkRateLimit(
 
   // Sliding window: add current timestamp, trim old entries, count
   const pipe = r.pipeline();
-  pipe.zadd(redisKey, { score: now, member: `${now}:${Math.random().toString(36).slice(2, 8)}` });
+  pipe.zadd(redisKey, {
+    score: now,
+    member: `${now}:${Math.random().toString(36).slice(2, 8)}`,
+  });
   pipe.zremrangebyscore(redisKey, 0, windowStart);
   pipe.zcard(redisKey);
   pipe.expire(redisKey, config.windowSeconds);
@@ -56,7 +61,9 @@ export async function checkRateLimit(
   };
 }
 
-export function rateLimitHeaders(result: RateLimitResult): Record<string, string> {
+export function rateLimitHeaders(
+  result: RateLimitResult
+): Record<string, string> {
   return {
     "X-RateLimit-Remaining": String(result.remaining),
     "X-RateLimit-Reset": String(result.resetAt),

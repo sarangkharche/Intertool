@@ -26,9 +26,12 @@ export async function GET() {
     created_at: t.created_at,
   }));
 
-  return NextResponse.json({ tokens: safeTokens }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  return NextResponse.json(
+    { tokens: safeTokens },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }
 
 export async function POST(request: NextRequest) {

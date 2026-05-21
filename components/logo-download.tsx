@@ -2,10 +2,23 @@
 
 import { Download, Archive } from "lucide-react";
 
-type LogoVariant = "dark" | "light" | "icon-dark" | "icon-light" | "icon-accent" | "icon-muted";
+type LogoVariant =
+  | "dark"
+  | "light"
+  | "icon-dark"
+  | "icon-light"
+  | "icon-accent"
+  | "icon-muted";
 type FileFormat = "svg" | "png" | "jpg";
 
-const ALL_VARIANTS: LogoVariant[] = ["dark", "light", "icon-dark", "icon-light", "icon-accent", "icon-muted"];
+const ALL_VARIANTS: LogoVariant[] = [
+  "dark",
+  "light",
+  "icon-dark",
+  "icon-light",
+  "icon-accent",
+  "icon-muted",
+];
 const ALL_FORMATS: FileFormat[] = ["svg", "png", "jpg"];
 
 const RASTER_SCALE = 4; // 4x for crisp exports
@@ -50,13 +63,12 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function svgToRaster(
-  svgString: string,
-  format: "png" | "jpg",
-): Promise<Blob> {
+function svgToRaster(svgString: string, format: "png" | "jpg"): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const svgBlob = new Blob([svgString], {
+      type: "image/svg+xml;charset=utf-8",
+    });
     const url = URL.createObjectURL(svgBlob);
 
     img.onload = () => {
@@ -74,9 +86,10 @@ function svgToRaster(
       URL.revokeObjectURL(url);
 
       canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
+        (blob) =>
+          blob ? resolve(blob) : reject(new Error("Canvas toBlob failed")),
         format === "png" ? "image/png" : "image/jpeg",
-        0.95,
+        0.95
       );
     };
     img.onerror = () => {
@@ -91,7 +104,10 @@ async function downloadAs(variant: LogoVariant, format: FileFormat) {
   const svg = makeSvg(variant);
 
   if (format === "svg") {
-    downloadBlob(new Blob([svg], { type: "image/svg+xml" }), `intertool-${variant}.svg`);
+    downloadBlob(
+      new Blob([svg], { type: "image/svg+xml" }),
+      `intertool-${variant}.svg`
+    );
     return;
   }
 

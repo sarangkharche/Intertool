@@ -60,7 +60,10 @@ export const SkillCard = memo(function SkillCard({
 
 export function TypeBadge({ type }: { type: SkillType }) {
   return (
-    <Badge variant="outline" className="shrink-0 text-[10px] font-normal text-muted-foreground">
+    <Badge
+      variant="outline"
+      className="shrink-0 text-[10px] font-normal text-muted-foreground"
+    >
       {SKILL_TYPE_LABELS[type]}
     </Badge>
   );

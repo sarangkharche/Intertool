@@ -1,29 +1,44 @@
 import { Redis } from "@upstash/redis";
-import { isSaasMode } from "./org";
 import type { OrgRole, OrgUser, Permission, ApiToken } from "./types";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { isLocalSaasFallbackMode } from "./org";
 
 // ── Permission matrix ──
 
 const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
   owner: [
-    "skill:publish", "skill:edit_own", "skill:delete_own",
-    "skill:edit_any", "skill:delete_any",
-    "members:invite", "members:remove", "members:change_role",
-    "settings:manage", "org:transfer_ownership",
-    "tokens:manage_own", "tokens:manage_any",
+    "skill:publish",
+    "skill:edit_own",
+    "skill:delete_own",
+    "skill:edit_any",
+    "skill:delete_any",
+    "members:invite",
+    "members:remove",
+    "members:change_role",
+    "settings:manage",
+    "org:transfer_ownership",
+    "tokens:manage_own",
+    "tokens:manage_any",
   ],
   admin: [
-    "skill:publish", "skill:edit_own", "skill:delete_own",
-    "skill:edit_any", "skill:delete_any",
-    "members:invite", "members:remove", "members:change_role",
+    "skill:publish",
+    "skill:edit_own",
+    "skill:delete_own",
+    "skill:edit_any",
+    "skill:delete_any",
+    "members:invite",
+    "members:remove",
+    "members:change_role",
     "settings:manage",
-    "tokens:manage_own", "tokens:manage_any",
+    "tokens:manage_own",
+    "tokens:manage_any",
   ],
   member: [
-    "skill:publish", "skill:edit_own", "skill:delete_own",
+    "skill:publish",
+    "skill:edit_own",
+    "skill:delete_own",
     "tokens:manage_own",
   ],
 };
@@ -37,6 +52,7 @@ export function hasPermission(role: OrgRole, permission: Permission): boolean {
 let _redis: Redis | null = null;
 
 function getRedis(): Redis | null {
+  if (isLocalSaasFallbackMode()) return null;
   if (_redis) return _redis;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -112,6 +128,50 @@ function userTokensKey(orgSlug: string | undefined, id: string): string {
   return `user:${prefix}:${id.toLowerCase()}:tokens`;
 }
 
+async function hasAnyUserRecord(orgSlug?: string): Promise<boolean> {
+  const r = getRedis();
+  if (r) {
+    const prefix = orgSlug ?? "default";
+    let cursor = 0;
+    do {
+      const [nextCursor, keys] = await r.scan(cursor, {
+        match: `user:${prefix}:*`,
+        count: 25,
+      });
+      cursor = Number(nextCursor);
+      if (keys.some((key) => !key.endsWith(":tokens"))) return true;
+    } while (cursor !== 0);
+    return false;
+  }
+
+  const data = await readSelfHostedDataAsync();
+  return Object.keys(data.users ?? {}).length > 0;
+}
+
+async function hasOwnerRecord(orgSlug?: string): Promise<boolean> {
+  const r = getRedis();
+  if (r) {
+    const prefix = orgSlug ?? "default";
+    let cursor = 0;
+    do {
+      const [nextCursor, keys] = await r.scan(cursor, {
+        match: `user:${prefix}:*`,
+        count: 100,
+      });
+      cursor = Number(nextCursor);
+      for (const key of keys) {
+        if (key.endsWith(":tokens")) continue;
+        const role = await r.hget<OrgRole>(key, "role");
+        if (role === "owner") return true;
+      }
+    } while (cursor !== 0);
+    return false;
+  }
+
+  const data = await readSelfHostedDataAsync();
+  return Object.values(data.users ?? {}).some((user) => user.role === "owner");
+}
+
 // ── Core RBAC functions ──
 
 export async function getUserRole(
@@ -160,15 +220,31 @@ export async function setUserRole(
  * If they match the configured admin_username or admin_email, they get "owner".
  * Otherwise, "member".
  */
-async function resolveInitialRole(id: string, orgSlug?: string): Promise<OrgRole> {
+async function resolveInitialRole(
+  id: string,
+  orgSlug?: string
+): Promise<OrgRole> {
   try {
     const { getSettings } = await import("./settings");
     const settings = await getSettings(orgSlug);
-    if (!settings) return "member";
-    if (settings.admin_username?.toLowerCase() === id) return "owner";
-    if (settings.admin_email?.toLowerCase() === id) return "owner";
+    if (settings?.admin_username?.toLowerCase() === id) return "owner";
+    if (settings?.admin_email?.toLowerCase() === id) return "owner";
+    if (!settings?.admin_username && !settings?.admin_email) {
+      if (
+        !(await hasAnyUserRecord(orgSlug)) ||
+        !(await hasOwnerRecord(orgSlug))
+      ) {
+        return "owner";
+      }
+    }
   } catch {
     // settings unavailable
+    if (
+      !(await hasAnyUserRecord(orgSlug)) ||
+      !(await hasOwnerRecord(orgSlug))
+    ) {
+      return "owner";
+    }
   }
   return "member";
 }
@@ -191,14 +267,26 @@ export async function ensureUserRecord(
     const existing = await r.hgetall(userKey(orgSlug, id));
 
     if (existing && existing.role) {
+      const nextRole = await resolveInitialRole(id, orgSlug);
       // Update last_seen_at and profile info, preserve role
       await r.hset(userKey(orgSlug, id), {
         last_seen_at: now,
         display_name: profile.display_name,
         avatar_url: profile.avatar_url ?? "",
         provider: profile.provider,
+        ...(nextRole === "owner" && existing.role !== "owner"
+          ? { role: "owner" }
+          : {}),
       });
-      return { ...existing, last_seen_at: now, display_name: profile.display_name } as OrgUser;
+      return {
+        ...existing,
+        role:
+          nextRole === "owner" && existing.role !== "owner"
+            ? "owner"
+            : (existing.role as OrgRole),
+        last_seen_at: now,
+        display_name: profile.display_name,
+      } as OrgUser;
     }
 
     // New user - determine role based on admin settings
@@ -212,7 +300,10 @@ export async function ensureUserRecord(
       joined_at: now,
       last_seen_at: now,
     };
-    await r.hset(userKey(orgSlug, id), user as unknown as Record<string, string>);
+    await r.hset(
+      userKey(orgSlug, id),
+      user as unknown as Record<string, string>
+    );
     return user;
   }
 
@@ -221,6 +312,10 @@ export async function ensureUserRecord(
   if (!data.users) data.users = {};
 
   if (data.users[id]) {
+    const nextRole = await resolveInitialRole(id, orgSlug);
+    if (nextRole === "owner" && data.users[id].role !== "owner") {
+      data.users[id].role = "owner";
+    }
     data.users[id].last_seen_at = now;
     data.users[id].display_name = profile.display_name;
     data.users[id].avatar_url = profile.avatar_url;
@@ -266,7 +361,10 @@ export async function listMembers(orgSlug?: string): Promise<OrgUser[]> {
     const members: OrgUser[] = [];
     let cursor = 0;
     do {
-      const [nextCursor, keys] = await r.scan(cursor, { match: pattern, count: 100 });
+      const [nextCursor, keys] = await r.scan(cursor, {
+        match: pattern,
+        count: 100,
+      });
       cursor = Number(nextCursor);
       for (const key of keys) {
         if (key.endsWith(":tokens")) continue; // skip token set keys
@@ -302,7 +400,7 @@ export async function removeMember(
     // Remove their tokens
     const tokenHashes = await r.smembers(userTokensKey(orgSlug, id));
     if (tokenHashes.length > 0) {
-      await r.del(...tokenHashes.map(h => tokenKey(h)));
+      await r.del(...tokenHashes.map((h) => tokenKey(h)));
     }
     await r.del(userTokensKey(orgSlug, id));
     // Remove from legacy member set
@@ -333,7 +431,8 @@ export function hashToken(raw: string): string {
 export function generateToken(): string {
   const bytes = crypto.randomBytes(32);
   // Base62 encoding
-  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const chars =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   let result = "itk_";
   for (const byte of bytes) {
     result += chars[byte % chars.length];
@@ -374,10 +473,17 @@ export async function createApiToken(
 
 export async function lookupToken(raw: string): Promise<ApiToken | null> {
   const hash = hashToken(raw);
+  return getApiTokenByHash(hash);
+}
 
+export async function getApiTokenByHash(
+  hash: string
+): Promise<ApiToken | null> {
   const r = getRedis();
   if (r) {
-    const token = await r.hgetall(tokenKey(hash)) as unknown as ApiToken | null;
+    const token = (await r.hgetall(
+      tokenKey(hash)
+    )) as unknown as ApiToken | null;
     return token && token.user_id ? token : null;
   }
 
@@ -396,7 +502,9 @@ export async function listUserTokens(
     const hashes = await r.smembers(userTokensKey(orgSlug, id));
     const tokens: ApiToken[] = [];
     for (const hash of hashes) {
-      const token = await r.hgetall(tokenKey(hash)) as unknown as ApiToken | null;
+      const token = (await r.hgetall(
+        tokenKey(hash)
+      )) as unknown as ApiToken | null;
       if (token && token.user_id) tokens.push(token);
     }
     return tokens.sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -404,7 +512,7 @@ export async function listUserTokens(
 
   const data = await readSelfHostedDataAsync();
   return Object.values(data.api_tokens ?? {})
-    .filter(t => t.user_id === id)
+    .filter((t) => t.user_id === id)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
@@ -414,8 +522,11 @@ export async function revokeToken(
 ): Promise<ApiToken | null> {
   const r = getRedis();
   if (r) {
-    const token = await r.hgetall(tokenKey(hash)) as unknown as ApiToken | null;
+    const token = (await r.hgetall(
+      tokenKey(hash)
+    )) as unknown as ApiToken | null;
     if (!token || !token.user_id) return null;
+    if ((token.org_slug ?? undefined) !== orgSlug) return null;
     await r.del(tokenKey(hash));
     await r.srem(userTokensKey(orgSlug, token.user_id), hash);
     return token;
@@ -424,6 +535,7 @@ export async function revokeToken(
   const data = await readSelfHostedDataAsync();
   const token = data.api_tokens?.[hash];
   if (!token) return null;
+  if ((token.org_slug ?? undefined) !== orgSlug) return null;
   delete data.api_tokens![hash];
   writeSelfHostedData(data);
   return token;
@@ -478,7 +590,10 @@ async function ensureMigrated(orgSlug?: string): Promise<void> {
           joined_at: settings.configured_at || now,
           last_seen_at: now,
         };
-        await r.hset(userKey(orgSlug, adminId), ownerRecord as unknown as Record<string, string>);
+        await r.hset(
+          userKey(orgSlug, adminId),
+          ownerRecord as unknown as Record<string, string>
+        );
       }
     }
 
@@ -499,7 +614,10 @@ async function ensureMigrated(orgSlug?: string): Promise<void> {
             joined_at: now,
             last_seen_at: now,
           };
-          await r.hset(userKey(orgSlug, mid), memberRecord as unknown as Record<string, string>);
+          await r.hset(
+            userKey(orgSlug, mid),
+            memberRecord as unknown as Record<string, string>
+          );
         }
       }
     }

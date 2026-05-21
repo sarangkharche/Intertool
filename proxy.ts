@@ -1,35 +1,130 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-const SAAS_DOMAIN = process.env.INTERTOOL_DOMAIN || "intertool.sh";
+const ORG_COOKIE = "intertool.org";
 const isSaas = () => process.env.INTERTOOL_MODE === "saas";
+const isLocalSaasFallback = () =>
+  process.env.NODE_ENV !== "production" &&
+  process.env.INTERTOOL_LOCAL_SAAS_FALLBACK === "true";
+const ORG_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
-/** Paths that bypass auth and SaaS org checks */
+/** Internal paths that bypass SaaS org checks. */
 const PUBLIC_PREFIXES = [
-  "/sign-in", "/create-org", "/api/auth/", "/api/orgs",
-  "/_next/", "/icon.svg", "/docs", "/llms",
+  "/sign-in",
+  "/create-org",
+  "/invite",
+  "/api/auth/",
+  "/api/orgs",
+  "/_next/",
+  "/icon.svg",
+  "/docs",
+  "/llms",
+  "/llms.txt",
+  "/llms-full.txt",
 ];
 
-/** Paths that are only accessible on bare domain (no org context needed) */
-const BARE_DOMAIN_PATHS = ["/sign-in", "/create-org", "/api/auth/", "/api/orgs"];
-
-/** Auth paths that MUST run on the bare domain to avoid PKCE cookie issues */
-const AUTH_PATHS = ["/sign-in", "/api/auth/"];
+/** Top-level app routes that are not org slugs. */
+const RESERVED_SEGMENTS = new Set([
+  "api",
+  "_next",
+  "admin",
+  "app",
+  "auth",
+  "billing",
+  "brand",
+  "browse",
+  "create-org",
+  "dashboard",
+  "design-system",
+  "docs",
+  "favicon.ico",
+  "help",
+  "icon.svg",
+  "invite",
+  "llms",
+  "llms.txt",
+  "llms-full.txt",
+  "login",
+  "publish",
+  "review",
+  "search",
+  "settings",
+  "sign-in",
+  "sign-up",
+  "signup",
+  "skills",
+  "status",
+  "support",
+  "teams",
+  "www",
+]);
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-function isBareDomainPath(pathname: string): boolean {
-  return BARE_DOMAIN_PATHS.some((p) => pathname.startsWith(p));
+function getFirstSegment(pathname: string): string | undefined {
+  return pathname.split("/").filter(Boolean)[0];
 }
 
-function isAuthPath(pathname: string): boolean {
-  return AUTH_PATHS.some((p) => pathname.startsWith(p));
+function getPathOrgSlug(pathname: string): string | undefined {
+  const segment = getFirstSegment(pathname);
+  if (!segment) return undefined;
+  if (RESERVED_SEGMENTS.has(segment)) return undefined;
+  if (!ORG_SLUG_RE.test(segment)) return undefined;
+  return segment;
 }
 
-/** Check if a user has an org via Upstash REST (lightweight, no SDK needed) */
-async function getUserOrg(username: string): Promise<string | null> {
+function stripOrgPrefix(pathname: string, orgSlug: string): string {
+  const rest = pathname.slice(orgSlug.length + 1);
+  return rest || "/";
+}
+
+function withOrgHeader(request: NextRequest, orgSlug: string): Headers {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-org-slug", orgSlug);
+  return requestHeaders;
+}
+
+function setOrgCookie(
+  response: NextResponse,
+  request: NextRequest,
+  orgSlug: string
+): NextResponse {
+  response.cookies.set(ORG_COOKIE, orgSlug, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: request.nextUrl.protocol === "https:",
+  });
+  return response;
+}
+
+function orgPath(orgSlug: string, pathname: string): string {
+  if (pathname === "/") return `/${orgSlug}`;
+  return `/${orgSlug}${pathname}`;
+}
+
+/** Check if a user has an org without loading Node-only app modules in proxy. */
+async function getUserOrg(
+  username: string,
+  request: NextRequest
+): Promise<string | null> {
+  if (isLocalSaasFallback()) {
+    try {
+      const res = await fetch(new URL("/api/orgs", request.url), {
+        headers: {
+          cookie: request.headers.get("cookie") ?? "",
+        },
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { org?: string | null };
+      return data.org ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return null;
@@ -46,105 +141,79 @@ async function getUserOrg(username: string): Promise<string | null> {
 }
 
 export async function proxy(request: NextRequest) {
-  const host = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
-  let orgSlug: string | undefined;
 
-  // Extract org slug from subdomain (e.g., storio.intertool.sh → storio)
-  if (isSaas() && host.endsWith(`.${SAAS_DOMAIN}`)) {
-    const sub = host.replace(`.${SAAS_DOMAIN}`, "").split(".")[0];
-    if (sub && sub !== "www") {
-      orgSlug = sub;
-    }
-  }
-
-  // Local dev: extract org slug from *.localhost (e.g., storio.localhost:3000 → storio)
-  if (isSaas() && !orgSlug) {
-    const hostWithoutPort = host.split(":")[0];
-    if (hostWithoutPort.endsWith(".localhost") && hostWithoutPort !== "localhost") {
-      const sub = hostWithoutPort.replace(".localhost", "").split(".")[0];
-      if (sub && sub !== "www") {
-        orgSlug = sub;
-      }
-    }
-  }
-
-  // Detect bare domain in SaaS mode (no subdomain)
-  const isBareDomain = isSaas() && !orgSlug && (
-    host === SAAS_DOMAIN ||
-    host === `www.${SAAS_DOMAIN}` ||
-    host.startsWith("localhost")
-  );
-
-  // Redirect auth paths on subdomains to bare domain to avoid PKCE cookie mismatch.
-  // OAuth flow (PKCE cookies, callback URL) must all happen on the same origin.
-  if (orgSlug && isAuthPath(pathname)) {
-    const protocol = request.nextUrl.protocol;
-    const port = request.nextUrl.port ? `:${request.nextUrl.port}` : "";
-    const hostWithoutPort = host.split(":")[0];
-    const baseDomain = hostWithoutPort.endsWith(".localhost") ? "localhost" : SAAS_DOMAIN;
-    const bareUrl = new URL(`${protocol}//${baseDomain}${port}${pathname}${request.nextUrl.search}`);
-    // Preserve the subdomain as a redirect target after auth
-    if (pathname === "/sign-in") {
-      bareUrl.searchParams.set("callbackUrl", `${protocol}//${orgSlug}.${baseDomain}${port}/`);
-    }
-    return NextResponse.redirect(bareUrl);
-  }
-
-  // Skip auth checks for public paths
-  if (isPublicPath(pathname)) {
-    if (orgSlug) {
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set("x-org-slug", orgSlug);
-      return NextResponse.next({ request: { headers: requestHeaders } });
-    }
+  if (!isSaas()) {
     return NextResponse.next();
   }
 
-  // SaaS bare domain: signed-in users must have an org or go to /create-org
-  if (isBareDomain && !isBareDomainPath(pathname)) {
-    const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+  const pathOrgSlug = getPathOrgSlug(pathname);
+  if (pathOrgSlug) {
+    const internalPath = stripOrgPrefix(pathname, pathOrgSlug);
+    const requestHeaders = withOrgHeader(request, pathOrgSlug);
 
-    if (!token) {
-      // Not signed in: let them see the landing page at /
-      if (pathname === "/") return NextResponse.next();
-      // Any other page: redirect to sign-in
-      return NextResponse.redirect(new URL("/sign-in", request.url));
-    }
-
-    // Signed in: check if they have an org
-    const username = token.username as string | undefined;
-    if (username) {
-      const userOrg = await getUserOrg(username);
-      if (userOrg) {
-        // Has org: redirect to their subdomain
-        const protocol = request.nextUrl.protocol;
-        const port = request.nextUrl.port ? `:${request.nextUrl.port}` : "";
-        const hostWithoutPort = host.split(":")[0];
-        const baseDomain = hostWithoutPort === "localhost" ? "localhost" : SAAS_DOMAIN;
-        return NextResponse.redirect(
-          new URL(`${protocol}//${userOrg}.${baseDomain}${port}${pathname}`)
+    if (!isPublicPath(internalPath) && !internalPath.startsWith("/api/")) {
+      const token = await getToken({
+        req: request,
+        secret: process.env.AUTH_SECRET,
+      });
+      if (!token) {
+        const signInUrl = request.nextUrl.clone();
+        signInUrl.pathname = `/${pathOrgSlug}/sign-in`;
+        signInUrl.search = "";
+        signInUrl.searchParams.set(
+          "callbackUrl",
+          `${pathname}${request.nextUrl.search}`
+        );
+        return setOrgCookie(
+          NextResponse.redirect(signInUrl),
+          request,
+          pathOrgSlug
         );
       }
     }
 
-    // No org: redirect to create-org (unless already there)
-    return NextResponse.redirect(new URL("/create-org", request.url));
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = internalPath;
+    const response = NextResponse.rewrite(rewriteUrl, {
+      request: { headers: requestHeaders },
+    });
+    return setOrgCookie(response, request, pathOrgSlug);
+  }
+
+  const cookieOrgSlug = request.cookies.get(ORG_COOKIE)?.value;
+
+  if (pathname.startsWith("/api/")) {
+    if (cookieOrgSlug) {
+      return NextResponse.next({
+        request: { headers: withOrgHeader(request, cookieOrgSlug) },
+      });
+    }
+    return NextResponse.next();
+  }
+
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
   }
 
   // GitHub org enforcement — only when GITHUB_ORG is configured
   const githubOrg = process.env.GITHUB_ORG;
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
+  });
+
+  if (!token) {
+    if (pathname === "/") return NextResponse.next();
+    const signInUrl = new URL("/sign-in", request.url);
+    signInUrl.searchParams.set(
+      "callbackUrl",
+      `${pathname}${request.nextUrl.search}`
+    );
+    return NextResponse.redirect(signInUrl);
+  }
+
   if (githubOrg) {
-    const token = await getToken({
-      req: request,
-      secret: process.env.AUTH_SECRET,
-    });
-
-    if (!token) {
-      const signInUrl = new URL("/sign-in", request.url);
-      return NextResponse.redirect(signInUrl);
-    }
-
     const userOrgs = (token.githubOrgs as string[]) ?? [];
     if (!userOrgs.includes(githubOrg.toLowerCase())) {
       const signInUrl = new URL("/sign-in?error=github_org", request.url);
@@ -152,14 +221,16 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Set org slug header for SaaS mode
-  if (orgSlug) {
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-org-slug", orgSlug);
-    return NextResponse.next({ request: { headers: requestHeaders } });
+  const username = token.username as string | undefined;
+  const userOrg =
+    cookieOrgSlug || (username ? await getUserOrg(username, request) : null);
+  if (userOrg) {
+    const orgUrl = request.nextUrl.clone();
+    orgUrl.pathname = orgPath(userOrg, pathname);
+    return setOrgCookie(NextResponse.redirect(orgUrl), request, userOrg);
   }
 
-  return NextResponse.next();
+  return NextResponse.redirect(new URL("/create-org", request.url));
 }
 
 export const config = {

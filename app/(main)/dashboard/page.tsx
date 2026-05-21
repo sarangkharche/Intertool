@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getSkills, getCategories, getSkillCounts } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
-import { SKILL_TYPE_LABELS, PER_PAGE } from "@/lib/constants";
+import { PER_PAGE } from "@/lib/constants";
 import { Upload, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { DashboardFilters } from "@/components/dashboard-filters";
@@ -16,8 +16,6 @@ import { getSettings } from "@/lib/settings";
 import { isS3Configured } from "@/lib/s3";
 import { getUserRole, listMembers } from "@/lib/rbac";
 import { getOrgSlug } from "@/lib/org";
-
-
 
 const TABS: { label: string; type?: SkillType; mine?: boolean }[] = [
   { label: "All" },
@@ -85,19 +83,24 @@ export default async function DashboardPage({
   let skills: Awaited<ReturnType<typeof getSkills>>["skills"] = [];
   let total = 0;
   let categories: Awaited<ReturnType<typeof getCategories>> = [];
-  let counts: Awaited<ReturnType<typeof getSkillCounts>> = { total: 0, byType: {}, mine: 0 };
+  let counts: Awaited<ReturnType<typeof getSkillCounts>> = {
+    total: 0,
+    byType: {},
+    mine: 0,
+  };
   let settings: Awaited<ReturnType<typeof getSettings>> = null;
   let members: Awaited<ReturnType<typeof listMembers>> = [];
   let userRole: Awaited<ReturnType<typeof getUserRole>> = "member";
   try {
-    [{ skills, total }, categories, counts, settings, members, userRole] = await Promise.all([
-      getSkills(filters),
-      getCategories(),
-      getSkillCounts(username || undefined),
-      getSettings(orgSlug),
-      listMembers(orgSlug),
-      getUserRole(username || "", orgSlug),
-    ]);
+    [{ skills, total }, categories, counts, settings, members, userRole] =
+      await Promise.all([
+        getSkills(filters),
+        getCategories(),
+        getSkillCounts(username || undefined),
+        getSettings(orgSlug),
+        listMembers(orgSlug),
+        getUserRole(username || "", orgSlug),
+      ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
   }
@@ -131,13 +134,9 @@ export default async function DashboardPage({
           <Upload className="mx-auto mb-4 h-6 w-6 text-muted-foreground/40" />
           <p className="mb-1 text-sm font-medium">Your registry is empty</p>
           <p className="mb-5 text-xs text-muted-foreground">
-            Publish your first skill, MCP server, agent, or prompt
-            template.
+            Publish your first skill, MCP server, agent, or prompt template.
           </p>
-          <Link
-            href="/publish"
-            className="btn-pill-lg"
-          >
+          <Link href="/publish" className="btn-pill-lg">
             Publish to registry
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -154,7 +153,7 @@ export default async function DashboardPage({
               const count = tab.mine
                 ? counts.mine
                 : tab.type
-                  ? counts.byType[tab.type] ?? 0
+                  ? (counts.byType[tab.type] ?? 0)
                   : counts.total;
               return (
                 <Link

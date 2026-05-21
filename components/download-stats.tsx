@@ -61,7 +61,9 @@ export function DownloadStats({ slug }: DownloadStatsProps) {
       {stats.week > 0 && (
         <div className="flex items-center justify-between pl-[18px]">
           <span className="text-xs text-muted-foreground/70">This week</span>
-          <span className="font-mono text-xs text-muted-foreground">{formatCount(stats.week)}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {formatCount(stats.week)}
+          </span>
         </div>
       )}
     </div>

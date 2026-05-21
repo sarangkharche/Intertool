@@ -12,12 +12,12 @@ export default async function HomePage() {
   if (session?.user) {
     const username = (session.user as { username?: string }).username;
 
-    // On a subdomain (org context exists): go to dashboard as usual
+    // In an org path context, go to that org's dashboard.
     if (orgSlug) {
-      redirect("/dashboard");
+      redirect(`/${orgSlug}/dashboard`);
     }
 
-    // On bare domain in SaaS mode: route based on org membership
+    // On the root path in SaaS mode: route based on org membership.
     if (isSaasMode() && username) {
       let userOrg: string | null = null;
       try {
@@ -26,11 +26,7 @@ export default async function HomePage() {
         // Redis not configured locally: fall through to create-org
       }
       if (userOrg) {
-        // User has an org: send them to their subdomain
-        const domain = process.env.INTERTOOL_DOMAIN || "intertool.sh";
-        const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-        const port = process.env.NODE_ENV === "development" ? `:${process.env.PORT || 3000}` : "";
-        redirect(`${protocol}://${userOrg}.${domain}${port}`);
+        redirect(`/${userOrg}/dashboard`);
       }
       // User has no org: send them to create one
       redirect("/create-org");
@@ -55,17 +51,11 @@ export default async function HomePage() {
           agents, and prompt templates securely across your team.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
-          <Link
-            href="/sign-in"
-            className="btn-pill-lg"
-          >
+          <Link href="/sign-in" className="btn-pill-lg">
             Get started
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-          <Link
-            href="/sign-in"
-            className="btn-ghost"
-          >
+          <Link href="/sign-in" className="btn-ghost">
             Sign in
           </Link>
         </div>

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
-import { revokeToken, getUserRole, hasPermission } from "@/lib/rbac";
+import {
+  revokeToken,
+  getUserRole,
+  hasPermission,
+  getApiTokenByHash,
+} from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +32,11 @@ export async function DELETE(
     return NextResponse.json({ error: "User not found" }, { status: 403 });
   }
 
-  const token = await revokeToken(hash, orgSlug);
+  const token = await getApiTokenByHash(hash);
   if (!token) {
+    return NextResponse.json({ error: "Token not found" }, { status: 404 });
+  }
+  if ((token.org_slug ?? undefined) !== orgSlug) {
     return NextResponse.json({ error: "Token not found" }, { status: 404 });
   }
 
@@ -40,7 +48,15 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json({ ok: true }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  const revoked = await revokeToken(hash, orgSlug);
+  if (!revoked) {
+    return NextResponse.json({ error: "Token not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(
+    { ok: true },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }

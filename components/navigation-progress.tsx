@@ -56,7 +56,8 @@ export function NavigationProgress() {
         anchor.target === "_blank" ||
         anchor.getAttribute("href")?.startsWith("#") ||
         anchor.getAttribute("href")?.startsWith("http")
-      ) return;
+      )
+        return;
 
       const href = anchor.getAttribute("href");
       if (href && href !== pathname) start();
@@ -67,14 +68,19 @@ export function NavigationProgress() {
   }, [pathname, start]);
 
   return (
-    <div ref={containerRef} className="fixed inset-x-0 top-0 z-[100] h-[3px]" style={{ display: "none" }}>
+    <div
+      ref={containerRef}
+      className="fixed inset-x-0 top-0 z-[100] h-[3px]"
+      style={{ display: "none" }}
+    >
       <div
         ref={barRef}
         className="h-full origin-left bg-foreground"
         style={{
           transform: "scaleX(0)",
           opacity: 0,
-          transition: "transform 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease",
+          transition:
+            "transform 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease",
         }}
       />
     </div>

@@ -20,7 +20,9 @@ import { red } from "./lib/format.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+const pkg = JSON.parse(
+  readFileSync(join(__dirname, "..", "package.json"), "utf-8")
+);
 
 const program = new Command();
 
@@ -29,7 +31,9 @@ program
   .description("CLI for the Intertool agent skill registry")
   .version(pkg.version)
   .option("--json", "Output as JSON (for CI/CD)")
-  .addHelpText("after", `
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ intertool login --url https://registry.example.com
   $ intertool search "code review"
@@ -38,7 +42,8 @@ Examples:
   $ intertool list
   $ intertool info my-skill
   $ intertool whoami
-`);
+`
+  );
 
 program.addCommand(loginCommand);
 program.addCommand(logoutCommand);

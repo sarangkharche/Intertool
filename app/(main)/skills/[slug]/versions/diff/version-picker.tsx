@@ -20,7 +20,10 @@ export function VersionPicker({
   const router = useRouter();
 
   const allOptions = currentVersion
-    ? [{ value: "current", label: `v${currentVersion} (current)` }, ...versions.map((v) => ({ value: v, label: `v${v}` }))]
+    ? [
+        { value: "current", label: `v${currentVersion} (current)` },
+        ...versions.map((v) => ({ value: v, label: `v${v}` })),
+      ]
     : versions.map((v) => ({ value: v, label: `v${v}` }));
 
   function navigate(from: string, to: string) {

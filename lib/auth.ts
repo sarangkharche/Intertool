@@ -5,7 +5,7 @@ import Google from "next-auth/providers/google";
 import { getSettings, addOrgMember, getOAuthCredentialsSync } from "./settings";
 import { getOrgSlug, isSaasMode } from "./org";
 import { getGitHubUserOrgs } from "./github";
-import { ensureUserRecord, setUserRole } from "./rbac";
+import { ensureUserRecord } from "./rbac";
 import { getInvitationByEmail, acceptInvitation } from "./invitations";
 
 // Resolve OAuth credentials from admin settings → env vars
@@ -37,10 +37,9 @@ if (oauthCreds.google) {
   );
 }
 
-// Share session cookies across subdomains (e.g., *.localhost, *.intertool.sh)
-const SAAS_DOMAIN = process.env.INTERTOOL_DOMAIN || "intertool.sh";
+// Path-based SaaS routing keeps all orgs on the same host, so auth cookies can
+// stay host-scoped.
 const isLocal = process.env.NODE_ENV === "development";
-const cookieDomain = isLocal ? ".localhost" : `.${SAAS_DOMAIN}`;
 const useSecure = !isLocal;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -56,7 +55,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         sameSite: "lax",
         path: "/",
         secure: useSecure,
-        domain: cookieDomain,
       },
     },
     callbackUrl: {
@@ -66,7 +64,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         sameSite: "lax",
         path: "/",
         secure: useSecure,
-        domain: cookieDomain,
       },
     },
     csrfToken: {
@@ -79,7 +76,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     },
     pkceCodeVerifier: {
-      name: isLocal ? "authjs.pkce.code_verifier" : "__Secure-authjs.pkce.code_verifier",
+      name: isLocal
+        ? "authjs.pkce.code_verifier"
+        : "__Secure-authjs.pkce.code_verifier",
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -156,20 +155,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (account?.provider === "google") {
           const email = (profile as { email?: string })?.email;
           if (email) {
-            await ensureUserRecord(email, {
-              display_name: (profile as { name?: string })?.name ?? email,
-              provider: "google",
-              avatar_url: (profile as { picture?: string })?.picture,
-            }, orgSlugForRecord);
+            await ensureUserRecord(
+              email,
+              {
+                display_name: (profile as { name?: string })?.name ?? email,
+                provider: "google",
+                avatar_url: (profile as { picture?: string })?.picture,
+              },
+              orgSlugForRecord
+            );
           }
         } else if (account?.provider === "github") {
           const login = (profile as { login?: string })?.login;
           if (login) {
-            await ensureUserRecord(login, {
-              display_name: (profile as { name?: string })?.name ?? login,
-              provider: "github",
-              avatar_url: (profile as { avatar_url?: string })?.avatar_url,
-            }, orgSlugForRecord);
+            await ensureUserRecord(
+              login,
+              {
+                display_name: (profile as { name?: string })?.name ?? login,
+                provider: "github",
+                avatar_url: (profile as { avatar_url?: string })?.avatar_url,
+              },
+              orgSlugForRecord
+            );
           }
         }
       } catch {
@@ -187,19 +194,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           userEmail = (profile as { email?: string })?.email?.toLowerCase();
         }
         if (userEmail) {
-          const pendingInvite = await getInvitationByEmail(userEmail, invOrgSlug);
+          const pendingInvite = await getInvitationByEmail(
+            userEmail,
+            invOrgSlug
+          );
           if (pendingInvite) {
-            const identifier = account?.provider === "github"
-              ? (profile as { login?: string })?.login ?? userEmail
-              : userEmail;
+            const identifier =
+              account?.provider === "github"
+                ? ((profile as { login?: string })?.login ?? userEmail)
+                : userEmail;
             await acceptInvitation(pendingInvite.token, {
+              identifier,
               display_name: (profile as { name?: string })?.name ?? identifier,
               provider: account?.provider as "github" | "google",
-              avatar_url: (profile as { avatar_url?: string; picture?: string })?.avatar_url
-                ?? (profile as { picture?: string })?.picture,
+              avatar_url:
+                (profile as { avatar_url?: string; picture?: string })
+                  ?.avatar_url ?? (profile as { picture?: string })?.picture,
             });
-            // Set the invited role on the user record
-            await setUserRole(identifier, pendingInvite.role, invOrgSlug);
           }
         }
       } catch {
@@ -232,8 +243,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { username?: string; accessToken?: string; provider?: string; githubOrgs?: string[] }).username =
-          token.username as string;
+        (
+          session.user as {
+            username?: string;
+            accessToken?: string;
+            provider?: string;
+            githubOrgs?: string[];
+          }
+        ).username = token.username as string;
         (session.user as { accessToken?: string }).accessToken =
           token.accessToken as string;
         (session.user as { provider?: string }).provider =

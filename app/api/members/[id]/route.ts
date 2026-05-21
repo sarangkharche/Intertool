@@ -59,9 +59,12 @@ export async function PATCH(
   }
 
   await setUserRole(targetId, newRole, orgSlug);
-  return NextResponse.json({ ok: true, role: newRole }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  return NextResponse.json(
+    { ok: true, role: newRole },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }
 
 export async function DELETE(
@@ -104,7 +107,10 @@ export async function DELETE(
   }
 
   await removeMember(targetId, orgSlug);
-  return NextResponse.json({ ok: true }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  return NextResponse.json(
+    { ok: true },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }

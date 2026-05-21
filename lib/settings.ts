@@ -1,10 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Redis } from "@upstash/redis";
-import { isSaasMode } from "./org";
+import { isLocalSaasFallbackMode, isSaasMode } from "./org";
 import { setUserRole, ensureUserRecord } from "./rbac";
 
 const SETTINGS_PATH = path.resolve(process.cwd(), "registry", "settings.json");
+const LOCAL_SAAS_PATH = path.resolve(
+  process.cwd(),
+  "registry",
+  "local-saas.json"
+);
 
 export interface RegistrySettings {
   /** Username of the admin who configured this */
@@ -68,6 +73,27 @@ function kvKey(orgSlug: string): string {
   return `org:${orgSlug}:settings`;
 }
 
+interface LocalSaasData {
+  orgs?: Record<string, RegistrySettings>;
+  user_orgs?: Record<string, string>;
+  members?: Record<string, string[]>;
+}
+
+function readLocalSaasData(): LocalSaasData {
+  try {
+    if (!fs.existsSync(LOCAL_SAAS_PATH)) return {};
+    return JSON.parse(fs.readFileSync(LOCAL_SAAS_PATH, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalSaasData(data: LocalSaasData): void {
+  const dir = path.dirname(LOCAL_SAAS_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(LOCAL_SAAS_PATH, JSON.stringify(data, null, 2) + "\n");
+}
+
 // ── Env var fallback (for Vercel deployments in self-hosted mode) ──
 
 function getSettingsFromEnv(): RegistrySettings | null {
@@ -77,7 +103,9 @@ function getSettingsFromEnv(): RegistrySettings | null {
   if (!bucket || !accessKeyId || !secretAccessKey) return null;
 
   const googleDomains = process.env.GOOGLE_ALLOWED_DOMAINS
-    ? process.env.GOOGLE_ALLOWED_DOMAINS.split(",").map((d) => d.trim()).filter(Boolean)
+    ? process.env.GOOGLE_ALLOWED_DOMAINS.split(",")
+        .map((d) => d.trim())
+        .filter(Boolean)
     : undefined;
 
   return {
@@ -111,7 +139,9 @@ function getSettingsFromFile(): RegistrySettings | null {
 const SELF_HOSTED_REDIS_KEY = "self-hosted:settings";
 
 function hasRedis(): boolean {
-  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return !!(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  );
 }
 
 // ── Public API ──
@@ -124,9 +154,14 @@ function hasRedis(): boolean {
  *   2. Redis key "self-hosted:settings" (Vercel with Redis)
  *   3. Environment variables S3_BUCKET, S3_ACCESS_KEY_ID, etc. (Vercel without Redis)
  */
-export async function getSettings(orgSlug?: string): Promise<RegistrySettings | null> {
+export async function getSettings(
+  orgSlug?: string
+): Promise<RegistrySettings | null> {
   if (isSaasMode()) {
     if (!orgSlug) return null;
+    if (isLocalSaasFallbackMode()) {
+      return readLocalSaasData().orgs?.[orgSlug] ?? null;
+    }
     const data = await getRedis().get<RegistrySettings>(kvKey(orgSlug));
     return data ?? null;
   }
@@ -136,7 +171,9 @@ export async function getSettings(orgSlug?: string): Promise<RegistrySettings | 
   if (fromFile) return fromFile;
 
   if (hasRedis()) {
-    const fromRedis = await getRedis().get<RegistrySettings>(SELF_HOSTED_REDIS_KEY);
+    const fromRedis = await getRedis().get<RegistrySettings>(
+      SELF_HOSTED_REDIS_KEY
+    );
     if (fromRedis) return fromRedis;
   }
 
@@ -148,12 +185,22 @@ export async function getSettings(orgSlug?: string): Promise<RegistrySettings | 
  * On Vercel (read-only FS), self-hosted settings are read from env vars
  * and this function is a no-op — configure via Vercel dashboard instead.
  */
-export async function saveSettings(settings: RegistrySettings, orgSlug?: string): Promise<void> {
+export async function saveSettings(
+  settings: RegistrySettings,
+  orgSlug?: string
+): Promise<boolean> {
   if (isSaasMode()) {
     const slug = orgSlug ?? settings.org_slug;
     if (!slug) throw new Error("org_slug required in SaaS mode");
+    if (isLocalSaasFallbackMode()) {
+      const data = readLocalSaasData();
+      data.orgs ??= {};
+      data.orgs[slug] = { ...settings, org_slug: slug };
+      writeLocalSaasData(data);
+      return true;
+    }
     await getRedis().set(kvKey(slug), settings);
-    return;
+    return true;
   }
 
   // Self-hosted: try file-based, fall back to Redis if read-only (Vercel)
@@ -161,20 +208,25 @@ export async function saveSettings(settings: RegistrySettings, orgSlug?: string)
     const dir = path.dirname(SETTINGS_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
+    return true;
   } catch {
     // Read-only filesystem (Vercel) — try Redis
     if (hasRedis()) {
       await getRedis().set(SELF_HOSTED_REDIS_KEY, settings);
-      return;
+      return true;
     }
   }
+  return false;
 }
 
 /**
  * Check if a user is admin (owner or admin role).
  * Delegates to the RBAC system, with fallback to legacy admin_username check.
  */
-export async function isAdmin(username: string, orgSlug?: string): Promise<boolean> {
+export async function isAdmin(
+  username: string,
+  orgSlug?: string
+): Promise<boolean> {
   // Check RBAC system first
   try {
     const { getUserRole } = await import("./rbac");
@@ -190,8 +242,13 @@ export async function isAdmin(username: string, orgSlug?: string): Promise<boole
   const settings = await getSettings(orgSlug);
   if (!settings) return true; // no settings yet = anyone can set up
   if (!settings.admin_username) return true; // env-var config with no admin set
-  if (settings.admin_username.toLowerCase() === username.toLowerCase()) return true;
-  if (settings.admin_email && settings.admin_email.toLowerCase() === username.toLowerCase()) return true;
+  if (settings.admin_username.toLowerCase() === username.toLowerCase())
+    return true;
+  if (
+    settings.admin_email &&
+    settings.admin_email.toLowerCase() === username.toLowerCase()
+  )
+    return true;
   return false;
 }
 
@@ -215,13 +272,21 @@ export function getOAuthCredentialsSync(): {
   }
 
   const githubId = settings?.github_client_id || process.env.GITHUB_ID;
-  const githubSecret = settings?.github_client_secret || process.env.GITHUB_SECRET;
+  const githubSecret =
+    settings?.github_client_secret || process.env.GITHUB_SECRET;
   const googleId = settings?.google_client_id || process.env.GOOGLE_CLIENT_ID;
-  const googleSecret = settings?.google_client_secret || process.env.GOOGLE_CLIENT_SECRET;
+  const googleSecret =
+    settings?.google_client_secret || process.env.GOOGLE_CLIENT_SECRET;
 
   return {
-    github: githubId && githubSecret ? { clientId: githubId, clientSecret: githubSecret } : null,
-    google: googleId && googleSecret ? { clientId: googleId, clientSecret: googleSecret } : null,
+    github:
+      githubId && githubSecret
+        ? { clientId: githubId, clientSecret: githubSecret }
+        : null,
+    google:
+      googleId && googleSecret
+        ? { clientId: googleId, clientSecret: googleSecret }
+        : null,
   };
 }
 
@@ -244,16 +309,20 @@ export function typeToFolder(type: string): string {
 /** Check if an org exists (SaaS mode) */
 export async function orgExists(orgSlug: string): Promise<boolean> {
   if (!isSaasMode()) return true;
+  if (isLocalSaasFallbackMode()) {
+    return !!readLocalSaasData().orgs?.[orgSlug];
+  }
   const exists = await getRedis().exists(kvKey(orgSlug));
   return exists === 1;
 }
 
 /** Register a new org (SaaS mode) */
-export async function createOrg(orgSlug: string, orgName: string, adminUsername: string): Promise<void> {
+export async function createOrg(
+  orgSlug: string,
+  orgName: string,
+  adminUsername: string
+): Promise<void> {
   if (!isSaasMode()) return;
-  const existing = await getRedis().exists(kvKey(orgSlug));
-  if (existing) throw new Error(`Organization "${orgSlug}" already exists`);
-
   const settings: RegistrySettings = {
     admin_username: adminUsername,
     configured_at: new Date().toISOString(),
@@ -264,20 +333,47 @@ export async function createOrg(orgSlug: string, orgName: string, adminUsername:
     org_slug: orgSlug,
     org_name: orgName,
   };
-  await getRedis().set(kvKey(orgSlug), settings);
-  await getRedis().set(`user:${adminUsername}:org`, orgSlug);
+
+  if (isLocalSaasFallbackMode()) {
+    const data = readLocalSaasData();
+    data.orgs ??= {};
+    data.user_orgs ??= {};
+    data.members ??= {};
+    if (data.orgs[orgSlug]) {
+      throw new Error(`Organization "${orgSlug}" already exists`);
+    }
+    const adminId = adminUsername.toLowerCase();
+    data.orgs[orgSlug] = settings;
+    data.user_orgs[adminId] = orgSlug;
+    data.members[orgSlug] = Array.from(
+      new Set([...(data.members[orgSlug] ?? []), adminId])
+    );
+    writeLocalSaasData(data);
+  } else {
+    const existing = await getRedis().exists(kvKey(orgSlug));
+    if (existing) throw new Error(`Organization "${orgSlug}" already exists`);
+    await getRedis().set(kvKey(orgSlug), settings);
+    await getRedis().set(`user:${adminUsername}:org`, orgSlug);
+  }
 
   // Ensure the creator is owner in RBAC
-  await ensureUserRecord(adminUsername, {
-    display_name: adminUsername,
-    provider: "github",
-  }, orgSlug);
+  await ensureUserRecord(
+    adminUsername,
+    {
+      display_name: adminUsername,
+      provider: "github",
+    },
+    orgSlug
+  );
   await setUserRole(adminUsername, "owner", orgSlug);
 }
 
 /** Get the org slug for a user (SaaS mode) */
 export async function getOrgForUser(username: string): Promise<string | null> {
   if (!isSaasMode()) return null;
+  if (isLocalSaasFallbackMode()) {
+    return readLocalSaasData().user_orgs?.[username.toLowerCase()] ?? null;
+  }
   return await getRedis().get<string>(`user:${username}:org`);
 }
 
@@ -288,24 +384,70 @@ function memberSetKey(orgSlug: string): string {
 }
 
 /** Add a user to an org's membership set */
-export async function addOrgMember(orgSlug: string, username: string): Promise<void> {
+export async function addOrgMember(
+  orgSlug: string,
+  username: string
+): Promise<void> {
+  if (isLocalSaasFallbackMode()) {
+    const data = readLocalSaasData();
+    data.members ??= {};
+    const id = username.toLowerCase();
+    data.members[orgSlug] = Array.from(
+      new Set([...(data.members[orgSlug] ?? []), id])
+    );
+    data.user_orgs ??= {};
+    data.user_orgs[id] = orgSlug;
+    writeLocalSaasData(data);
+    return;
+  }
   await getRedis().sadd(memberSetKey(orgSlug), username.toLowerCase());
 }
 
 /** Remove a user from an org's membership set */
-export async function removeOrgMember(orgSlug: string, username: string): Promise<void> {
+export async function removeOrgMember(
+  orgSlug: string,
+  username: string
+): Promise<void> {
+  if (isLocalSaasFallbackMode()) {
+    const data = readLocalSaasData();
+    const id = username.toLowerCase();
+    data.members ??= {};
+    data.members[orgSlug] = (data.members[orgSlug] ?? []).filter(
+      (member) => member !== id
+    );
+    if (data.user_orgs?.[id] === orgSlug) delete data.user_orgs[id];
+    writeLocalSaasData(data);
+    return;
+  }
   await getRedis().srem(memberSetKey(orgSlug), username.toLowerCase());
 }
 
 /** Check if a user is a member of an org (also returns true for admin) */
-export async function isOrgMember(orgSlug: string, username: string): Promise<boolean> {
+export async function isOrgMember(
+  orgSlug: string,
+  username: string
+): Promise<boolean> {
   const settings = await getSettings(orgSlug);
-  if (settings?.admin_username?.toLowerCase() === username.toLowerCase()) return true;
-  const result = await getRedis().sismember(memberSetKey(orgSlug), username.toLowerCase());
+  if (settings?.admin_username?.toLowerCase() === username.toLowerCase())
+    return true;
+  if (isLocalSaasFallbackMode()) {
+    return (
+      readLocalSaasData().members?.[orgSlug]?.includes(
+        username.toLowerCase()
+      ) ?? false
+    );
+  }
+  const result = await getRedis().sismember(
+    memberSetKey(orgSlug),
+    username.toLowerCase()
+  );
   return result === 1;
 }
 
 /** Get all members of an org */
 export async function getOrgMembers(orgSlug: string): Promise<string[]> {
+  if (isLocalSaasFallbackMode()) {
+    return readLocalSaasData().members?.[orgSlug] ?? [];
+  }
   return await getRedis().smembers(memberSetKey(orgSlug));
 }

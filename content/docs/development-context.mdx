@@ -1,0 +1,167 @@
+---
+title: Development Context
+description: LLM-oriented project map, workflows, contracts, and change rules.
+---
+
+This page is written for humans and LLM agents working on Intertool. It is included in `/llms-full.txt`, so keep it current when architecture, routes, workflows, or developer commands change.
+
+## Product shape
+
+Intertool is a private registry for AI agent skills, MCP servers, agent tools, and prompt templates. Teams publish items through the web UI, CLI, or API, then discover and install them into local AI tooling.
+
+Core promises:
+
+- User data is stored in the team's S3-compatible bucket.
+- The app can run self-hosted as a single tenant or in SaaS mode with path-based organizations.
+- Access is controlled by NextAuth, OAuth providers, API tokens, and RBAC.
+- Documentation is served through Fumadocs and exposed to LLMs at `/llms.txt` and `/llms-full.txt`.
+
+## Architecture map
+
+- `app/` contains Next.js App Router pages and route handlers.
+- `app/(main)/` contains the main registry UI: home, browse, dashboard, publish, review, settings, teams, skill detail, edit, versions, and diff pages.
+- `app/(auth)/` contains sign-in, invitation, and org creation pages.
+- `app/api/` contains JSON and file endpoints for auth, orgs, settings, members, invitations, tokens, import, publish, search, analytics, and skill files.
+- `components/` contains shared React UI, including the publish wizard, command palette, skill cards, markdown rendering, filters, preferences, and shadcn-style primitives under `components/ui/`.
+- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, S3 access, registry reads/writes, validation, rate limits, analytics, webhooks, and email.
+- `cli/` contains the separate `intertool` npm CLI implemented with Commander.
+- `content/docs/` contains MDX docs. Update these when CLI, API, auth, publishing, install behavior, or other user-facing behavior changes.
+- `registry/` contains local category seed data and local development registry state.
+
+## Data flow
+
+Web reads usually follow this path:
+
+```text
+Page or API route -> lib/auth or lib/api-auth -> lib/registry -> lib/settings -> lib/s3
+```
+
+Publishing flows follow this path:
+
+```text
+PublishWizard or CLI -> /api/publish -> authenticateApi -> validateSkillInput -> replaceSkillFiles -> upsertSkill -> S3 objects and index
+```
+
+CLI flows usually follow this path:
+
+```text
+intertool command -> cli/src/lib/config.ts -> cli/src/lib/api.ts -> app/api route -> local install files
+```
+
+SaaS routing follows this path:
+
+```text
+/{org}/route -> proxy.ts strips org prefix -> x-org-slug header -> lib/org.ts -> settings/RBAC lookup
+```
+
+## Storage contracts
+
+Registry items use `Skill` from `lib/types.ts`.
+
+Supported item types:
+
+- `skill`
+- `mcp-server`
+- `agent-tool`
+- `prompt-template`
+
+Supported source formats:
+
+- `skill-yaml`
+- `skill-md`
+- `server-json`
+- `zip`
+
+Important storage limits:
+
+- Package files are stored under `{type-folder}/{slug}/files/{path}`.
+- At most 20 package files are allowed.
+- Each package file must be 10MB or smaller.
+- Package files must be 50MB or smaller in total.
+- Paths are normalized by `sanitizeSkillFilePath`.
+
+Self-hosted settings resolve in this order:
+
+1. `registry/settings.json`
+2. Upstash Redis key `self-hosted:settings`
+3. S3 environment variables
+
+SaaS settings resolve by org slug, from local fallback JSON in development or Upstash Redis in normal SaaS mode.
+
+## Auth and permissions
+
+Web sessions use NextAuth v5 in `lib/auth.ts`. GitHub and Google providers are enabled only when credentials are configured. OAuth credentials can come from admin settings or environment variables.
+
+API routes use `authenticateApi` from `lib/api-auth.ts`. It accepts:
+
+- a NextAuth session for browser requests
+- per-user bearer tokens with the `itk_` prefix
+- legacy `INTERTOOL_API_KEY` fallback
+
+RBAC lives in `lib/rbac.ts`. Roles are `owner`, `admin`, and `member`. Permission checks should use `hasPermission` instead of duplicating role logic in routes.
+
+## CLI commands
+
+The CLI is in `cli/src/index.ts` and `cli/src/commands/`.
+
+Commands:
+
+- `login`
+- `logout`
+- `whoami`
+- `search`
+- `install`
+- `remove`
+- `list`
+- `info`
+- `publish`
+- `update`
+- `init`
+- `completions`
+
+When changing command behavior, update `content/docs/cli-reference.mdx` and run the CLI build from `cli/`.
+
+## Development commands
+
+```bash
+npm run dev
+npm run lint
+npm run typecheck
+npm run test
+npm run test:e2e
+npm run build
+```
+
+CLI checks:
+
+```bash
+cd cli
+npm run build
+node dist/index.js --help
+```
+
+Install Playwright browsers before the first E2E run:
+
+```bash
+npm run test:e2e:install
+```
+
+## Change rules for LLM agents
+
+- Read the relevant route, component, library module, CLI command, and docs before editing.
+- Preserve existing uncommitted work. Do not revert unrelated changes.
+- Keep behavior changes close to their owning module.
+- Prefer existing helpers in `lib/` and `components/ui/` over new abstractions.
+- Use role, permission, and validation helpers instead of duplicating checks.
+- If changing CLI, API, auth, publishing, install behavior, or user-facing UX, update `content/docs/`.
+- If changing browser-visible behavior, add or update Playwright coverage where practical.
+- If changing storage shape, update `lib/types.ts`, registry read/write logic, docs, and CLI consumers together.
+
+## High-risk areas
+
+- Auth callback behavior, cookies, org routing, and OAuth provider setup.
+- S3 object keys, registry indexing, file downloads, and package file limits.
+- RBAC permission gates for publish, edit, delete, members, tokens, and settings.
+- CLI install/update paths that write into user projects.
+- SaaS path rewriting in `proxy.ts` and org cookie fallback for API requests.
+- Docs and LLM endpoints, because `/llms-full.txt` depends on Fumadocs source metadata and MDX files.

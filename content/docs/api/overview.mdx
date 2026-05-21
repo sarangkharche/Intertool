@@ -3,13 +3,17 @@ title: API Overview
 description: Programmatic access to the Intertool registry.
 ---
 
-The Intertool API is available at your registry's base URL. All endpoints return JSON.
+The Intertool API is available at your registry's base URL. Most endpoints return JSON; raw and package-file download endpoints return file content.
 
 ## Base URL
 
 ```
 https://your-registry.example.com/api
 ```
+
+## Freshness and caching
+
+Authenticated registry endpoints are served with `Cache-Control: private, no-store` so CLI and UI reads reflect the current organization after publish, update, or delete operations. Public documentation helper routes such as `/llms.txt` may still use short-lived public caching.
 
 ## Endpoints
 
@@ -37,6 +41,14 @@ GET /api/skills/:slug/raw
 
 Returns the raw SKILL.md or server.json content with appropriate `Content-Disposition` header for direct download.
 
+### Download package file
+
+```
+GET /api/skills/:slug/files/:path
+```
+
+Downloads an attached package file. Package file metadata is returned in `GET /api/skills/:slug` under `files`.
+
 ### Search
 
 ```
@@ -53,6 +65,8 @@ Content-Type: multipart/form-data
 ```
 
 Publishes or updates a skill. Requires authentication. See [Authentication](/docs/api/authentication) for details.
+
+Supported form fields include `name`, `slug`, `type`, `description`, `readme`, `category`, `tags`, `compatibility`, `source_url`, `source_format`, `transport`, `changelog`, and one or more `files` entries. Attached files are limited to 20 files, 10MB per file, and 50MB total.
 
 ### Admin settings
 

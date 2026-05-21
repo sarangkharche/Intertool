@@ -42,13 +42,21 @@ export default async function SearchPage({
       <h1 className="mb-1 text-xl text-display">Search</h1>
       {query ? (
         <p className="mb-8 text-sm text-muted-foreground">
-          {results.total} result{results.total !== 1 ? "s" : ""} for &ldquo;{query}&rdquo;
+          {results.total} result{results.total !== 1 ? "s" : ""} for &ldquo;
+          {query}&rdquo;
         </p>
       ) : (
         <p className="mb-8 text-xs text-muted-foreground/60">
-          Try: <code className="rounded bg-muted px-1 py-0.5 text-[11px]">type:mcp-server</code>{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">tag:ai</code>{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">author:name</code>
+          Try:{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+            type:mcp-server
+          </code>{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+            tag:ai
+          </code>{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+            author:name
+          </code>
         </p>
       )}
 
@@ -65,7 +73,10 @@ export default async function SearchPage({
                 ))}
               </div>
               <Suspense>
-                <DashboardPagination currentPage={page} totalPages={totalPages} />
+                <DashboardPagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                />
               </Suspense>
             </>
           ) : (

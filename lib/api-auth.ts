@@ -25,8 +25,22 @@ export async function authenticateApi(
       (session.user as { username?: string }).username ??
       session.user.name ??
       "unknown";
+    if (username === "unknown") {
+      return NextResponse.json(
+        { error: "Cannot determine authenticated user" },
+        { status: 403 }
+      );
+    }
+
     const role = await getUserRole(username, orgSlug);
-    return { username, role: role ?? "member" };
+    if (!role) {
+      return NextResponse.json(
+        { error: "User is not a member of this registry" },
+        { status: 403 }
+      );
+    }
+
+    return { username, role };
   }
 
   // Try Bearer token (CLI)
@@ -38,8 +52,22 @@ export async function authenticateApi(
     if (token.startsWith("itk_")) {
       const apiToken = await lookupToken(token);
       if (apiToken) {
+        if ((apiToken.org_slug ?? undefined) !== orgSlug) {
+          return NextResponse.json(
+            { error: "Token is not valid for this registry" },
+            { status: 403 }
+          );
+        }
+
         const role = await getUserRole(apiToken.user_id, orgSlug);
-        return { username: apiToken.user_id, role: role ?? "member" };
+        if (!role) {
+          return NextResponse.json(
+            { error: "Token user is not a member of this registry" },
+            { status: 403 }
+          );
+        }
+
+        return { username: apiToken.user_id, role };
       }
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSkillVersions } from "@/lib/registry";
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
+import { noStoreHeaders } from "@/lib/cache-control";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export async function GET(
   request: NextRequest,
@@ -11,5 +15,5 @@ export async function GET(
 
   const { slug } = await params;
   const versions = await getSkillVersions(slug);
-  return NextResponse.json(versions);
+  return NextResponse.json(versions, { headers: noStoreHeaders() });
 }

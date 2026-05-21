@@ -1,7 +1,7 @@
 import { Command } from "commander";
-import { readdirSync, readFileSync, existsSync } from "fs";
+import { readdirSync, existsSync } from "fs";
 import { join } from "path";
-import { bold, dim, cyan, isJsonMode, table } from "../lib/format.js";
+import { bold, dim, isJsonMode, table } from "../lib/format.js";
 
 interface InstalledItem {
   name: string;
@@ -59,6 +59,6 @@ export const listCommand = new Command("list")
     console.log(bold(`${items.length} installed:\n`));
     table(
       ["Name", "Type", "Path"],
-      items.map((item) => [item.name, item.type, item.path]),
+      items.map((item) => [item.name, item.type, item.path])
     );
   });

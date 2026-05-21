@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Loader2, ArrowLeft } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { Skill, Category, SkillType } from "@/lib/types";
 import { SKILL_TYPE_LABELS } from "@/lib/constants";
 import { MarkdownEditor } from "@/components/markdown-editor";
@@ -74,7 +74,8 @@ export function EditSkillForm({
       formData.append("tags", JSON.stringify(tags));
       formData.append("compatibility", JSON.stringify(compatibility));
       if (sourceUrl) formData.append("source_url", sourceUrl);
-      if (skill.source_format) formData.append("source_format", skill.source_format);
+      if (skill.source_format)
+        formData.append("source_format", skill.source_format);
       if (skill.transport) formData.append("transport", skill.transport);
       if (changelog) formData.append("changelog", changelog);
 
@@ -103,9 +104,13 @@ export function EditSkillForm({
       <div className="flex items-center justify-between">
         <div className="rounded-md bg-muted/50 px-3 py-1.5">
           <p className="text-xs text-muted-foreground">
-            <span className="font-mono font-medium text-foreground">v{skill.version || "1.0.0"}</span>
+            <span className="font-mono font-medium text-foreground">
+              v{skill.version || "1.0.0"}
+            </span>
             {" → "}
-            <span className="font-mono font-medium text-foreground">v{bumpDisplay(skill.version || "1.0.0")}</span>
+            <span className="font-mono font-medium text-foreground">
+              v{bumpDisplay(skill.version || "1.0.0")}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -148,7 +153,8 @@ export function EditSkillForm({
 
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">
-              Changelog <span className="text-muted-foreground/60">(what changed?)</span>
+              Changelog{" "}
+              <span className="text-muted-foreground/60">(what changed?)</span>
             </label>
             <Input
               placeholder="Fixed bug in prompt template..."
@@ -160,11 +166,7 @@ export function EditSkillForm({
 
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">Content</label>
-            <MarkdownEditor
-              value={readme}
-              onChange={setReadme}
-              height={400}
-            />
+            <MarkdownEditor value={readme} onChange={setReadme} height={400} />
           </div>
         </div>
 
@@ -188,7 +190,12 @@ export function EditSkillForm({
 
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">Category</label>
-            <Select value={category} onValueChange={(v) => { if (v) setCategory(v); }}>
+            <Select
+              value={category}
+              onValueChange={(v) => {
+                if (v) setCategory(v);
+              }}
+            >
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -208,15 +215,23 @@ export function EditSkillForm({
               placeholder="Add a tag..."
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+              onKeyDown={(e) =>
+                e.key === "Enter" && (e.preventDefault(), addTag())
+              }
               className="h-8 text-sm"
             />
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1 text-xs font-normal">
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="gap-1 text-xs font-normal"
+                  >
                     {tag}
-                    <button onClick={() => setTags(tags.filter((t) => t !== tag))}>
+                    <button
+                      onClick={() => setTags(tags.filter((t) => t !== tag))}
+                    >
                       <X className="h-2.5 w-2.5" />
                     </button>
                   </Badge>

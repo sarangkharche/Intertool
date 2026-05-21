@@ -4,6 +4,10 @@
     "getting-started",
     "publishing",
     "cli-reference",
+    "architecture",
+    "deployment",
+    "development-context",
+    "browser-e2e-automation",
     "---API---",
     "...api"
   ]

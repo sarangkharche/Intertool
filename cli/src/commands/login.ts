@@ -19,11 +19,14 @@ export const loginCommand = new Command("login")
   .description("Authenticate with your Intertool instance")
   .option("--url <url>", "Intertool instance URL")
   .option("--token <token>", "API key (skip browser flow)")
-  .addHelpText("after", `
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ intertool login --url https://registry.example.com
   $ intertool login --url https://registry.example.com --token itk_abc123
-`)
+`
+  )
   .action(async (opts) => {
     // If just setting URL without auth
     if (opts.url && !opts.token) {
@@ -56,11 +59,17 @@ Examples:
     if (config.token) {
       console.log(`  ${dim("URL:")}    ${config.apiUrl}`);
       console.log(`  ${dim("Token:")}  ${"*".repeat(8)}`);
-      console.log(dim(`\nRun 'intertool login --url <url>' to change instance.`));
+      console.log(
+        dim(`\nRun 'intertool login --url <url>' to change instance.`)
+      );
     } else {
       console.log(dim("Not logged in.\n"));
-      console.log(`  intertool login --url https://your-instance.com   ${dim("# Browser auth")}`);
-      console.log(`  intertool login --url <url> --token <key>         ${dim("# API key auth")}`);
+      console.log(
+        `  intertool login --url https://your-instance.com   ${dim("# Browser auth")}`
+      );
+      console.log(
+        `  intertool login --url <url> --token <key>         ${dim("# API key auth")}`
+      );
     }
   });
 
@@ -90,7 +99,9 @@ async function browserAuth(apiUrl: string): Promise<void> {
             </html>
           `);
 
-          s?.stop(check(`Authenticated${username ? ` as ${bold(username)}` : ""}`));
+          s?.stop(
+            check(`Authenticated${username ? ` as ${bold(username)}` : ""}`)
+          );
           console.log(dim(`  Instance: ${apiUrl}`));
 
           server.close();

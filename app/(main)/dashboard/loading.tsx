@@ -17,7 +17,10 @@ export default function DashboardLoading() {
       {/* Tabs */}
       <div className="mb-4 flex gap-1 border-b border-border-subtle">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-9 w-20 animate-pulse rounded-t bg-muted/50" />
+          <div
+            key={i}
+            className="h-9 w-20 animate-pulse rounded-t bg-muted/50"
+          />
         ))}
       </div>
 
@@ -37,7 +40,10 @@ export default function DashboardLoading() {
       {isListView ? (
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 rounded-lg border border-border px-4 py-3">
+            <div
+              key={i}
+              className="flex items-center gap-4 rounded-lg border border-border px-4 py-3"
+            >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-32 animate-pulse rounded bg-muted" />

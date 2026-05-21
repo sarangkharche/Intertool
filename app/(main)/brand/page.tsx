@@ -4,7 +4,8 @@ import { LogoDownload, DownloadAllLogos } from "@/components/logo-download";
 
 export const metadata: Metadata = {
   title: "Brand Kit — Intertool",
-  description: "Brand guidelines, colors, typography, and assets for Intertool.",
+  description:
+    "Brand guidelines, colors, typography, and assets for Intertool.",
 };
 
 function ColorSwatch({
@@ -253,12 +254,18 @@ export default function BrandPage() {
           </p>
           <ul className="space-y-1.5 text-sm text-muted-foreground">
             <li>
-              Use <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">--primary</code> sparingly
-              — links, active states, and key CTAs only.
+              Use{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                --primary
+              </code>{" "}
+              sparingly — links, active states, and key CTAs only.
             </li>
             <li>
-              Use <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">--muted-foreground</code> for
-              secondary text, labels, and descriptions.
+              Use{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                --muted-foreground
+              </code>{" "}
+              for secondary text, labels, and descriptions.
             </li>
             <li>
               Never place gray text on colored backgrounds. Use transparency or
@@ -266,9 +273,14 @@ export default function BrandPage() {
             </li>
             <li>
               All colors include a warm chroma of{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">0.005</code> at hue{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">75</code> to avoid
-              clinical pure-black neutrals.
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                0.005
+              </code>{" "}
+              at hue{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                75
+              </code>{" "}
+              to avoid clinical pure-black neutrals.
             </li>
           </ul>
         </div>
@@ -338,12 +350,8 @@ export default function BrandPage() {
             <p className="mb-2 text-xs font-medium text-muted-foreground">
               Sans — Inter
             </p>
-            <p className="text-2xl font-light">
-              ABCDEFGHIJKLMNOPQRSTUVWXYZ
-            </p>
-            <p className="text-2xl font-light">
-              abcdefghijklmnopqrstuvwxyz
-            </p>
+            <p className="text-2xl font-light">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+            <p className="text-2xl font-light">abcdefghijklmnopqrstuvwxyz</p>
             <p className="text-2xl font-light">0123456789</p>
           </div>
           <div className="rounded-lg border border-border p-4">
@@ -363,13 +371,15 @@ export default function BrandPage() {
 
       {/* ── Iconography ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">
-          Iconography
-        </h2>
+        <h2 className="mb-1 text-lg font-medium tracking-tight">Iconography</h2>
         <p className="mb-6 text-sm text-muted-foreground">
-          Icons are from Lucide at 14px (h-3.5 w-3.5) for inline use, 16px
-          (h-4 w-4) for standalone, and 20px (h-5 w-5) for hero contexts. Always
-          monochrome in <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">text-muted-foreground</code>.
+          Icons are from Lucide at 14px (h-3.5 w-3.5) for inline use, 16px (h-4
+          w-4) for standalone, and 20px (h-5 w-5) for hero contexts. Always
+          monochrome in{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+            text-muted-foreground
+          </code>
+          .
         </p>
 
         <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
@@ -406,7 +416,9 @@ export default function BrandPage() {
                       <line x1="12" x2="12" y1="22" y2="12" />
                     </>
                   )}
-                  {item.icon === "zap" && <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />}
+                  {item.icon === "zap" && (
+                    <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+                  )}
                   {item.icon === "terminal" && (
                     <>
                       <polyline points="4 17 10 11 4 5" />
@@ -420,7 +432,9 @@ export default function BrandPage() {
                     <>
                       <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
                       <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                      <path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" />
+                      <path d="M10 9H8" />
+                      <path d="M16 13H8" />
+                      <path d="M16 17H8" />
                     </>
                   )}
                   {item.icon === "upload" && (
@@ -454,9 +468,7 @@ export default function BrandPage() {
 
       {/* ── Components ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">
-          Components
-        </h2>
+        <h2 className="mb-1 text-lg font-medium tracking-tight">Components</h2>
         <p className="mb-6 text-sm text-muted-foreground">
           Key UI patterns used across the application.
         </p>
@@ -468,15 +480,9 @@ export default function BrandPage() {
               Buttons
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-pill-lg">
-                Primary
-              </button>
-              <button className="btn-pill">
-                Secondary
-              </button>
-              <button className="btn-ghost">
-                Ghost
-              </button>
+              <button className="btn-pill-lg">Primary</button>
+              <button className="btn-pill">Secondary</button>
+              <button className="btn-ghost">Ghost</button>
               <button className="btn-pill !border-red-500/40 !bg-red-500/10 !text-red-400">
                 Destructive
               </button>
@@ -579,7 +585,10 @@ export default function BrandPage() {
               <li>Use technical terms your audience knows</li>
               <li>Lead with the action, not the explanation</li>
               <li>Use sentence case for headings</li>
-              <li>Say &quot;skill&quot; not &quot;resource&quot; or &quot;asset&quot;</li>
+              <li>
+                Say &quot;skill&quot; not &quot;resource&quot; or
+                &quot;asset&quot;
+              </li>
             </ul>
           </div>
           <div className="rounded-lg border border-border p-4">
@@ -587,7 +596,10 @@ export default function BrandPage() {
               Don&apos;t
             </p>
             <ul className="space-y-1.5 text-sm text-muted-foreground">
-              <li>Use marketing superlatives (&quot;amazing&quot;, &quot;powerful&quot;)</li>
+              <li>
+                Use marketing superlatives (&quot;amazing&quot;,
+                &quot;powerful&quot;)
+              </li>
               <li>Add emojis to interface text</li>
               <li>Use Title Case For Every Heading</li>
               <li>Over-explain obvious actions</li>
@@ -644,35 +656,51 @@ export default function BrandPage() {
             <ul className="space-y-1.5 text-sm text-muted-foreground">
               <li>
                 Max content width:{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">max-w-5xl</code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  max-w-5xl
+                </code>{" "}
                 (1024px)
               </li>
               <li>
                 Page padding:{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">px-4</code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  px-4
+                </code>{" "}
                 (16px horizontal)
               </li>
               <li>
                 Section spacing:{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">mb-8</code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  mb-8
+                </code>{" "}
                 (32px between sections)
               </li>
               <li>
                 Card padding:{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">p-4</code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  p-4
+                </code>{" "}
                 or{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">p-5</code>
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  p-5
+                </code>
               </li>
               <li>
                 Border radius:{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">rounded-lg</code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  rounded-lg
+                </code>{" "}
                 (8px) for cards,{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">rounded-md</code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  rounded-md
+                </code>{" "}
                 (6px) for inputs/buttons
               </li>
               <li>
                 Header height:{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">h-12</code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                  h-12
+                </code>{" "}
                 (48px)
               </li>
             </ul>

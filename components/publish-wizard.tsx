@@ -30,7 +30,10 @@ import {
 import { SkillType, Category, SourceFormat, McpTransport } from "@/lib/types";
 import { SKILL_TYPE_LABELS } from "@/lib/constants";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { useDraftPersistence, type DraftState } from "@/components/hooks/use-draft-persistence";
+import {
+  useDraftPersistence,
+  type DraftState,
+} from "@/components/hooks/use-draft-persistence";
 import { toast } from "sonner";
 
 const MANUAL_STEPS_FULL = ["Type", "Files", "Details", "Review"];
@@ -89,10 +92,31 @@ export function PublishWizard({
   // Draft auto-save
   const getDraftState = useCallback(
     () => ({
-      type, name, slug, description, readme, category,
-      tags, compatibility, sourceUrl, sourceFormat, transport,
+      type,
+      name,
+      slug,
+      description,
+      readme,
+      category,
+      tags,
+      compatibility,
+      sourceUrl,
+      sourceFormat,
+      transport,
     }),
-    [type, name, slug, description, readme, category, tags, compatibility, sourceUrl, sourceFormat, transport],
+    [
+      type,
+      name,
+      slug,
+      description,
+      readme,
+      category,
+      tags,
+      compatibility,
+      sourceUrl,
+      sourceFormat,
+      transport,
+    ]
   );
   const restoreDraftState = useCallback((draft: DraftState) => {
     setType(draft.type as SkillType);
@@ -107,14 +131,35 @@ export function PublishWizard({
     if (draft.sourceFormat) setSourceFormat(draft.sourceFormat as SourceFormat);
     if (draft.transport) setTransport(draft.transport as McpTransport);
   }, []);
-  const { saveDraft, clearDraft } = useDraftPersistence(getDraftState, restoreDraftState);
+  const { saveDraft, clearDraft } = useDraftPersistence(
+    getDraftState,
+    restoreDraftState
+  );
 
   // Auto-save on state changes
-  useEffect(() => { saveDraft(); }, [type, name, slug, description, readme, category, tags, compatibility, sourceUrl, sourceFormat, transport, saveDraft]);
+  useEffect(() => {
+    saveDraft();
+  }, [
+    type,
+    name,
+    slug,
+    description,
+    readme,
+    category,
+    tags,
+    compatibility,
+    sourceUrl,
+    sourceFormat,
+    transport,
+    saveDraft,
+  ]);
 
   // Slug availability check (debounced)
   useEffect(() => {
-    if (!slug || slug.length < 2) { setSlugAvailable(null); return; }
+    if (!slug || slug.length < 2) {
+      setSlugAvailable(null);
+      return;
+    }
     setCheckingSlug(true);
     const timer = setTimeout(async () => {
       try {
@@ -126,7 +171,10 @@ export function PublishWizard({
         setCheckingSlug(false);
       }
     }, 500);
-    return () => { clearTimeout(timer); setCheckingSlug(false); };
+    return () => {
+      clearTimeout(timer);
+      setCheckingSlug(false);
+    };
   }, [slug]);
 
   const addTag = () => {
@@ -154,47 +202,45 @@ export function PublishWizard({
   };
 
   /** Detect SKILL.md frontmatter from file content */
-  const detectSkillMd = useCallback(
-    (content: string): boolean => {
-      const match = content.match(
-        /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/
-      );
-      if (!match) return false;
+  const detectSkillMd = useCallback((content: string): boolean => {
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    if (!match) return false;
 
-      try {
-        // Dynamic import not needed — parse YAML frontmatter inline
-        const lines = match[1].split("\n");
-        const fm: Record<string, string> = {};
-        for (const line of lines) {
-          const idx = line.indexOf(":");
-          if (idx > 0) {
-            const key = line.slice(0, idx).trim();
-            const val = line.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
-            fm[key] = val;
-          }
+    try {
+      // Dynamic import not needed — parse YAML frontmatter inline
+      const lines = match[1].split("\n");
+      const fm: Record<string, string> = {};
+      for (const line of lines) {
+        const idx = line.indexOf(":");
+        if (idx > 0) {
+          const key = line.slice(0, idx).trim();
+          const val = line
+            .slice(idx + 1)
+            .trim()
+            .replace(/^["']|["']$/g, "");
+          fm[key] = val;
         }
-
-        if (fm.name && fm.description) {
-          handleNameChange(fm.name);
-          setDescription(fm.description);
-          setReadme(match[2]);
-          setReadmeFromFile(true);
-          setSourceFormat("skill-md");
-
-          if (fm.type && SKILL_TYPES.includes(fm.type as SkillType)) {
-            setType(fm.type as SkillType);
-          }
-
-          toast.success("SKILL.md detected — fields auto-populated");
-          return true;
-        }
-      } catch {
-        // Not valid frontmatter
       }
-      return false;
-    },
-    []
-  );
+
+      if (fm.name && fm.description) {
+        handleNameChange(fm.name);
+        setDescription(fm.description);
+        setReadme(match[2]);
+        setReadmeFromFile(true);
+        setSourceFormat("skill-md");
+
+        if (fm.type && SKILL_TYPES.includes(fm.type as SkillType)) {
+          setType(fm.type as SkillType);
+        }
+
+        toast.success("SKILL.md detected — fields auto-populated");
+        return true;
+      }
+    } catch {
+      // Not valid frontmatter
+    }
+    return false;
+  }, []);
 
   /** Detect server.json content */
   const detectServerJson = useCallback((content: string): boolean => {
@@ -208,7 +254,11 @@ export function PublishWizard({
 
         if (data.transport) {
           const t = data.transport as Record<string, unknown>;
-          if (t.type === "stdio" || t.type === "sse" || t.type === "streamable-http") {
+          if (
+            t.type === "stdio" ||
+            t.type === "sse" ||
+            t.type === "streamable-http"
+          ) {
             setTransport(t.type as McpTransport);
           }
         }
@@ -358,7 +408,9 @@ export function PublishWizard({
       });
       if (!res.ok) {
         const err = await res.json();
-        const details = err.details as { field: string; message: string }[] | undefined;
+        const details = err.details as
+          | { field: string; message: string }[]
+          | undefined;
         const msg = details?.length
           ? details.map((d) => `${d.field}: ${d.message}`).join("; ")
           : err.error || "Failed to publish";
@@ -401,11 +453,36 @@ export function PublishWizard({
 
   // ── Type chooser ──
   if (mode === "choose") {
-    const typeOptions: { type: SkillType; icon: React.ReactNode; color: string; desc: string }[] = [
-      { type: "skill", icon: <Zap className="h-5 w-5" />, color: "text-muted-foreground", desc: "Claude Code skills, reusable prompts" },
-      { type: "mcp-server", icon: <Terminal className="h-5 w-5" />, color: "text-muted-foreground", desc: "Model Context Protocol servers" },
-      { type: "agent-tool", icon: <Bot className="h-5 w-5" />, color: "text-muted-foreground", desc: "Standalone agent tools" },
-      { type: "prompt-template", icon: <FileText className="h-5 w-5" />, color: "text-muted-foreground", desc: "Reusable prompt templates" },
+    const typeOptions: {
+      type: SkillType;
+      icon: React.ReactNode;
+      color: string;
+      desc: string;
+    }[] = [
+      {
+        type: "skill",
+        icon: <Zap className="h-5 w-5" />,
+        color: "text-muted-foreground",
+        desc: "Claude Code skills, reusable prompts",
+      },
+      {
+        type: "mcp-server",
+        icon: <Terminal className="h-5 w-5" />,
+        color: "text-muted-foreground",
+        desc: "Model Context Protocol servers",
+      },
+      {
+        type: "agent-tool",
+        icon: <Bot className="h-5 w-5" />,
+        color: "text-muted-foreground",
+        desc: "Standalone agent tools",
+      },
+      {
+        type: "prompt-template",
+        icon: <FileText className="h-5 w-5" />,
+        color: "text-muted-foreground",
+        desc: "Reusable prompt templates",
+      },
     ];
 
     return (
@@ -425,9 +502,7 @@ export function PublishWizard({
               }}
               className="group rounded-lg border border-border p-5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/30"
             >
-              <div className={`mb-3 ${opt.color}`}>
-                {opt.icon}
-              </div>
+              <div className={`mb-3 ${opt.color}`}>{opt.icon}</div>
               <p className="mb-1 text-sm font-medium">
                 {SKILL_TYPE_LABELS[opt.type]}
               </p>
@@ -599,7 +674,6 @@ export function PublishWizard({
                     </button>
                   </div>
                 ))}
-
               </div>
             )}
           </div>
@@ -633,7 +707,9 @@ export function PublishWizard({
 
             {/* Name — full width, slug shown as derived hint */}
             <div className="space-y-1.5">
-              <label className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}>
+              <label
+                className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}
+              >
                 Name <span className="text-destructive/50">*</span>
               </label>
               <Input
@@ -652,7 +728,9 @@ export function PublishWizard({
 
             {/* Description — right after name, natural sequence */}
             <div className="space-y-1.5">
-              <label className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}>
+              <label
+                className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}
+              >
                 Description <span className="text-destructive/50">*</span>
               </label>
               <Textarea
@@ -685,7 +763,9 @@ export function PublishWizard({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}>
+                <label
+                  className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}
+                >
                   Category <span className="text-destructive/50">*</span>
                 </label>
                 <Select
@@ -801,19 +881,26 @@ export function PublishWizard({
         )}
 
         {/* Quick Step 2: Submit (same as manual review) */}
-        {step === 2 && <ReviewPanel {...{
-          type, name, slug, category, description, sourceUrl, sourceFormat,
-          transport, uploadedFiles,
-        }} />}
+        {step === 2 && (
+          <ReviewPanel
+            {...{
+              type,
+              name,
+              slug,
+              category,
+              description,
+              sourceUrl,
+              sourceFormat,
+              transport,
+              uploadedFiles,
+            }}
+          />
+        )}
 
         {/* Nav */}
         <div className="mt-6 flex justify-between">
           <button
-            onClick={() =>
-              step === 0
-                ? setMode("choose")
-                : setStep(step - 1)
-            }
+            onClick={() => (step === 0 ? setMode("choose") : setStep(step - 1))}
             className="btn-ghost"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
@@ -949,16 +1036,18 @@ export function PublishWizard({
                     <p className="truncate font-mono text-sm">{file.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatFileSize(file.size)}
-                      {file.name.toLowerCase() === "skill.md" && sourceFormat === "skill-md" && (
-                        <span className="ml-2 text-primary">
-                          — SKILL.md detected, fields auto-populated
-                        </span>
-                      )}
-                      {file.name.toLowerCase() === "server.json" && sourceFormat === "server-json" && (
-                        <span className="ml-2 text-primary">
-                          — server.json detected, MCP fields populated
-                        </span>
-                      )}
+                      {file.name.toLowerCase() === "skill.md" &&
+                        sourceFormat === "skill-md" && (
+                          <span className="ml-2 text-primary">
+                            — SKILL.md detected, fields auto-populated
+                          </span>
+                        )}
+                      {file.name.toLowerCase() === "server.json" &&
+                        sourceFormat === "server-json" && (
+                          <span className="ml-2 text-primary">
+                            — server.json detected, MCP fields populated
+                          </span>
+                        )}
                       {file.name.toLowerCase().endsWith(".md") &&
                         file.name.toLowerCase() !== "skill.md" && (
                           <span className="ml-2 text-primary">
@@ -997,8 +1086,7 @@ export function PublishWizard({
                 with source files
               </li>
               <li>
-                <span className="font-mono">.md</span> — README or
-                documentation
+                <span className="font-mono">.md</span> — README or documentation
               </li>
               <li>
                 <span className="font-mono">.yaml</span> — Skill manifest or
@@ -1020,7 +1108,9 @@ export function PublishWizard({
         <div className="space-y-5">
           {/* Name — full width, slug shown as derived hint */}
           <div className="space-y-1.5">
-            <label className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}>
+            <label
+              className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}
+            >
               Name <span className="text-destructive/50">*</span>
             </label>
             <Input
@@ -1048,7 +1138,9 @@ export function PublishWizard({
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}>
+            <label
+              className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}
+            >
               Description <span className="text-destructive/50">*</span>
             </label>
             <Textarea
@@ -1079,7 +1171,9 @@ export function PublishWizard({
 
           {/* Category */}
           <div className="space-y-1.5">
-            <label className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}>
+            <label
+              className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}
+            >
               Category <span className="text-destructive/50">*</span>
             </label>
             <Select
@@ -1101,9 +1195,7 @@ export function PublishWizard({
 
           {type === "mcp-server" && (
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">
-                Transport
-              </label>
+              <label className="text-xs text-muted-foreground">Transport</label>
               <Select
                 value={transport}
                 onValueChange={(v) => setTransport(v as McpTransport)}
@@ -1158,7 +1250,9 @@ export function PublishWizard({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Works with</label>
+              <label className="text-xs text-muted-foreground">
+                Works with
+              </label>
               <div className="flex flex-wrap gap-1.5">
                 {["Claude Code", "Cursor", "VS Code", "Windsurf", "CLI"].map(
                   (item) => (
@@ -1201,28 +1295,32 @@ export function PublishWizard({
       )}
 
       {/* Step 3: Review */}
-      {effectiveStep === 3 && <ReviewPanel {...{
-        type, name, slug, category, description, sourceUrl, sourceFormat,
-        transport, uploadedFiles,
-      }} />}
+      {effectiveStep === 3 && (
+        <ReviewPanel
+          {...{
+            type,
+            name,
+            slug,
+            category,
+            description,
+            sourceUrl,
+            sourceFormat,
+            transport,
+            uploadedFiles,
+          }}
+        />
+      )}
 
       {/* Nav */}
       <div className="mt-6 flex justify-between">
         <button
-          onClick={() =>
-            step === 0
-              ? setMode("choose")
-              : setStep(step - 1)
-          }
+          onClick={() => (step === 0 ? setMode("choose") : setStep(step - 1))}
           className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
         {step < manualSteps.length - 1 ? (
-          <button
-            onClick={() => setStep(step + 1)}
-            className="btn-pill"
-          >
+          <button onClick={() => setStep(step + 1)} className="btn-pill">
             Next <ArrowRight className="h-3.5 w-3.5" />
           </button>
         ) : (
@@ -1267,6 +1365,8 @@ function ReviewPanel({
       <div className="grid grid-cols-[100px_1fr] gap-y-1.5">
         <span className="text-muted-foreground">Name</span>
         <span>{name}</span>
+        <span className="text-muted-foreground">Slug</span>
+        <span className="font-mono text-xs">{slug}</span>
         <span className="text-muted-foreground">Type</span>
         <span>{SKILL_TYPE_LABELS[type]}</span>
         <span className="text-muted-foreground">Category</span>

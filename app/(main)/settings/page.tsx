@@ -18,16 +18,31 @@ export default async function SettingsPage() {
 
       <div className="grid grid-cols-2 gap-3">
         {[
-          { href: "/settings/preferences", icon: Palette, title: "Preferences", desc: "Theme, accent color, density, and default view." },
-          { href: "/settings/admin", icon: Database, title: "Administration", desc: "Storage, OAuth, access control, and webhooks." },
+          {
+            href: "/settings/preferences",
+            icon: Palette,
+            title: "Preferences",
+            desc: "Theme, accent color, density, and default view.",
+          },
+          {
+            href: "/settings/admin",
+            icon: Database,
+            title: "Administration",
+            desc: "Storage, OAuth, access control, and webhooks.",
+          },
         ].map((card) => (
           <Link key={card.href} href={card.href} className="group">
             <div className="flex h-full flex-col rounded-lg border border-border/70 p-4 interactive-card">
               <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-md bg-muted/60">
-                <card.icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <card.icon
+                  className="h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
               </div>
               <p className="text-sm font-medium">{card.title}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{card.desc}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {card.desc}
+              </p>
             </div>
           </Link>
         ))}

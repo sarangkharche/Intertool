@@ -24,9 +24,6 @@ interface SkillResult {
   author?: string;
 }
 
-const CACHE_TTL = 10_000;
-const searchCache = new Map<string, { data: SkillResult[]; ts: number }>();
-
 export function CommandPalette() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -51,23 +48,19 @@ export function CommandPalette() {
       return;
     }
 
-    const cacheKey = q.trim().toLowerCase();
-    const cached = searchCache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < CACHE_TTL) {
-      setResults(cached.data);
-      return;
-    }
-    if (cached) {
-      setResults(cached.data);
-    }
-
     setLoading(true);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=8`);
+      const res = await fetch(
+        `/api/search?q=${encodeURIComponent(q)}&limit=8`,
+        {
+          cache: "no-store",
+        }
+      );
       if (res.ok) {
         const data = await res.json();
-        const items: SkillResult[] = Array.isArray(data) ? data : data.results ?? data.skills ?? [];
-        searchCache.set(cacheKey, { data: items, ts: Date.now() });
+        const items: SkillResult[] = Array.isArray(data)
+          ? data
+          : (data.results ?? data.skills ?? []);
         setResults(items);
       }
     } catch {
@@ -89,7 +82,12 @@ export function CommandPalette() {
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title="Command Palette" description="Search skills or navigate pages">
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Command Palette"
+      description="Search skills or navigate pages"
+    >
       <CommandInput
         placeholder="Search skills, navigate..."
         value={query}
@@ -116,7 +114,9 @@ export function CommandPalette() {
                       {SKILL_TYPE_LABELS[skill.type]}
                     </Badge>
                   </div>
-                  <p className="truncate text-xs text-muted-foreground/70">{skill.description}</p>
+                  <p className="truncate text-xs text-muted-foreground/70">
+                    {skill.description}
+                  </p>
                 </div>
               </CommandItem>
             ))}
@@ -126,15 +126,24 @@ export function CommandPalette() {
         <CommandSeparator />
 
         <CommandGroup heading="Pages">
-          <CommandItem value="dashboard" onSelect={() => navigate("/dashboard")}>
+          <CommandItem
+            value="dashboard"
+            onSelect={() => navigate("/dashboard")}
+          >
             <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
             <span>Dashboard</span>
           </CommandItem>
-          <CommandItem value="publish-skill" onSelect={() => navigate("/publish")}>
+          <CommandItem
+            value="publish-skill"
+            onSelect={() => navigate("/publish")}
+          >
             <Plus className="h-4 w-4 text-muted-foreground" />
             <span>Publish a Skill</span>
           </CommandItem>
-          <CommandItem value="your-skills" onSelect={() => navigate("/dashboard?mine=true")}>
+          <CommandItem
+            value="your-skills"
+            onSelect={() => navigate("/dashboard?mine=true")}
+          >
             <BookOpen className="h-4 w-4 text-muted-foreground" />
             <span>Your Skills</span>
           </CommandItem>
@@ -142,9 +151,15 @@ export function CommandPalette() {
       </CommandList>
       <div className="border-t border-border/60 px-3 py-1.5">
         <p className="text-[10px] text-muted-foreground/50">
-          <kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">↵</kbd> to open
+          <kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">
+            ↵
+          </kbd>{" "}
+          to open
           {" · "}
-          <kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">esc</kbd> to close
+          <kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">
+            esc
+          </kbd>{" "}
+          to close
         </p>
       </div>
     </CommandDialog>

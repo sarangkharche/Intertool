@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { parseDiffFromFile } from "@pierre/diffs";
 import type { FileDiffMetadata } from "@pierre/diffs";
 import { FileDiff } from "@pierre/diffs/react";
@@ -69,20 +69,17 @@ export function VersionDiff({
   oldSnapshot,
   newSnapshot,
 }: VersionDiffProps) {
-  const [fileDiff, setFileDiff] = useState<FileDiffMetadata | null>(null);
-
-  useEffect(() => {
-    const diff = parseDiffFromFile(
-      { name: `v${oldVersion}.md`, contents: oldContent },
-      { name: `v${newVersion}.md`, contents: newContent }
-    );
-    setFileDiff(diff);
-  }, [oldVersion, newVersion, oldContent, newContent]);
+  const fileDiff = useMemo<FileDiffMetadata>(
+    () =>
+      parseDiffFromFile(
+        { name: `v${oldVersion}.md`, contents: oldContent },
+        { name: `v${newVersion}.md`, contents: newContent }
+      ),
+    [oldVersion, newVersion, oldContent, newContent]
+  );
 
   const metadataChanges = getMetadataChanges(oldSnapshot, newSnapshot);
   const hasReadmeChanges = fileDiff && fileDiff.hunks.length > 0;
-
-  if (!fileDiff) return null;
 
   if (!hasReadmeChanges && metadataChanges.length === 0) {
     return (
@@ -101,7 +98,10 @@ export function VersionDiff({
           </h3>
           <div className="rounded-lg border border-border divide-y divide-border">
             {metadataChanges.map((change) => (
-              <div key={change.field} className="flex items-start gap-4 p-3 text-sm">
+              <div
+                key={change.field}
+                className="flex items-start gap-4 p-3 text-sm"
+              >
                 <span className="w-28 shrink-0 font-medium text-muted-foreground">
                   {change.field}
                 </span>

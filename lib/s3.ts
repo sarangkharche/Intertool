@@ -6,18 +6,30 @@ import {
   ListObjectsV2Command,
   HeadBucketCommand,
 } from "@aws-sdk/client-s3";
+import { createHash } from "node:crypto";
 import type { RegistrySettings } from "./settings";
 
 // ── Client cache (keyed by settings hash) ──
 
 const clientCache = new Map<string, S3Client>();
 
-function settingsHash(s: RegistrySettings): string {
-  return `${s.s3_bucket}:${s.s3_region}:${s.s3_access_key_id}:${s.s3_endpoint ?? ""}:${s.s3_session_token ?? ""}`;
+export function storageCacheScope(s: RegistrySettings): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        bucket: s.s3_bucket,
+        region: s.s3_region || "us-east-1",
+        endpoint: s.s3_endpoint ?? "",
+        accessKeyId: s.s3_access_key_id,
+        secretAccessKey: s.s3_secret_access_key,
+        sessionToken: s.s3_session_token ?? "",
+      })
+    )
+    .digest("hex");
 }
 
 function buildClient(settings: RegistrySettings): S3Client {
-  const hash = settingsHash(settings);
+  const hash = storageCacheScope(settings);
   const cached = clientCache.get(hash);
   if (cached) return cached;
 
@@ -51,7 +63,11 @@ function buildClient(settings: RegistrySettings): S3Client {
 // ── Check if settings have S3 configured ──
 
 export function isS3Configured(settings: RegistrySettings | null): boolean {
-  return !!(settings?.s3_bucket && settings?.s3_access_key_id && settings?.s3_secret_access_key);
+  return !!(
+    settings?.s3_bucket &&
+    settings?.s3_access_key_id &&
+    settings?.s3_secret_access_key
+  );
 }
 
 // ── ETag cache with LRU eviction ──
@@ -65,8 +81,8 @@ interface CacheEntry {
 const MAX_CACHE_ENTRIES = 500;
 const etagCache = new Map<string, CacheEntry>();
 
-function cacheKey(bucket: string, key: string): string {
-  return `${bucket}:${key}`;
+function cacheKey(settings: RegistrySettings, key: string): string {
+  return `${storageCacheScope(settings)}:${key}`;
 }
 
 function setCacheEntry(k: string, etag: string, body: string): void {
@@ -74,7 +90,9 @@ function setCacheEntry(k: string, etag: string, body: string): void {
 
   if (etagCache.size > MAX_CACHE_ENTRIES) {
     // Evict oldest 20%
-    const entries = [...etagCache.entries()].sort((a, b) => a[1].accessedAt - b[1].accessedAt);
+    const entries = [...etagCache.entries()].sort(
+      (a, b) => a[1].accessedAt - b[1].accessedAt
+    );
     const evictCount = Math.floor(MAX_CACHE_ENTRIES * 0.2);
     for (let i = 0; i < evictCount; i++) {
       etagCache.delete(entries[i][0]);
@@ -94,7 +112,10 @@ const inflight = new Map<string, Promise<string | null>>();
 
 // ── S3 operations (all take explicit settings) ──
 
-export async function getObject(settings: RegistrySettings, key: string): Promise<string | null> {
+export async function getObject(
+  settings: RegistrySettings,
+  key: string
+): Promise<string | null> {
   try {
     return await withRetry(async () => {
       const res = await buildClient(settings).send(
@@ -102,7 +123,7 @@ export async function getObject(settings: RegistrySettings, key: string): Promis
       );
       const body = (await res.Body?.transformToString("utf-8")) ?? null;
       if (body && res.ETag) {
-        setCacheEntry(cacheKey(settings.s3_bucket, key), res.ETag, body);
+        setCacheEntry(cacheKey(settings, key), res.ETag, body);
       }
       return body;
     });
@@ -120,8 +141,11 @@ export async function getObject(settings: RegistrySettings, key: string): Promis
  * - Network error → returns cached body if available, otherwise throws
  * - Deduplicates concurrent requests for the same key
  */
-export async function getObjectIfChanged(settings: RegistrySettings, key: string): Promise<string | null> {
-  const ck = cacheKey(settings.s3_bucket, key);
+export async function getObjectIfChanged(
+  settings: RegistrySettings,
+  key: string
+): Promise<string | null> {
+  const ck = cacheKey(settings, key);
 
   // Deduplicate concurrent requests for the same key
   const existing = inflight.get(ck);
@@ -136,7 +160,11 @@ export async function getObjectIfChanged(settings: RegistrySettings, key: string
   }
 }
 
-async function _getObjectIfChanged(settings: RegistrySettings, key: string, ck: string): Promise<string | null> {
+async function _getObjectIfChanged(
+  settings: RegistrySettings,
+  key: string,
+  ck: string
+): Promise<string | null> {
   const cached = getCacheEntry(ck);
 
   try {
@@ -171,31 +199,64 @@ async function _getObjectIfChanged(settings: RegistrySettings, key: string, ck: 
   }
 }
 
-export async function putObject(settings: RegistrySettings, key: string, body: string): Promise<void> {
+export async function putObject(
+  settings: RegistrySettings,
+  key: string,
+  body: string | Uint8Array,
+  contentType = "application/json"
+): Promise<void> {
   await withRetry(() =>
     buildClient(settings).send(
       new PutObjectCommand({
         Bucket: settings.s3_bucket,
         Key: key,
         Body: body,
-        ContentType: "application/json",
+        ContentType: contentType,
       })
     )
   );
   // Invalidate cached ETag so next read fetches fresh
-  etagCache.delete(cacheKey(settings.s3_bucket, key));
+  etagCache.delete(cacheKey(settings, key));
 }
 
-export async function deleteObject(settings: RegistrySettings, key: string): Promise<void> {
+export async function getObjectBytes(
+  settings: RegistrySettings,
+  key: string
+): Promise<{ body: Uint8Array; contentType: string } | null> {
+  try {
+    return await withRetry(async () => {
+      const res = await buildClient(settings).send(
+        new GetObjectCommand({ Bucket: settings.s3_bucket, Key: key })
+      );
+      const body = (await res.Body?.transformToByteArray()) ?? null;
+      if (!body) return null;
+      return {
+        body,
+        contentType: res.ContentType ?? "application/octet-stream",
+      };
+    });
+  } catch (err: unknown) {
+    if (isNotFound(err)) return null;
+    throw err;
+  }
+}
+
+export async function deleteObject(
+  settings: RegistrySettings,
+  key: string
+): Promise<void> {
   await withRetry(() =>
     buildClient(settings).send(
       new DeleteObjectCommand({ Bucket: settings.s3_bucket, Key: key })
     )
   );
-  etagCache.delete(cacheKey(settings.s3_bucket, key));
+  etagCache.delete(cacheKey(settings, key));
 }
 
-export async function listObjects(settings: RegistrySettings, prefix: string): Promise<string[]> {
+export async function listObjects(
+  settings: RegistrySettings,
+  prefix: string
+): Promise<string[]> {
   const keys: string[] = [];
   let continuationToken: string | undefined;
 
@@ -219,7 +280,9 @@ export async function listObjects(settings: RegistrySettings, prefix: string): P
 }
 
 /** Test connectivity by checking if the bucket exists */
-export async function testConnection(settings: RegistrySettings): Promise<{ ok: boolean; error?: string }> {
+export async function testConnection(
+  settings: RegistrySettings
+): Promise<{ ok: boolean; error?: string }> {
   try {
     await buildClient(settings).send(
       new HeadBucketCommand({ Bucket: settings.s3_bucket })
@@ -227,7 +290,12 @@ export async function testConnection(settings: RegistrySettings): Promise<{ ok: 
     return { ok: true };
   } catch (err: unknown) {
     // Extract meaningful error from AWS SDK errors
-    const awsErr = err as { name?: string; Code?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+    const awsErr = err as {
+      name?: string;
+      Code?: string;
+      message?: string;
+      $metadata?: { httpStatusCode?: number };
+    };
     const code = awsErr.name || awsErr.Code || "";
     const status = awsErr.$metadata?.httpStatusCode;
     let message = awsErr.message || "Connection failed";
@@ -261,18 +329,31 @@ function isNotFound(err: unknown): boolean {
 function isNotModified(err: unknown): boolean {
   if (err && typeof err === "object") {
     const e = err as { $metadata?: { httpStatusCode?: number }; name?: string };
-    return e.$metadata?.httpStatusCode === 304 || e.name === "304" || e.name === "NotModified";
+    return (
+      e.$metadata?.httpStatusCode === 304 ||
+      e.name === "304" ||
+      e.name === "NotModified"
+    );
   }
   return false;
 }
 
 function isTransientError(err: unknown): boolean {
   if (err && typeof err === "object") {
-    const e = err as { $metadata?: { httpStatusCode?: number }; name?: string; code?: string };
+    const e = err as {
+      $metadata?: { httpStatusCode?: number };
+      name?: string;
+      code?: string;
+    };
     const status = e.$metadata?.httpStatusCode;
     // 5xx = server error, no status = network error
     if (!status || status >= 500) return true;
-    if (e.name === "TimeoutError" || e.code === "ECONNREFUSED" || e.code === "ETIMEDOUT") return true;
+    if (
+      e.name === "TimeoutError" ||
+      e.code === "ECONNREFUSED" ||
+      e.code === "ETIMEDOUT"
+    )
+      return true;
   }
   return false;
 }

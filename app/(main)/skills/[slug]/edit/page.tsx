@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getSkillBySlug, getCategories } from "@/lib/registry";
 import { EditSkillForm } from "@/components/edit-skill-form";
+import { getOrgSlug } from "@/lib/org";
+import { getUserRole, hasPermission } from "@/lib/rbac";
 
 export default async function EditSkillPage({
   params,
@@ -16,7 +18,13 @@ export default async function EditSkillPage({
   if (!skill) notFound();
 
   const username = (session.user as { username?: string }).username;
-  if (!username || skill.author.toLowerCase() !== username.toLowerCase()) {
+  const orgSlug = await getOrgSlug();
+  const role = username ? await getUserRole(username, orgSlug) : null;
+  const isAuthor =
+    username && skill.author.toLowerCase() === username.toLowerCase();
+  const canEdit =
+    isAuthor || (role ? hasPermission(role, "skill:edit_any") : false);
+  if (!canEdit) {
     redirect(`/skills/${slug}`);
   }
 

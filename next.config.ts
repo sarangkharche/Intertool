@@ -5,10 +5,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
-  serverExternalPackages: ["@aws-sdk/client-s3"],
+  serverExternalPackages: ["@aws-sdk/client-s3", "nodemailer"],
   experimental: {
     staleTimes: {
-      dynamic: 30,
+      dynamic: 0,
       static: 180,
     },
     optimizePackageImports: ["lucide-react", "framer-motion"],

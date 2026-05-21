@@ -11,6 +11,25 @@ interface EmailTransport {
   }): Promise<{ success: boolean; error?: string }>;
 }
 
+type NodemailerModule = {
+  default?: {
+    createTransport(opts: Record<string, unknown>): {
+      sendMail(opts: Record<string, unknown>): Promise<void>;
+    };
+  };
+  createTransport(opts: Record<string, unknown>): {
+    sendMail(opts: Record<string, unknown>): Promise<void>;
+  };
+};
+
+async function importOptionalPackage(name: string): Promise<unknown> {
+  // Keep optional server-only packages out of Turbopack's static dependency graph.
+  const importer = new Function("specifier", "return import(specifier)") as (
+    specifier: string
+  ) => Promise<unknown>;
+  return importer(name);
+}
+
 function getResendTransport(): EmailTransport | null {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
@@ -36,12 +55,10 @@ function getSmtpTransport(): EmailTransport | null {
   return {
     async send({ from, to, subject, html }) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const nodemailer = require("nodemailer") as {
-          createTransport(opts: Record<string, unknown>): {
-            sendMail(opts: Record<string, unknown>): Promise<void>;
-          };
-        };
+        const mod = (await importOptionalPackage(
+          "nodemailer"
+        )) as NodemailerModule;
+        const nodemailer = mod.default ?? mod;
         const transporter = nodemailer.createTransport({
           host,
           port: parseInt(port || "587", 10),
@@ -53,7 +70,10 @@ function getSmtpTransport(): EmailTransport | null {
       } catch (err) {
         return {
           success: false,
-          error: err instanceof Error ? err.message : "SMTP send failed. Is nodemailer installed?",
+          error:
+            err instanceof Error
+              ? err.message
+              : "SMTP send failed. Is nodemailer installed?",
         };
       }
     },
@@ -64,6 +84,26 @@ export function getEmailTransport(): EmailTransport | null {
   return getResendTransport() || getSmtpTransport();
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getPublicBaseUrl(): string {
+  const raw =
+    process.env.AUTH_URL ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000";
+  return raw.startsWith("http://") || raw.startsWith("https://")
+    ? raw
+    : `https://${raw}`;
+}
+
 // ── Invitation email ──
 
 export async function sendInvitationEmail(
@@ -71,15 +111,19 @@ export async function sendInvitationEmail(
   inviterName: string,
   registryName: string,
   role: string,
-  acceptUrl: string,
+  acceptUrl: string
 ): Promise<{ success: boolean; error?: string }> {
   const transport = getEmailTransport();
   if (!transport) {
     return { success: false, error: "No email transport configured" };
   }
 
-  const domain = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || "localhost:3000";
-  const from = process.env.EMAIL_FROM || `noreply@${new URL(domain.startsWith("http") ? domain : `https://${domain}`).hostname}`;
+  const domain = getPublicBaseUrl();
+  const from = process.env.EMAIL_FROM || `noreply@${new URL(domain).hostname}`;
+  const safeInviterName = escapeHtml(inviterName);
+  const safeRegistryName = escapeHtml(registryName);
+  const safeRole = escapeHtml(role);
+  const safeAcceptUrl = escapeHtml(acceptUrl);
 
   const html = `
 <!DOCTYPE html>
@@ -91,15 +135,15 @@ export async function sendInvitationEmail(
       <table width="460" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:40px">
         <tr><td>
           <h2 style="margin:0 0 8px;color:#fafafa;font-size:18px;font-weight:600">
-            You're invited to ${registryName}
+            You're invited to ${safeRegistryName}
           </h2>
           <p style="margin:0 0 24px;color:#a1a1aa;font-size:14px;line-height:1.5">
-            <strong style="color:#fafafa">${inviterName}</strong> has invited you to join
-            <strong style="color:#fafafa">${registryName}</strong> as a <strong style="color:#fafafa">${role}</strong>.
+            <strong style="color:#fafafa">${safeInviterName}</strong> has invited you to join
+            <strong style="color:#fafafa">${safeRegistryName}</strong> as a <strong style="color:#fafafa">${safeRole}</strong>.
           </p>
           <table cellpadding="0" cellspacing="0" style="margin:0 0 24px">
             <tr><td style="background:#fafafa;border-radius:8px;padding:10px 24px">
-              <a href="${acceptUrl}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600">
+              <a href="${safeAcceptUrl}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600">
                 Accept Invitation
               </a>
             </td></tr>

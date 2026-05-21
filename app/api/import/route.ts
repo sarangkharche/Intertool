@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { parseSkillMd, parseServerJson } from "@/lib/registry";
 import type { SkillType, McpTransport, SourceFormat } from "@/lib/types";
+import { noStoreHeaders } from "@/lib/cache-control";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 interface ImportResult {
   name: string;
@@ -18,7 +22,9 @@ interface ImportResult {
 }
 
 /** Resolve a GitHub URL to raw content URLs to try */
-function resolveGitHubPaths(url: string): { owner: string; repo: string; paths: string[] } | null {
+function resolveGitHubPaths(
+  url: string
+): { owner: string; repo: string; paths: string[] } | null {
   // Match github.com/owner/repo patterns
   const match = url.match(/github\.com\/([^/]+)\/([^/\s#?]+)/);
   if (!match) return null;
@@ -41,15 +47,19 @@ function resolveGitHubPaths(url: string): { owner: string; repo: string; paths: 
   };
 }
 
-async function fetchRawFile(owner: string, repo: string, filePath: string): Promise<string | null> {
+async function fetchRawFile(
+  owner: string,
+  repo: string,
+  filePath: string
+): Promise<string | null> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/${filePath}`;
   try {
-    const res = await fetch(url, { next: { revalidate: 0 } });
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
       // Try default branch as 'master'
       const res2 = await fetch(
         `https://raw.githubusercontent.com/${owner}/${repo}/master/${filePath}`,
-        { next: { revalidate: 0 } }
+        { cache: "no-store" }
       );
       if (!res2.ok) return null;
       return res2.text();
@@ -71,25 +81,37 @@ function slugify(name: string): string {
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: noStoreHeaders() }
+    );
   }
 
   let reqBody: { url: string };
   try {
     reqBody = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid JSON" },
+      { status: 400, headers: noStoreHeaders() }
+    );
   }
   const { url } = reqBody;
   if (!url) {
-    return NextResponse.json({ error: "URL is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "URL is required" },
+      { status: 400, headers: noStoreHeaders() }
+    );
   }
 
   const resolved = resolveGitHubPaths(url);
   if (!resolved) {
     return NextResponse.json(
-      { error: "Invalid GitHub URL. Expected format: https://github.com/owner/repo" },
-      { status: 400 }
+      {
+        error:
+          "Invalid GitHub URL. Expected format: https://github.com/owner/repo",
+      },
+      { status: 400, headers: noStoreHeaders() }
     );
   }
 
@@ -114,12 +136,14 @@ export async function POST(request: NextRequest) {
           description: (fm.description as string) ?? "",
           readme: parsed.body,
           tags: Array.isArray(fm.tags) ? fm.tags : [],
-          compatibility: Array.isArray(fm.compatibility) ? fm.compatibility : [],
+          compatibility: Array.isArray(fm.compatibility)
+            ? fm.compatibility
+            : [],
           source_url: sourceUrl,
           source_format: "skill-md",
           author: (fm.author as string) ?? owner,
         };
-        return NextResponse.json(result);
+        return NextResponse.json(result, { headers: noStoreHeaders() });
       }
     }
 
@@ -136,12 +160,14 @@ export async function POST(request: NextRequest) {
             description: (data.description as string) ?? "",
             readme: "",
             tags: Array.isArray(data.tags) ? data.tags : [],
-            compatibility: Array.isArray(data.compatibility) ? data.compatibility : [],
+            compatibility: Array.isArray(data.compatibility)
+              ? data.compatibility
+              : [],
             source_url: sourceUrl,
             source_format: "skill-yaml",
             author: (data.author as string) ?? owner,
           };
-          return NextResponse.json(result);
+          return NextResponse.json(result, { headers: noStoreHeaders() });
         }
       } catch {
         // Not valid YAML, continue
@@ -165,13 +191,13 @@ export async function POST(request: NextRequest) {
           transport: parsed.transport,
           author: owner,
         };
-        return NextResponse.json(result);
+        return NextResponse.json(result, { headers: noStoreHeaders() });
       }
     }
   }
 
   return NextResponse.json(
     { error: "No SKILL.md, skill.yaml, or server.json found in repository" },
-    { status: 404 }
+    { status: 404, headers: noStoreHeaders() }
   );
 }

@@ -2,27 +2,49 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSkills } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
-import { checkRateLimit, rateLimitResponse, rateLimitHeaders } from "@/lib/rate-limit";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  rateLimitHeaders,
+} from "@/lib/rate-limit";
+import { noStoreHeaders } from "@/lib/cache-control";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export async function GET(request: NextRequest) {
   const authResult = await authenticateApi(request);
   if (!isAuthenticated(authResult)) return authResult;
 
   // Rate limit: 120 requests per minute per IP
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rl = await checkRateLimit(`skills:${ip}`, { limit: 120, windowSeconds: 60 });
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = await checkRateLimit(`skills:${ip}`, {
+    limit: 120,
+    windowSeconds: 60,
+  });
   if (!rl.allowed) return rateLimitResponse(rl);
 
   const params = request.nextUrl.searchParams;
 
-  const page = params.get("page") ? Number(params.get("page")) : 1;
-  const perPage = params.get("per_page")
-    ? Number(params.get("per_page"))
-    : params.get("limit")
-      ? Number(params.get("limit"))
-      : 20;
+  const rawPage = params.get("page");
+  const rawPerPage = params.get("per_page") ?? params.get("limit");
+  const page = rawPage ? Number(rawPage) : 1;
+  const perPage = rawPerPage ? Number(rawPerPage) : 20;
+
+  if (!Number.isInteger(page) || page < 1) {
+    return NextResponse.json(
+      { error: "page must be a positive integer" },
+      { status: 400, headers: noStoreHeaders(rateLimitHeaders(rl)) }
+    );
+  }
+
+  if (!Number.isInteger(perPage) || perPage < 1 || perPage > 100) {
+    return NextResponse.json(
+      { error: "per_page must be an integer between 1 and 100" },
+      { status: 400, headers: noStoreHeaders(rateLimitHeaders(rl)) }
+    );
+  }
 
   const filters: SearchFilters = {
     query: params.get("q") ?? undefined,
@@ -49,10 +71,7 @@ export async function GET(request: NextRequest) {
     links.push(`<${baseUrl.pathname}${baseUrl.search}>; rel="prev"`);
   }
 
-  const headers: Record<string, string> = {
-    ...rateLimitHeaders(rl),
-    "Cache-Control": "no-store",
-  };
+  const headers: Record<string, string> = noStoreHeaders(rateLimitHeaders(rl));
   if (links.length > 0) headers["Link"] = links.join(", ");
 
   return NextResponse.json(

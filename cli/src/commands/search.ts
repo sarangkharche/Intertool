@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { apiGet } from "../lib/api.js";
-import { bold, dim, cyan, cross, isJsonMode, spinner, table } from "../lib/format.js";
+import { dim, cross, isJsonMode, spinner, table } from "../lib/format.js";
 
 interface SearchResult {
   slug: string;
@@ -13,11 +13,14 @@ interface SearchResult {
 export const searchCommand = new Command("search")
   .description("Search the skill registry")
   .argument("<query>", "Search query")
-  .addHelpText("after", `
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ intertool search "code review"
   $ intertool search mcp --json
-`)
+`
+  )
   .action(async (query: string) => {
     const s = spinner("Searching...");
 
@@ -45,8 +48,10 @@ Examples:
           r.name,
           r.type,
           `@${r.author ?? "unknown"}`,
-          r.description.length > 50 ? r.description.slice(0, 47) + "..." : r.description,
-        ]),
+          r.description.length > 50
+            ? r.description.slice(0, 47) + "..."
+            : r.description,
+        ])
       );
       console.log();
     } catch (err) {

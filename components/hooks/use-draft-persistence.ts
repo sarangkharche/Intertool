@@ -23,7 +23,7 @@ export interface DraftState {
 
 export function useDraftPersistence(
   getState: () => Omit<DraftState, "savedAt">,
-  restoreState: (draft: DraftState) => void,
+  restoreState: (draft: DraftState) => void
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredRef = useRef(false);
@@ -67,7 +67,7 @@ export function useDraftPersistence(
         if (hasContent) {
           localStorage.setItem(
             STORAGE_KEY,
-            JSON.stringify({ ...state, savedAt: Date.now() }),
+            JSON.stringify({ ...state, savedAt: Date.now() })
           );
         }
       } catch {

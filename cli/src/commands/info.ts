@@ -39,7 +39,9 @@ export const infoCommand = new Command("info")
       }
 
       console.log();
-      console.log(`  ${bold(skill.name)} ${dim(`@${skill.author}/${skill.slug}`)}`);
+      console.log(
+        `  ${bold(skill.name)} ${dim(`@${skill.author}/${skill.slug}`)}`
+      );
       console.log(`  ${skill.description}`);
       console.log();
       console.log(`  ${dim("Type:")}        ${skill.type}`);
@@ -50,7 +52,9 @@ export const infoCommand = new Command("info")
       if (skill.source_url) {
         console.log(`  ${dim("Source:")}      ${skill.source_url}`);
       }
-      console.log(`  ${dim("Registry:")}    ${cyan(`${config.apiUrl}/skills/${skill.slug}`)}`);
+      console.log(
+        `  ${dim("Registry:")}    ${cyan(`${config.apiUrl}/skills/${skill.slug}`)}`
+      );
 
       const cmds = skill.install_commands ?? {};
       if (Object.keys(cmds).length > 0) {

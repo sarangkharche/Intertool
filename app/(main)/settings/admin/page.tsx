@@ -4,7 +4,16 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Settings, Shield, Loader2, Check, Database, Globe, KeyRound, Github, Webhook } from "lucide-react";
+import {
+  Shield,
+  Loader2,
+  Check,
+  Database,
+  Globe,
+  KeyRound,
+  Github,
+  Webhook,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface SettingsData {
@@ -115,7 +124,11 @@ export default function AdminSettingsPage() {
           setGithubOrg(data.settings.github_org ?? "");
           setGithubOrgRequired(data.settings.github_org_required ?? false);
           setWebhookUrl(data.settings.webhook_url ?? "");
-          const wEvents = data.settings.webhook_events ?? ["publish", "update", "delete"];
+          const wEvents = data.settings.webhook_events ?? [
+            "publish",
+            "update",
+            "delete",
+          ];
           setWebhookPublish(wEvents.includes("publish"));
           setWebhookUpdate(wEvents.includes("update"));
           setWebhookDelete(wEvents.includes("delete"));
@@ -123,7 +136,9 @@ export default function AdminSettingsPage() {
         setLoading(false);
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : "Failed to load settings");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to load settings"
+        );
         setLoading(false);
       });
   }, [status, router]);
@@ -160,7 +175,9 @@ export default function AdminSettingsPage() {
         toast.error(data.error || "Connection failed");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Connection test failed");
+      toast.error(
+        err instanceof Error ? err.message : "Connection test failed"
+      );
     } finally {
       setTesting(false);
     }
@@ -256,7 +273,9 @@ export default function AdminSettingsPage() {
       .filter(Boolean);
 
     if (googleEnabled && domains.length === 0) {
-      toast.error("At least one allowed domain is required when Google auth is enabled");
+      toast.error(
+        "At least one allowed domain is required when Google auth is enabled"
+      );
       return;
     }
 
@@ -330,7 +349,10 @@ export default function AdminSettingsPage() {
       <div className="rounded-lg border border-border bg-card">
         <div className="border-b border-border-subtle px-4 py-3">
           <div className="flex items-center gap-2">
-            <Database className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <Database
+              className="h-3.5 w-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
             <p className="text-sm font-medium">S3 Storage</p>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -342,7 +364,10 @@ export default function AdminSettingsPage() {
         <div className="space-y-4 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label htmlFor="s3-bucket" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="s3-bucket"
+                className="text-xs text-muted-foreground"
+              >
                 Bucket name
               </label>
               <Input
@@ -354,7 +379,12 @@ export default function AdminSettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="s3-region" className="text-xs text-muted-foreground">Region</label>
+              <label
+                htmlFor="s3-region"
+                className="text-xs text-muted-foreground"
+              >
+                Region
+              </label>
               <select
                 id="s3-region"
                 value={region}
@@ -371,7 +401,10 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="s3-access-key" className="text-xs text-muted-foreground">
+            <label
+              htmlFor="s3-access-key"
+              className="text-xs text-muted-foreground"
+            >
               Access Key ID
             </label>
             <Input
@@ -384,7 +417,10 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="s3-secret-key" className="text-xs text-muted-foreground">
+            <label
+              htmlFor="s3-secret-key"
+              className="text-xs text-muted-foreground"
+            >
               Secret Access Key
               {!needsSetup && (
                 <span className="ml-1 text-muted-foreground/60">
@@ -404,8 +440,14 @@ export default function AdminSettingsPage() {
 
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5">
-              <Globe className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
-              <label htmlFor="s3-endpoint" className="text-xs text-muted-foreground">
+              <Globe
+                className="h-3 w-3 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <label
+                htmlFor="s3-endpoint"
+                className="text-xs text-muted-foreground"
+              >
                 Endpoint URL{" "}
                 <span className="text-muted-foreground/60">(optional)</span>
               </label>
@@ -424,7 +466,10 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="s3-session-token" className="text-xs text-muted-foreground">
+            <label
+              htmlFor="s3-session-token"
+              className="text-xs text-muted-foreground"
+            >
               Session Token{" "}
               <span className="text-muted-foreground/60">(optional)</span>
             </label>
@@ -448,7 +493,7 @@ export default function AdminSettingsPage() {
               Bucket structure
             </p>
             <pre className="font-mono text-xs text-muted-foreground leading-relaxed">
-{`s3://${bucket || "bucket"}/
+              {`s3://${bucket || "bucket"}/
 ├── skills/{slug}/skill.json
 ├── mcp-servers/{slug}/skill.json
 ├── agent-tools/{slug}/skill.json
@@ -498,7 +543,10 @@ export default function AdminSettingsPage() {
       <div className="mt-4 rounded-lg border border-border bg-card">
         <div className="border-b border-border-subtle px-4 py-3">
           <div className="flex items-center gap-2">
-            <KeyRound className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <KeyRound
+              className="h-3.5 w-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
             <p className="text-sm font-medium">Access Control</p>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -510,17 +558,26 @@ export default function AdminSettingsPage() {
           {/* GitHub OAuth Credentials */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Github className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+              <Github
+                className="h-3.5 w-3.5 text-muted-foreground"
+                aria-hidden="true"
+              />
               <div>
                 <p className="text-xs font-medium">GitHub OAuth App</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Required for sign-in. Create at GitHub &rarr; Settings &rarr; Developer settings &rarr; OAuth Apps.
+                  Required for sign-in. Create at GitHub &rarr; Settings &rarr;
+                  Developer settings &rarr; OAuth Apps.
                 </p>
               </div>
             </div>
             <div className="space-y-2 pl-5.5">
               <div className="space-y-1">
-                <label htmlFor="gh-client-id" className="text-xs text-muted-foreground">Client ID</label>
+                <label
+                  htmlFor="gh-client-id"
+                  className="text-xs text-muted-foreground"
+                >
+                  Client ID
+                </label>
                 <Input
                   id="gh-client-id"
                   placeholder="Ov23li…"
@@ -530,11 +587,18 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="gh-client-secret" className="text-xs text-muted-foreground">Client Secret</label>
+                <label
+                  htmlFor="gh-client-secret"
+                  className="text-xs text-muted-foreground"
+                >
+                  Client Secret
+                </label>
                 <Input
                   id="gh-client-secret"
                   type="password"
-                  placeholder={settings?.github_client_id ? "********" : "Enter secret"}
+                  placeholder={
+                    settings?.github_client_id ? "********" : "Enter secret"
+                  }
                   value={githubClientSecret}
                   onChange={(e) => setGithubClientSecret(e.target.value)}
                   className="h-8 font-mono text-sm"
@@ -547,9 +611,14 @@ export default function AdminSettingsPage() {
           <div className="border-t border-border-subtle pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Shield className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <Shield
+                  className="h-3.5 w-3.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <div>
-                  <p className="text-xs font-medium">Restrict to GitHub Organization</p>
+                  <p className="text-xs font-medium">
+                    Restrict to GitHub Organization
+                  </p>
                   <p className="text-[11px] text-muted-foreground">
                     Only members of this org can sign in
                   </p>
@@ -561,7 +630,9 @@ export default function AdminSettingsPage() {
                 aria-checked={githubOrgRequired}
                 aria-label="Restrict to GitHub organization"
                 className={`relative h-5 w-9 rounded-full interactive-toggle ${
-                  githubOrgRequired ? "bg-emerald-500" : "bg-muted-foreground/20"
+                  githubOrgRequired
+                    ? "bg-emerald-500"
+                    : "bg-muted-foreground/20"
                 }`}
               >
                 <span
@@ -574,7 +645,10 @@ export default function AdminSettingsPage() {
 
             {githubOrgRequired && (
               <div className="mt-3 space-y-1.5 pl-5.5">
-                <label htmlFor="gh-org" className="text-xs text-muted-foreground">
+                <label
+                  htmlFor="gh-org"
+                  className="text-xs text-muted-foreground"
+                >
                   Organization name
                 </label>
                 <Input
@@ -595,7 +669,10 @@ export default function AdminSettingsPage() {
           <div className="border-t border-border-subtle pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Globe className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <Globe
+                  className="h-3.5 w-3.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <div>
                   <p className="text-xs font-medium">Google Workspace</p>
                   <p className="text-[11px] text-muted-foreground">
@@ -623,11 +700,17 @@ export default function AdminSettingsPage() {
             {googleEnabled && (
               <div className="mt-3 space-y-2 pl-5.5">
                 <p className="text-[11px] text-muted-foreground">
-                  Create OAuth credentials in Google Cloud Console. Set the callback URL to{" "}
+                  Create OAuth credentials in Google Cloud Console. Set the
+                  callback URL to{" "}
                   <span className="font-mono text-[10px]">{`{your-domain}/api/auth/callback/google`}</span>
                 </p>
                 <div className="space-y-1">
-                  <label htmlFor="google-client-id" className="text-xs text-muted-foreground">Client ID</label>
+                  <label
+                    htmlFor="google-client-id"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Client ID
+                  </label>
                   <Input
                     id="google-client-id"
                     placeholder="123456789.apps.googleusercontent.com"
@@ -637,18 +720,28 @@ export default function AdminSettingsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="google-client-secret" className="text-xs text-muted-foreground">Client Secret</label>
+                  <label
+                    htmlFor="google-client-secret"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Client Secret
+                  </label>
                   <Input
                     id="google-client-secret"
                     type="password"
-                    placeholder={settings?.google_client_id ? "********" : "Enter secret"}
+                    placeholder={
+                      settings?.google_client_id ? "********" : "Enter secret"
+                    }
                     value={googleClientSecret}
                     onChange={(e) => setGoogleClientSecret(e.target.value)}
                     className="h-8 font-mono text-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="google-domains" className="text-xs text-muted-foreground">
+                  <label
+                    htmlFor="google-domains"
+                    className="text-xs text-muted-foreground"
+                  >
                     Allowed domains
                   </label>
                   <Input
@@ -659,7 +752,8 @@ export default function AdminSettingsPage() {
                     className="h-8 font-mono text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground/60">
-                    Comma-separated. Only users with these email domains can sign in.
+                    Comma-separated. Only users with these email domains can
+                    sign in.
                   </p>
                 </div>
               </div>
@@ -686,7 +780,10 @@ export default function AdminSettingsPage() {
       <div className="mt-4 rounded-lg border border-border bg-card">
         <div className="border-b border-border-subtle px-4 py-3">
           <div className="flex items-center gap-2">
-            <Webhook className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <Webhook
+              className="h-3.5 w-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
             <p className="text-sm font-medium">Webhooks</p>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -696,7 +793,10 @@ export default function AdminSettingsPage() {
 
         <div className="space-y-4 p-4">
           <div className="space-y-1.5">
-            <label htmlFor="webhook-url" className="text-xs text-muted-foreground">
+            <label
+              htmlFor="webhook-url"
+              className="text-xs text-muted-foreground"
+            >
               Webhook URL
             </label>
             <Input
@@ -715,11 +815,26 @@ export default function AdminSettingsPage() {
             <label className="text-xs text-muted-foreground">Events</label>
             <div className="flex items-center gap-4">
               {[
-                { label: "Publish", checked: webhookPublish, set: setWebhookPublish },
-                { label: "Update", checked: webhookUpdate, set: setWebhookUpdate },
-                { label: "Delete", checked: webhookDelete, set: setWebhookDelete },
+                {
+                  label: "Publish",
+                  checked: webhookPublish,
+                  set: setWebhookPublish,
+                },
+                {
+                  label: "Update",
+                  checked: webhookUpdate,
+                  set: setWebhookUpdate,
+                },
+                {
+                  label: "Delete",
+                  checked: webhookDelete,
+                  set: setWebhookDelete,
+                },
               ].map(({ label, checked, set }) => (
-                <label key={label} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <label
+                  key={label}
+                  className="flex items-center gap-1.5 text-xs cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={checked}

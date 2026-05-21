@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { HardDrive, Users, Upload, X, ArrowRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -45,6 +45,10 @@ const HINTS: Hint[] = [
   },
 ];
 
+const subscribeToClient = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 function getApplicableHints(isAdmin: boolean): Hint[] {
   const applicable: Hint[] = [];
   if (isAdmin) applicable.push(HINTS[0]);
@@ -74,17 +78,18 @@ export function OnboardingHints(props: Props) {
     const dismissed = new Set<string>();
     try {
       for (const hint of HINTS) {
-        if (localStorage.getItem(`hint-dismissed:${hint.id}`) === "true") dismissed.add(hint.id);
+        if (localStorage.getItem(`hint-dismissed:${hint.id}`) === "true")
+          dismissed.add(hint.id);
       }
     } catch {}
     return dismissed;
   });
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToClient,
+    getClientSnapshot,
+    getServerSnapshot
+  );
   const toastFired = useRef(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Completion toast: all hints naturally resolved (none active, none dismissed)
   useEffect(() => {
@@ -96,8 +101,7 @@ export function OnboardingHints(props: Props) {
     if (anyDismissed) return;
 
     try {
-      if (localStorage.getItem("hint-completed-toast-shown") === "true")
-        return;
+      if (localStorage.getItem("hint-completed-toast-shown") === "true") return;
       localStorage.setItem("hint-completed-toast-shown", "true");
     } catch {
       return;

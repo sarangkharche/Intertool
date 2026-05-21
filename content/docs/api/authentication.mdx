@@ -5,7 +5,7 @@ description: How authentication works in the Intertool API.
 
 ## Overview
 
-Intertool uses GitHub OAuth for authentication. The API accepts bearer tokens issued during the OAuth flow.
+Intertool uses OAuth for authentication. GitHub is the default provider, and Google Workspace can be enabled by an admin. The API accepts bearer tokens issued during the OAuth flow or personal API tokens created in Settings.
 
 ## CLI authentication
 
@@ -15,7 +15,7 @@ The CLI handles authentication automatically:
 intertool login --url https://your-registry.example.com
 ```
 
-This opens a browser, completes the OAuth flow, and stores the token locally.
+This opens a browser, completes the OAuth flow, and stores the token locally at `~/.intertool/config.json`.
 
 ## API token usage
 
@@ -70,7 +70,7 @@ Set the `RESEND_API_KEY` environment variable with your [Resend](https://resend.
 
 **SMTP (self-hosted fallback)**
 
-Set all of the following environment variables:
+SMTP is optional and not bundled in the default install. If you need it in a self-hosted deployment, install `nodemailer` in your deployment image and set all of the following environment variables:
 
 | Variable | Description |
 |----------|-------------|

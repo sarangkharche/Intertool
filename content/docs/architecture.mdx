@@ -79,6 +79,8 @@ All skill data lives in your S3 bucket:
 s3://your-bucket/
 ├── skills/{slug}/
 │   ├── skill.json              # current version
+│   ├── files/                  # optional package files
+│   │   └── README.md
 │   └── versions/
 │       ├── 1.0.0.json          # version snapshots
 │       └── 1.0.1.json
@@ -104,14 +106,14 @@ Intertool uses role-based access control (RBAC) with three roles:
 
 | Role | Permissions |
 |---|---|
-| **Admin** | Full access: settings, members, tokens, publish, edit, delete |
-| **Member** | Publish and edit own skills, browse and install all |
-| **Viewer** | Browse and install only |
+| **Owner** | Full access: settings, members, tokens, publish, edit, delete, transfer ownership |
+| **Admin** | Manage settings, members, tokens, and all registry items |
+| **Member** | Publish and edit own items, browse and install all |
 
-The first user or the user specified in `INTERTOOL_ADMIN` is assigned the admin role. New users are assigned the member role by default in self-hosted mode.
+The first user, or the user specified in `INTERTOOL_ADMIN`, is assigned the owner role. New users are assigned the member role by default in self-hosted mode.
 
 ## SaaS mode
 
-Intertool supports multi-tenant SaaS mode with subdomain-based organization routing. Each organization gets its own subdomain (e.g., `acme.intertool.sh`) with isolated settings and data stored in Upstash Redis.
+Intertool supports multi-tenant SaaS mode with path-based organization routing. Each organization gets its own path (for example, `intertool.sh/acme`) with isolated settings and data stored in Upstash Redis.
 
 SaaS mode is activated by setting `INTERTOOL_MODE=saas` and configuring Redis credentials.

@@ -23,7 +23,13 @@ Log in to your organization's registry:
 intertool login --url https://your-registry.example.com
 ```
 
-This opens a browser window for GitHub OAuth. Once authenticated, your token is stored locally at `~/.config/intertool/config.json`.
+For SaaS registries, use your organization path:
+
+```bash
+intertool login --url https://intertool.sh/example-org
+```
+
+This opens a browser window for OAuth. Once authenticated, your token is stored locally at `~/.intertool/config.json`.
 
 ## Verify
 
@@ -46,6 +52,8 @@ intertool install @team/code-review
 For **skills**, **agent tools**, and **prompt templates**, this writes a `SKILL.md` file to `.claude/skills/<slug>/SKILL.md` in your current project.
 
 For **MCP servers**, it writes a `server.json` to `.claude/mcp-servers/<slug>/server.json` with the server configuration and install commands.
+
+If the published item includes package files, the CLI downloads those files into the same install directory and writes `.intertool.json` metadata used by `intertool update`.
 
 ## List installed skills
 

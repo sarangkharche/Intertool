@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { Palette, Database, Users, Key } from "lucide-react";
 
 const personalLinks = [
@@ -22,7 +23,30 @@ export default function SettingsLayout({
 }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const isAdmin = status === "loading" || !!session?.user;
+  const [role, setRole] = useState<string | null>(null);
+  const isAdmin =
+    status === "loading" ||
+    (status === "authenticated" && (role === "owner" || role === "admin"));
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return;
+    }
+
+    let active = true;
+    fetch("/api/me", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { role?: string } | null) => {
+        if (active) setRole(data?.role ?? null);
+      })
+      .catch(() => {
+        if (active) setRole(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [status, session?.user]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">

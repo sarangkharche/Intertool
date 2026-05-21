@@ -1,5 +1,4 @@
-const NO_COLOR =
-  !!process.env.NO_COLOR || !process.stdout.isTTY;
+const NO_COLOR = !!process.env.NO_COLOR || !process.stdout.isTTY;
 
 function wrap(code: string, text: string): string {
   if (NO_COLOR) return text;
@@ -24,11 +23,11 @@ export function isJsonMode(): boolean {
 export function table(
   headers: string[],
   rows: string[][],
-  opts: { indent?: number } = {},
+  opts: { indent?: number } = {}
 ): void {
   const indent = " ".repeat(opts.indent ?? 2);
   const widths = headers.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)),
+    Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length))
   );
 
   const headerLine = headers

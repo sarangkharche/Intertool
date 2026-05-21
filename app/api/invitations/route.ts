@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
-import { authorize, getUserRole, listMembers } from "@/lib/rbac";
+import { authorize, listMembers } from "@/lib/rbac";
 import { createInvitation, getInvitationByEmail } from "@/lib/invitations";
 import { sendInvitationEmail, getEmailTransport } from "@/lib/email";
 import { getSettings } from "@/lib/settings";
+
+function publicBaseUrl(): string {
+  const raw =
+    process.env.AUTH_URL ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000";
+  return raw.startsWith("http://") || raw.startsWith("https://")
+    ? raw
+    : `https://${raw}`;
+}
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -26,8 +37,11 @@ export async function POST(request: NextRequest) {
   // Check email transport is configured
   if (!getEmailTransport()) {
     return NextResponse.json(
-      { error: "Email transport not configured. Set RESEND_API_KEY or SMTP_HOST." },
-      { status: 422 },
+      {
+        error:
+          "Email transport not configured. Set RESEND_API_KEY or SMTP_HOST.",
+      },
+      { status: 422 }
     );
   }
 
@@ -40,42 +54,60 @@ export async function POST(request: NextRequest) {
 
   const email = body.email?.trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Valid email address is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Valid email address is required" },
+      { status: 400 }
+    );
   }
 
   const role = (body.role as "member" | "admin") ?? "member";
   if (!["member", "admin"].includes(role)) {
-    return NextResponse.json({ error: "Role must be 'member' or 'admin'" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Role must be 'member' or 'admin'" },
+      { status: 400 }
+    );
   }
 
   // Check for existing member
   const members = await listMembers(orgSlug);
   const alreadyMember = members.some((m) => m.id === email);
   if (alreadyMember) {
-    return NextResponse.json({ error: "This user is already a member" }, { status: 409 });
+    return NextResponse.json(
+      { error: "This user is already a member" },
+      { status: 409 }
+    );
   }
 
   // Check for existing pending invitation
   const existing = await getInvitationByEmail(email, orgSlug);
   if (existing) {
-    return NextResponse.json({ error: "An invitation is already pending for this email" }, { status: 409 });
+    return NextResponse.json(
+      { error: "An invitation is already pending for this email" },
+      { status: 409 }
+    );
   }
 
   const invitation = await createInvitation(email, role, username, orgSlug);
 
   // Build accept URL
-  const baseUrl = process.env.NEXTAUTH_URL || `https://${process.env.VERCEL_URL}`;
+  const baseUrl = publicBaseUrl();
   const acceptUrl = `${baseUrl}/invite?token=${invitation.token}`;
 
   // Registry name from settings
   const settings = await getSettings(orgSlug);
   const registryName = settings?.org_name || "Intertool Registry";
 
-  const result = await sendInvitationEmail(email, username, registryName, role, acceptUrl);
+  const result = await sendInvitationEmail(
+    email,
+    username,
+    registryName,
+    role,
+    acceptUrl
+  );
   if (!result.success) {
     return NextResponse.json(
       { error: `Failed to send email: ${result.error}` },
-      { status: 500 },
+      { status: 500 }
     );
   }
 
@@ -91,6 +123,6 @@ export async function POST(request: NextRequest) {
         token_preview: invitation.token.slice(0, 8) + "...",
       },
     },
-    { status: 201 },
+    { status: 201 }
   );
 }

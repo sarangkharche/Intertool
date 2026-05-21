@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Invitation, OrgRole } from "./types";
 import { ensureUserRecord } from "./rbac";
+import { isLocalSaasFallbackMode } from "./org";
 
 const INVITE_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 
@@ -12,6 +13,7 @@ const INVITE_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 let _redis: Redis | null = null;
 
 function getRedis(): Redis | null {
+  if (isLocalSaasFallbackMode()) return null;
   if (_redis) return _redis;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -56,7 +58,9 @@ function readSelfHostedInvitations(): SelfHostedInvitations {
   }
 }
 
-function writeSelfHostedInvitations(invitations: Record<string, Invitation>): void {
+function writeSelfHostedInvitations(
+  invitations: Record<string, Invitation>
+): void {
   try {
     const raw = fs.existsSync(SETTINGS_PATH)
       ? JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf-8"))
@@ -68,7 +72,9 @@ function writeSelfHostedInvitations(invitations: Record<string, Invitation>): vo
   }
 }
 
-function filterExpired(invitations: Record<string, Invitation>): Record<string, Invitation> {
+function filterExpired(
+  invitations: Record<string, Invitation>
+): Record<string, Invitation> {
   const now = Date.now();
   const filtered: Record<string, Invitation> = {};
   for (const [k, v] of Object.entries(invitations)) {
@@ -85,7 +91,7 @@ export async function createInvitation(
   email: string,
   role: OrgRole,
   invitedBy: string,
-  orgSlug?: string,
+  orgSlug?: string
 ): Promise<Invitation> {
   const token = generateInviteToken();
   const now = new Date();
@@ -130,7 +136,7 @@ export async function getInvitation(token: string): Promise<Invitation | null> {
 
 export async function getInvitationByEmail(
   email: string,
-  orgSlug?: string,
+  orgSlug?: string
 ): Promise<Invitation | null> {
   const r = getRedis();
   if (r) {
@@ -151,7 +157,9 @@ export async function getInvitationByEmail(
   return null;
 }
 
-export async function listPendingInvitations(orgSlug?: string): Promise<Invitation[]> {
+export async function listPendingInvitations(
+  orgSlug?: string
+): Promise<Invitation[]> {
   const r = getRedis();
   if (r) {
     const prefix = orgSlug ?? "default";
@@ -159,7 +167,10 @@ export async function listPendingInvitations(orgSlug?: string): Promise<Invitati
     const invitations: Invitation[] = [];
     let cursor = 0;
     do {
-      const [nextCursor, keys] = await r.scan(cursor, { match: pattern, count: 100 });
+      const [nextCursor, keys] = await r.scan(cursor, {
+        match: pattern,
+        count: 100,
+      });
       cursor = Number(nextCursor);
       for (const key of keys) {
         const token = await r.get<string>(key);
@@ -170,7 +181,8 @@ export async function listPendingInvitations(orgSlug?: string): Promise<Invitati
       }
     } while (cursor !== 0);
     return invitations.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }
 
@@ -179,27 +191,36 @@ export async function listPendingInvitations(orgSlug?: string): Promise<Invitati
   const invitations = filterExpired(data.invitations ?? {});
   return Object.values(invitations)
     .filter((inv) => inv.org_slug === orgSlug)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 }
 
 export async function acceptInvitation(
   token: string,
-  profile?: { display_name: string; provider: "github" | "google"; avatar_url?: string },
+  profile?: {
+    identifier?: string;
+    display_name: string;
+    provider: "github" | "google";
+    avatar_url?: string;
+  }
 ): Promise<Invitation | null> {
   const inv = await getInvitation(token);
   if (!inv) return null;
 
+  const identifier = (profile?.identifier ?? inv.email).toLowerCase();
   // Create user record with the invited role
   const userProfile = profile ?? {
     display_name: inv.email,
     provider: "google" as const,
   };
-  const user = await ensureUserRecord(inv.email, userProfile, inv.org_slug);
+  const user = await ensureUserRecord(identifier, userProfile, inv.org_slug);
 
   // Set the invited role if different from default
   if (user.role !== inv.role && inv.role !== "owner") {
     const { setUserRole } = await import("./rbac");
-    await setUserRole(inv.email, inv.role, inv.org_slug);
+    await setUserRole(identifier, inv.role, inv.org_slug);
   }
 
   // Clean up invitation keys
@@ -208,14 +229,18 @@ export async function acceptInvitation(
   return inv;
 }
 
-export async function declineInvitation(token: string): Promise<Invitation | null> {
+export async function declineInvitation(
+  token: string
+): Promise<Invitation | null> {
   const inv = await getInvitation(token);
   if (!inv) return null;
   await deleteInvitationKeys(token, inv.email, inv.org_slug);
   return inv;
 }
 
-export async function revokeInvitation(token: string): Promise<Invitation | null> {
+export async function revokeInvitation(
+  token: string
+): Promise<Invitation | null> {
   return declineInvitation(token); // Same mechanics
 }
 
@@ -224,7 +249,7 @@ export async function revokeInvitation(token: string): Promise<Invitation | null
 async function deleteInvitationKeys(
   token: string,
   email: string,
-  orgSlug?: string,
+  orgSlug?: string
 ): Promise<void> {
   const r = getRedis();
   if (r) {

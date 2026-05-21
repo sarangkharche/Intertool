@@ -21,7 +21,10 @@ export function SidebarCopyBlock({ text }: { text: string }) {
         aria-label="Copy to clipboard"
       >
         {copied ? (
-          <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          <Check
+            className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          />
         ) : (
           <Copy className="h-3 w-3" aria-hidden="true" />
         )}

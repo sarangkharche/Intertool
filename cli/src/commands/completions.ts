@@ -53,12 +53,15 @@ complete -c intertool -n '__fish_use_subcommand' -a completions -d 'Generate she
 export const completionsCommand = new Command("completions")
   .description("Generate shell completion scripts")
   .argument("<shell>", "Shell type: bash, zsh, or fish")
-  .addHelpText("after", `
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ intertool completions bash >> ~/.bashrc
   $ intertool completions zsh >> ~/.zshrc
   $ intertool completions fish > ~/.config/fish/completions/intertool.fish
-`)
+`
+  )
   .action((shell: string) => {
     switch (shell.toLowerCase()) {
       case "bash":
