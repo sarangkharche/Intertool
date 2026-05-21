@@ -5,12 +5,32 @@ test.describe("public registry surface", () => {
     await page.goto("/");
 
     await expect(
-      page.getByRole("heading", { name: "Your team's AI toolbox" })
+      page.getByRole("heading", {
+        name: "Stop agent-tool sprawl before it becomes production risk.",
+      })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /get started/i })
-    ).toHaveAttribute("href", "/sign-in");
-    await expect(page.getByText("Internal AI registry")).toBeVisible();
+      page.getByRole("link", { name: /deploy self-hosted/i })
+    ).toHaveAttribute("href", "/docs/getting-started");
+    await expect(
+      page.getByText("Private control plane for AI agent capabilities")
+    ).toBeVisible();
+  });
+
+  test("renders the public pricing page", async ({ page }) => {
+    await page.goto("/pricing");
+
+    await expect(
+      page.getByRole("heading", {
+        name: "Start with a private registry. Scale into governance.",
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Community" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Team Cloud" })
+    ).toBeVisible();
   });
 
   test("renders the sign-in page", async ({ page }) => {

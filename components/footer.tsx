@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Package } from "lucide-react";
 import { GITHUB_URL } from "@/lib/constants";
 
@@ -10,6 +11,18 @@ export function Footer() {
           <span>Intertool</span>
         </div>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <Link
+            href="/pricing"
+            className="transition-colors hover:text-foreground"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/docs"
+            className="transition-colors hover:text-foreground"
+          >
+            Docs
+          </Link>
           <a
             href={GITHUB_URL}
             target="_blank"

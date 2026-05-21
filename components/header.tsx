@@ -78,6 +78,12 @@ export function Header() {
               <BookOpen className="h-3 w-3" aria-hidden="true" />
               <span className="hidden sm:inline">Docs</span>
             </Link>
+            <Link
+              href="/pricing"
+              className="hidden h-7 items-center rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost sm:flex"
+            >
+              Pricing
+            </Link>
             <a
               href={GITHUB_URL}
               target="_blank"

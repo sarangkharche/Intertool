@@ -80,7 +80,7 @@ lib/
 
 ## Public discovery surface
 
-Intertool is private by default, so search indexing focuses on public product and documentation pages. `robots.txt` allows `/`, `/brand`, `/docs/`, `/llms.txt`, and `/llms-full.txt`, and disallows private registry, settings, auth, and API routes. `sitemap.xml` lists the canonical public pages. `NEXT_PUBLIC_SITE_URL` controls the absolute origin used in canonical metadata, Open Graph data, sitemaps, and LLM docs links.
+Intertool is private by default, so search indexing focuses on public product and documentation pages. `robots.txt` allows `/`, `/pricing`, `/brand`, `/docs/`, `/llms.txt`, and `/llms-full.txt`, and disallows private registry, settings, auth, and API routes. `sitemap.xml` lists the canonical public pages. `NEXT_PUBLIC_SITE_URL` controls the absolute origin used in canonical metadata, Open Graph data, sitemaps, and LLM docs links.
 
 The root layout emits global JSON-LD for the Intertool application, organization, website, and LLM documentation endpoints. Docs pages emit `TechArticle` and breadcrumb JSON-LD.
 
