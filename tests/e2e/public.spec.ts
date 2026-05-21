@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("public registry surface", () => {
   test("renders the unauthenticated home page", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
 
     await expect(
       page.getByRole("heading", {
@@ -18,7 +18,7 @@ test.describe("public registry surface", () => {
   });
 
   test("renders the public pricing page", async ({ page }) => {
-    await page.goto("/pricing");
+    await page.goto("/pricing", { waitUntil: "domcontentloaded" });
 
     await expect(
       page.getByRole("heading", {
@@ -29,12 +29,12 @@ test.describe("public registry surface", () => {
       page.getByRole("heading", { name: "Community" })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Team Cloud" })
+      page.getByRole("heading", { name: "Team Cloud", exact: true })
     ).toBeVisible();
   });
 
   test("renders the sign-in page", async ({ page }) => {
-    await page.goto("/sign-in");
+    await page.goto("/sign-in", { waitUntil: "domcontentloaded" });
 
     await expect(
       page.getByRole("heading", { name: "Sign in to Intertool" })
