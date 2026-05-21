@@ -5,7 +5,8 @@ import { getPublicPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = getPublicPageMetadata({
   title: "Brand Kit",
-  description: "Brand guidelines, colors, typography, and assets for Intertool.",
+  description:
+    "Brand guidelines, colors, typography, and assets for Intertool.",
   path: "/brand",
 });
 

@@ -22,6 +22,7 @@ import {
   Settings,
   Shield,
   BookOpen,
+  ClipboardCheck,
 } from "lucide-react";
 import { CommandPalette } from "./command-palette";
 import { GITHUB_URL } from "@/lib/constants";
@@ -143,6 +144,16 @@ export function Header() {
                     >
                       <Settings className="h-3.5 w-3.5" aria-hidden="true" />
                       Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => router.push("/review")}
+                      className="gap-2"
+                    >
+                      <ClipboardCheck
+                        className="h-3.5 w-3.5"
+                        aria-hidden="true"
+                      />
+                      Review
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => router.push("/settings/admin")}

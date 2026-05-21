@@ -9,6 +9,7 @@ import {
 } from "@/lib/invitations";
 import { sendInvitationEmail, getEmailTransport } from "@/lib/email";
 import { getSettings } from "@/lib/settings";
+import { appendAuditEvent } from "@/lib/audit-log";
 import type { OrgRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -154,6 +155,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await appendAuditEvent({
+      org_slug: orgSlug,
+      actor: username,
+      action: "member.invited",
+      target_type: "invitation",
+      target_id: email,
+      metadata: {
+        role,
+      },
+    });
+
     return NextResponse.json(
       {
         invitation: {
@@ -189,6 +201,17 @@ export async function POST(request: NextRequest) {
       await setUserRole(identifier, role, orgSlug);
       user.role = role;
     }
+
+    await appendAuditEvent({
+      org_slug: orgSlug,
+      actor: username,
+      action: "member.added",
+      target_type: "member",
+      target_id: identifier,
+      metadata: {
+        role: user.role,
+      },
+    });
 
     return NextResponse.json({ member: user }, { status: 201 });
   } catch (err) {

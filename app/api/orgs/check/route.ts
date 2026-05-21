@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSaasMode } from "@/lib/org";
+import { isLocalSaasFallbackMode, isSaasMode } from "@/lib/org";
 import { orgExists } from "@/lib/settings";
 
 function hasRedis(): boolean {
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  if (!hasRedis()) {
+  if (!hasRedis() && !isLocalSaasFallbackMode()) {
     // No Redis configured: skip existence check, validated format + reserved is enough
     return NextResponse.json({ available: true });
   }

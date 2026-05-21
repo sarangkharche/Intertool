@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isSaasMode } from "@/lib/org";
 import { createOrg, orgExists, getOrgForUser } from "@/lib/settings";
+import { appendAuditEvent } from "@/lib/audit-log";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,16 @@ export async function POST(request: NextRequest) {
 
   try {
     await createOrg(slug, name, username);
+    await appendAuditEvent({
+      org_slug: slug,
+      actor: username,
+      action: "org.created",
+      target_type: "org",
+      target_id: slug,
+      metadata: {
+        name,
+      },
+    });
     const baseUrl =
       process.env.NEXTAUTH_URL ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");

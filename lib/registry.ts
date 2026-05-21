@@ -953,6 +953,9 @@ export async function updateSkillStatus(
 
       await putObject(settings, key, JSON.stringify(nextSkill, null, 2));
       await rebuildIndex(settings);
+      if (status === "published") {
+        fireWebhook(settings, "publish", nextSkill);
+      }
       return nextSkill;
     });
   });
@@ -1004,7 +1007,9 @@ async function _upsertSkillInner(
     const isUpdate = !!existingRaw;
     await putObject(settings, key, JSON.stringify(skill, null, 2));
     await rebuildIndex(settings);
-    fireWebhook(settings, isUpdate ? "update" : "publish", skill);
+    if (skill.status === "published") {
+      fireWebhook(settings, isUpdate ? "update" : "publish", skill);
+    }
   });
 }
 

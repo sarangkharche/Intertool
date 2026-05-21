@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
 import { authorize, getUserRole, setUserRole, removeMember } from "@/lib/rbac";
+import { appendAuditEvent } from "@/lib/audit-log";
 import type { OrgRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,16 @@ export async function PATCH(
   }
 
   await setUserRole(targetId, newRole, orgSlug);
+  await appendAuditEvent({
+    org_slug: orgSlug,
+    actor: username,
+    action: "member.role_changed",
+    target_type: "member",
+    target_id: targetId,
+    metadata: {
+      role: newRole,
+    },
+  });
   return NextResponse.json(
     { ok: true, role: newRole },
     {
@@ -107,6 +118,13 @@ export async function DELETE(
   }
 
   await removeMember(targetId, orgSlug);
+  await appendAuditEvent({
+    org_slug: orgSlug,
+    actor: username,
+    action: "member.removed",
+    target_type: "member",
+    target_id: targetId,
+  });
   return NextResponse.json(
     { ok: true },
     {

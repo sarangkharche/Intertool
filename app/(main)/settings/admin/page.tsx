@@ -232,6 +232,7 @@ export default function AdminSettingsPage() {
           .split(",")
           .map((d) => d.trim())
           .filter(Boolean),
+        publish_review_required: publishReviewRequired,
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
@@ -855,7 +856,9 @@ export default function AdminSettingsPage() {
           <div className="flex justify-end border-t border-border-subtle pt-3">
             <button
               onClick={handleSaveGovernance}
-              disabled={savingGovernance || !bucket.trim() || !accessKeyId.trim()}
+              disabled={
+                savingGovernance || !bucket.trim() || !accessKeyId.trim()
+              }
               className="btn-pill"
             >
               {savingGovernance ? (

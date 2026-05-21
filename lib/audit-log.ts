@@ -38,9 +38,13 @@ function readLocalAuditData(): LocalAuditData {
 }
 
 function writeLocalAuditData(data: LocalAuditData): void {
-  const dir = path.dirname(AUDIT_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(AUDIT_PATH, JSON.stringify(data, null, 2) + "\n");
+  try {
+    const dir = path.dirname(AUDIT_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(AUDIT_PATH, JSON.stringify(data, null, 2) + "\n");
+  } catch {
+    // Audit logging should not block the user action in read-only deployments.
+  }
 }
 
 export async function appendAuditEvent(
@@ -55,10 +59,14 @@ export async function appendAuditEvent(
 
   const r = getRedis();
   if (r) {
-    const key = auditKey(auditEvent.org_slug);
-    await r.lpush(key, JSON.stringify(auditEvent));
-    await r.ltrim(key, 0, MAX_AUDIT_EVENTS - 1);
-    return auditEvent;
+    try {
+      const key = auditKey(auditEvent.org_slug);
+      await r.lpush(key, JSON.stringify(auditEvent));
+      await r.ltrim(key, 0, MAX_AUDIT_EVENTS - 1);
+      return auditEvent;
+    } catch {
+      // Fall through to local best-effort storage.
+    }
   }
 
   const data = readLocalAuditData();
@@ -77,16 +85,20 @@ export async function listAuditEvents(
 
   const r = getRedis();
   if (r) {
-    const rows = await r.lrange<string>(auditKey(orgSlug), 0, safeLimit - 1);
-    return rows
-      .map((row) => {
-        try {
-          return JSON.parse(row) as AuditEvent;
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as AuditEvent[];
+    try {
+      const rows = await r.lrange<string>(auditKey(orgSlug), 0, safeLimit - 1);
+      return rows
+        .map((row) => {
+          try {
+            return JSON.parse(row) as AuditEvent;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean) as AuditEvent[];
+    } catch {
+      // Fall through to local best-effort storage.
+    }
   }
 
   const data = readLocalAuditData();

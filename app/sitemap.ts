@@ -8,36 +8,50 @@ type SitemapEntry = MetadataRoute.Sitemap[number];
 
 const STATIC_ROUTES: Array<{
   path: string;
-  sourceFile: string;
+  sourceFile: string[];
   changeFrequency: SitemapEntry["changeFrequency"];
   priority: number;
 }> = [
   {
     path: "/",
-    sourceFile: "app/(main)/page.tsx",
+    sourceFile: ["(main)", "page.tsx"],
     changeFrequency: "monthly",
     priority: 1,
   },
   {
     path: "/brand",
-    sourceFile: "app/(main)/brand/page.tsx",
+    sourceFile: ["(main)", "brand", "page.tsx"],
     changeFrequency: "yearly",
     priority: 0.35,
   },
 ];
 
-function lastModifiedFor(relativePath: string): Date | undefined {
-  const fullPath = path.join(process.cwd(), relativePath);
-  const relativeFromRoot = path.relative(process.cwd(), fullPath);
-  if (relativeFromRoot.startsWith("..") || path.isAbsolute(relativeFromRoot)) {
-    return undefined;
-  }
-
+function lastModified(fullPath: string): Date | undefined {
   try {
     return statSync(fullPath).mtime;
   } catch {
     return undefined;
   }
+}
+
+function lastModifiedForApp(parts: string[]): Date | undefined {
+  return lastModified(path.join(process.cwd(), "app", ...parts));
+}
+
+function lastModifiedForDoc(filePath: string): Date | undefined {
+  const relativePath = filePath.startsWith("content/docs/")
+    ? filePath.slice("content/docs/".length)
+    : filePath;
+  const fullPath = path.join(process.cwd(), "content", "docs", relativePath);
+  const relativeFromDocs = path.relative(
+    path.join(process.cwd(), "content", "docs"),
+    fullPath
+  );
+  if (relativeFromDocs.startsWith("..") || path.isAbsolute(relativeFromDocs)) {
+    return undefined;
+  }
+
+  return lastModified(fullPath);
 }
 
 function docSourcePath(page: unknown): string | undefined {
@@ -57,7 +71,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   for (const route of STATIC_ROUTES) {
     addEntry({
       url: getAbsoluteUrl(route.path),
-      lastModified: lastModifiedFor(route.sourceFile),
+      lastModified: lastModifiedForApp(route.sourceFile),
       changeFrequency: route.changeFrequency,
       priority: route.priority,
     });
@@ -67,7 +81,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     const filePath = docSourcePath(page);
     addEntry({
       url: getAbsoluteUrl(page.url),
-      lastModified: filePath ? lastModifiedFor(filePath) : undefined,
+      lastModified: filePath ? lastModifiedForDoc(filePath) : undefined,
       changeFrequency: "monthly",
       priority: page.url === "/docs" ? 0.9 : 0.75,
     });

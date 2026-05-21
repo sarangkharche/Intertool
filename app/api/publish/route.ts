@@ -212,7 +212,9 @@ export async function POST(request: NextRequest) {
       {
         slug,
         status: nextStatus,
-        message: reviewRequired ? "Skill submitted for review" : "Skill published",
+        message: reviewRequired
+          ? "Skill submitted for review"
+          : "Skill published",
       },
       { status: 201, headers: rateLimitHeaders(rl) }
     );
