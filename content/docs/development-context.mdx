@@ -22,9 +22,9 @@ Core promises:
 - `app/` contains Next.js App Router pages and route handlers.
 - `app/(main)/` contains the main registry UI: home, browse, dashboard, publish, review, settings, teams, skill detail, edit, versions, and diff pages.
 - `app/(auth)/` contains sign-in, invitation, and org creation pages.
-- `app/api/` contains JSON and file endpoints for auth, orgs, settings, members, invitations, tokens, import, publish, search, analytics, and skill files.
+- `app/api/` contains JSON and file endpoints for auth, orgs, settings, members, invitations, tokens, import, publish, search, analytics, audit logs, and skill files.
 - `components/` contains shared React UI, including the publish wizard, command palette, skill cards, markdown rendering, filters, preferences, and shadcn-style primitives under `components/ui/`.
-- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, S3 access, registry reads/writes, validation, rate limits, analytics, webhooks, and email.
+- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, S3 access, registry reads/writes, validation, rate limits, analytics, audit logs, webhooks, and email.
 - `cli/` contains the separate `intertool` npm CLI implemented with Commander.
 - `content/docs/` contains MDX docs. Update these when CLI, API, auth, publishing, install behavior, or other user-facing behavior changes.
 - `registry/` contains local category seed data and local development registry state.
@@ -43,6 +43,8 @@ Publishing flows follow this path:
 ```text
 PublishWizard or CLI -> /api/publish -> authenticateApi -> validateSkillInput -> replaceSkillFiles -> upsertSkill -> S3 objects and index
 ```
+
+When `publish_review_required` is enabled, new non-admin submissions are written with `status: review`. Browse, search, CLI install, and list APIs only expose `published` items. Owners and admins approve or archive pending submissions from `/review`, which calls `PATCH /api/skills/:slug`.
 
 CLI flows usually follow this path:
 
@@ -102,6 +104,8 @@ API routes use `authenticateApi` from `lib/api-auth.ts`. It accepts:
 
 RBAC lives in `lib/rbac.ts`. Roles are `owner`, `admin`, and `member`. Permission checks should use `hasPermission` instead of duplicating role logic in routes.
 
+Governance audit events use `appendAuditEvent` from `lib/audit-log.ts`. Audit writes are best effort and should not block the primary user action unless a future compliance mode explicitly requires that.
+
 ## CLI commands
 
 The CLI is in `cli/src/index.ts` and `cli/src/commands/`.
@@ -156,6 +160,7 @@ npm run test:e2e:install
 - Prefer existing helpers in `lib/` and `components/ui/` over new abstractions.
 - Use role, permission, and validation helpers instead of duplicating checks.
 - If changing CLI, API, auth, publishing, install behavior, or user-facing UX, update `content/docs/`.
+- If changing publish review, item status semantics, or audit events, update `content/docs/publishing.mdx`, `content/docs/api/overview.mdx`, and this page.
 - If changing browser-visible behavior, add or update Playwright coverage where practical.
 - If changing public routes, docs, canonical origins, metadata, or machine-readable discovery output, update the SEO/AEO helpers and deployment docs together.
 - If changing storage shape, update `lib/types.ts`, registry read/write logic, docs, and CLI consumers together.

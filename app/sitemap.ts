@@ -54,8 +54,14 @@ function lastModifiedForDoc(filePath: string): Date | undefined {
   return lastModified(fullPath);
 }
 
-function docSourcePath(page: unknown): string | undefined {
-  return (page as { file?: { path?: string } }).file?.path;
+function docSourcePath(page: { url: string } | unknown): string | undefined {
+  const filePath = (page as { file?: { path?: string } }).file?.path;
+  if (filePath) return filePath;
+
+  const url = (page as { url?: string }).url;
+  if (!url?.startsWith("/docs")) return undefined;
+  const slug = url.replace(/^\/docs\/?/, "");
+  return slug ? `${slug}.mdx` : "index.mdx";
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
