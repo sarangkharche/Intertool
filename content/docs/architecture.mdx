@@ -29,6 +29,7 @@ app/
 │   └── skills/[slug]/           # Skill detail, edit, versions
 ├── api/
 │   ├── admin/settings/          # S3 config (GET/PUT/POST)
+│   ├── audit-log/               # Admin audit log API
 │   ├── cli-auth/                # CLI authentication flow
 │   ├── import/                  # GitHub repo import
 │   ├── me/                      # Current user info
@@ -65,6 +66,7 @@ content/
 └── docs/                        # MDX documentation pages
 lib/
 ├── api-auth.ts                  # API auth (session + bearer token)
+├── audit-log.ts                 # Governance audit event storage
 ├── auth.ts                      # NextAuth v5 config (GitHub OAuth)
 ├── constants.ts                 # Type labels, colors, config
 ├── org.ts                       # Org slug resolution (SaaS mode)
@@ -122,6 +124,14 @@ Intertool uses role-based access control (RBAC) with three roles:
 | **Member** | Publish and edit own items, browse and install all |
 
 The first user, or the user specified in `INTERTOOL_ADMIN`, is assigned the owner role. New users are assigned the member role by default in self-hosted mode.
+
+## Governance
+
+Registry items have a status lifecycle: `review`, `published`, or `archived` for org-visible workflows, with `draft` reserved for future server-side draft storage. Browse, search, CLI install, and API list endpoints only return `published` items.
+
+Admins can enable `publish_review_required` in settings. When enabled, new member submissions are stored with `review` status and appear in `/review`. Owners and admins approve or archive them through `PATCH /api/skills/:slug`.
+
+Audit events are written through `lib/audit-log.ts` for org creation, settings changes, member changes, submissions, status transitions, and deletions. Redis-backed deployments store events under `audit:{org}`, while local/self-hosted fallback stores best-effort events in `registry/audit-log.json`.
 
 ## SaaS mode
 
