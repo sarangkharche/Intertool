@@ -31,6 +31,10 @@ export interface Skill {
   transport?: McpTransport;
   files?: SkillFile[];
   status: SkillStatus;
+  review_requested_by?: string;
+  review_requested_at?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
   version?: string;
   updated_at?: string;
   created_at: string;
@@ -109,4 +113,30 @@ export interface Invitation {
   org_slug?: string;
   created_at: string;
   expires_at: string;
+}
+
+// ── Audit log ──
+
+export type AuditAction =
+  | "org.created"
+  | "org.settings.updated"
+  | "member.invited"
+  | "member.added"
+  | "member.role_changed"
+  | "member.removed"
+  | "registry.item.published"
+  | "registry.item.submitted"
+  | "registry.item.updated"
+  | "registry.item.status_changed"
+  | "registry.item.deleted";
+
+export interface AuditEvent {
+  id: string;
+  org_slug?: string;
+  actor: string;
+  action: AuditAction;
+  target_type: "org" | "member" | "invitation" | "registry_item";
+  target_id: string;
+  metadata?: Record<string, string | number | boolean | null>;
+  created_at: string;
 }

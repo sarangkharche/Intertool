@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { Palette, Database } from "lucide-react";
+import { getPrivatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = getPrivatePageMetadata("Settings");
 
 export default async function SettingsPage() {
   const session = await auth();

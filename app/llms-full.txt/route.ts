@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { source } from "@/lib/source";
+import { getAbsoluteUrl, SITE_DESCRIPTION } from "@/lib/seo";
 
 export const revalidate = 3600;
 
@@ -25,7 +26,13 @@ export function GET() {
   const sections: string[] = [
     "# Intertool Documentation (Full)",
     "",
-    "> Complete documentation for LLM consumption.",
+    `> ${SITE_DESCRIPTION}`,
+    "",
+    "Canonical entry points:",
+    "",
+    `- Home: ${getAbsoluteUrl("/")}`,
+    `- Documentation index: ${getAbsoluteUrl("/docs")}`,
+    `- LLM index: ${getAbsoluteUrl("/llms.txt")}`,
     "",
   ];
 
@@ -36,6 +43,7 @@ export function GET() {
 
     sections.push(`## ${title}`);
     if (desc) sections.push(`> ${desc}`);
+    sections.push(`Source: ${getAbsoluteUrl(page.url)}`);
     sections.push("");
 
     if (filePath) {

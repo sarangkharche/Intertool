@@ -7,6 +7,8 @@ import {
 } from "fumadocs-ui/layouts/docs/page";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
+import { JsonLd } from "@/components/json-ld";
+import { buildDocsJsonLd } from "@/lib/seo";
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -21,6 +23,13 @@ export default async function Page(props: {
 
   return (
     <DocsPage toc={data.toc}>
+      <JsonLd
+        data={buildDocsJsonLd({
+          path: page.url,
+          title: page.data.title,
+          description: page.data.description,
+        })}
+      />
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
@@ -44,5 +53,20 @@ export async function generateMetadata(props: {
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: {
+      canonical: page.url,
+    },
+    openGraph: {
+      title: page.data.title,
+      description: page.data.description,
+      url: page.url,
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: page.data.title,
+      description: page.data.description,
+      images: ["/opengraph-image"],
+    },
   };
 }

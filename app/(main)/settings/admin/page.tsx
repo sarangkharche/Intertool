@@ -34,6 +34,7 @@ interface SettingsData {
   github_org_required?: boolean;
   webhook_url?: string;
   webhook_events?: string[];
+  publish_review_required?: boolean;
 }
 
 const REGIONS = [
@@ -90,6 +91,8 @@ export default function AdminSettingsPage() {
   const [webhookUpdate, setWebhookUpdate] = useState(true);
   const [webhookDelete, setWebhookDelete] = useState(true);
   const [savingWebhook, setSavingWebhook] = useState(false);
+  const [publishReviewRequired, setPublishReviewRequired] = useState(false);
+  const [savingGovernance, setSavingGovernance] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -132,6 +135,9 @@ export default function AdminSettingsPage() {
           setWebhookPublish(wEvents.includes("publish"));
           setWebhookUpdate(wEvents.includes("update"));
           setWebhookDelete(wEvents.includes("delete"));
+          setPublishReviewRequired(
+            data.settings.publish_review_required ?? false
+          );
         }
         setLoading(false);
       })
@@ -308,6 +314,32 @@ export default function AdminSettingsPage() {
       toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSavingAuth(false);
+    }
+  };
+
+  const handleSaveGovernance = async () => {
+    setSavingGovernance(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          s3_bucket: bucket.trim(),
+          s3_region: region,
+          s3_access_key_id: accessKeyId.trim(),
+          s3_endpoint: endpoint.trim() || undefined,
+          publish_review_required: publishReviewRequired,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+      toast.success("Governance settings saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingGovernance(false);
     }
   };
 
@@ -767,6 +799,66 @@ export default function AdminSettingsPage() {
               className="btn-pill"
             >
               {savingAuth ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="h-3 w-3" />
+              )}
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+      {/* Governance */}
+      <div className="mt-4 rounded-lg border border-border bg-card">
+        <div className="border-b border-border-subtle px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Shield
+              className="h-3.5 w-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <p className="text-sm font-medium">Governance</p>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Control how new registry items become available to your
+            organization.
+          </p>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium">Require admin review</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Non-admin submissions enter the review queue before appearing in
+                browse, search, and CLI install results.
+              </p>
+            </div>
+            <button
+              onClick={() => setPublishReviewRequired(!publishReviewRequired)}
+              role="switch"
+              aria-checked={publishReviewRequired}
+              aria-label="Require admin review for new submissions"
+              className={`relative h-5 w-9 shrink-0 rounded-full interactive-toggle ${
+                publishReviewRequired
+                  ? "bg-emerald-500"
+                  : "bg-muted-foreground/20"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white toggle-knob ${
+                  publishReviewRequired ? "translate-x-4" : ""
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex justify-end border-t border-border-subtle pt-3">
+            <button
+              onClick={handleSaveGovernance}
+              disabled={savingGovernance || !bucket.trim() || !accessKeyId.trim()}
+              className="btn-pill"
+            >
+              {savingGovernance ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <Check className="h-3 w-3" />

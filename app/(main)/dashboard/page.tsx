@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getSkills, getCategories, getSkillCounts } from "@/lib/registry";
@@ -16,6 +17,9 @@ import { getSettings } from "@/lib/settings";
 import { isS3Configured } from "@/lib/s3";
 import { getUserRole, listMembers } from "@/lib/rbac";
 import { getOrgSlug } from "@/lib/org";
+import { getPrivatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = getPrivatePageMetadata("Dashboard");
 
 const TABS: { label: string; type?: SkillType; mine?: boolean }[] = [
   { label: "All" },

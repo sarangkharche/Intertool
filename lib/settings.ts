@@ -54,6 +54,8 @@ export interface RegistrySettings {
   webhook_url?: string;
   /** Which events trigger webhooks */
   webhook_events?: ("publish" | "update" | "delete")[];
+  /** Require admin review before non-admins publish new registry items */
+  publish_review_required?: boolean;
 }
 
 // ── KV store (SaaS mode) ──

@@ -15,6 +15,7 @@ Core promises:
 - The app can run self-hosted as a single tenant or in SaaS mode with path-based organizations.
 - Access is controlled by NextAuth, OAuth providers, API tokens, and RBAC.
 - Documentation is served through Fumadocs and exposed to LLMs at `/llms.txt` and `/llms-full.txt`.
+- Public SEO/AEO discovery is intentionally limited to the homepage, brand page, documentation, `robots.txt`, `sitemap.xml`, and LLM documentation endpoints. Private registry, settings, auth, and API routes should remain blocked from indexing.
 
 ## Architecture map
 
@@ -27,6 +28,7 @@ Core promises:
 - `cli/` contains the separate `intertool` npm CLI implemented with Commander.
 - `content/docs/` contains MDX docs. Update these when CLI, API, auth, publishing, install behavior, or other user-facing behavior changes.
 - `registry/` contains local category seed data and local development registry state.
+- `lib/seo.ts`, `app/robots.ts`, `app/sitemap.ts`, `app/opengraph-image.tsx`, `/llms.txt`, and `/llms-full.txt` define the public discovery surface for search engines, social previews, and LLM/agent consumption.
 
 ## Data flow
 
@@ -155,6 +157,7 @@ npm run test:e2e:install
 - Use role, permission, and validation helpers instead of duplicating checks.
 - If changing CLI, API, auth, publishing, install behavior, or user-facing UX, update `content/docs/`.
 - If changing browser-visible behavior, add or update Playwright coverage where practical.
+- If changing public routes, docs, canonical origins, metadata, or machine-readable discovery output, update the SEO/AEO helpers and deployment docs together.
 - If changing storage shape, update `lib/types.ts`, registry read/write logic, docs, and CLI consumers together.
 
 ## High-risk areas

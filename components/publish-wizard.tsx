@@ -60,6 +60,9 @@ export function PublishWizard({
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
+  const [publishedStatus, setPublishedStatus] = useState<
+    "published" | "review" | null
+  >(null);
 
   // Shared form state
   const [type, setType] = useState<SkillType>(preselectedType ?? "skill");
@@ -419,8 +422,11 @@ export function PublishWizard({
 
       const data = await res.json();
       setPublishedSlug(data.slug);
+      setPublishedStatus(data.status ?? "published");
       clearDraft();
-      toast.success("Skill published");
+      toast.success(
+        data.status === "review" ? "Submitted for review" : "Skill published"
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to publish");
     } finally {
@@ -436,17 +442,23 @@ export function PublishWizard({
           <Check className="h-5 w-5" />
         </div>
         <div>
-          <p className="mb-1 text-sm font-medium">Published</p>
+          <p className="mb-1 text-sm font-medium">
+            {publishedStatus === "review" ? "Submitted" : "Published"}
+          </p>
           <p className="text-sm text-muted-foreground">
-            Your skill is now live in the registry.
+            {publishedStatus === "review"
+              ? "An admin needs to approve this item before it appears in the registry."
+              : "Your skill is now live in the registry."}
           </p>
         </div>
-        <a
-          href={`/skills/${publishedSlug}`}
-          className="text-sm font-medium underline"
-        >
-          View skill page
-        </a>
+        {publishedStatus !== "review" && (
+          <a
+            href={`/skills/${publishedSlug}`}
+            className="text-sm font-medium underline"
+          >
+            View skill page
+          </a>
+        )}
       </div>
     );
   }

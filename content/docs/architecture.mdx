@@ -39,7 +39,11 @@ app/
 │   ├── skills/                  # Skills CRUD API
 │   └── tokens/                  # API token management
 ├── docs/                        # Fumadocs route handler
-└── llms.txt/                    # LLM-friendly docs endpoint
+├── llms.txt/                    # LLM-friendly docs index
+├── llms-full.txt/               # Full LLM-friendly docs corpus
+├── robots.ts                    # Public crawl rules
+├── sitemap.ts                   # Public sitemap
+└── opengraph-image.tsx          # Dynamic social preview image
 cli/
 ├── src/
 │   ├── commands/                # CLI commands (install, publish, search, etc.)
@@ -67,9 +71,16 @@ lib/
 ├── rbac.ts                      # Role-based access control
 ├── registry.ts                  # S3-backed data layer
 ├── s3.ts                        # S3 client wrapper
+├── seo.ts                       # Canonical origin, metadata, and JSON-LD helpers
 ├── settings.ts                  # Settings store (file + env + KV)
 └── types.ts                     # TypeScript interfaces
 ```
+
+## Public discovery surface
+
+Intertool is private by default, so search indexing focuses on public product and documentation pages. `robots.txt` allows `/`, `/brand`, `/docs/`, `/llms.txt`, and `/llms-full.txt`, and disallows private registry, settings, auth, and API routes. `sitemap.xml` lists the canonical public pages. `NEXT_PUBLIC_SITE_URL` controls the absolute origin used in canonical metadata, Open Graph data, sitemaps, and LLM docs links.
+
+The root layout emits global JSON-LD for the Intertool application, organization, website, and LLM documentation endpoints. Docs pages emit `TechArticle` and breadcrumb JSON-LD.
 
 ## Data model
 

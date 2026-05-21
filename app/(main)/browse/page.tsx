@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getPrivatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = getPrivatePageMetadata("Browse");
 
 export default async function BrowsePage({
   searchParams,

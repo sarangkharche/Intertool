@@ -8,6 +8,7 @@ import {
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
 import { validateSkillInput } from "@/lib/validation";
 import { apiError } from "@/lib/api-utils";
+import { appendAuditEvent } from "@/lib/audit-log";
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -15,6 +16,8 @@ import {
 } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { hasPermission } from "@/lib/rbac";
+import { getOrgSlug } from "@/lib/org";
+import { getSettings } from "@/lib/settings";
 import type {
   McpTransport,
   SourceFormat,
@@ -102,6 +105,8 @@ export async function POST(request: NextRequest) {
   }
 
   const { username } = authResult;
+  const orgSlug = await getOrgSlug();
+  const settings = await getSettings(orgSlug);
   const existingSkill = await getSkillBySlug(slug);
   if (existingSkill) {
     if (existingSkill.type !== type) {
@@ -120,6 +125,18 @@ export async function POST(request: NextRequest) {
       );
     }
   }
+
+  const adminPublisher = hasPermission(authResult.role, "skill:edit_any");
+  const reviewRequired =
+    settings?.publish_review_required === true &&
+    !adminPublisher &&
+    (!existingSkill || existingSkill.status === "review");
+  const now = new Date().toISOString();
+  const nextStatus: SkillStatus = reviewRequired
+    ? "review"
+    : existingSkill?.status === "review" && adminPublisher
+      ? "published"
+      : (existingSkill?.status ?? "published");
 
   const installCommands = generateInstallCommands({
     type,
@@ -166,14 +183,37 @@ export async function POST(request: NextRequest) {
         source_format: sourceFormat as SourceFormat | undefined,
         transport: transport as McpTransport | undefined,
         files: files.length > 0 ? files : undefined,
-        status: "published" as SkillStatus,
-        created_at: new Date().toISOString(),
+        status: nextStatus,
+        review_requested_by: reviewRequired ? username : undefined,
+        review_requested_at: reviewRequired ? now : undefined,
+        created_at: now,
       },
       changelog
     );
 
+    await appendAuditEvent({
+      org_slug: orgSlug,
+      actor: username,
+      action: reviewRequired
+        ? "registry.item.submitted"
+        : existingSkill
+          ? "registry.item.updated"
+          : "registry.item.published",
+      target_type: "registry_item",
+      target_id: slug,
+      metadata: {
+        type,
+        status: nextStatus,
+        version: existingSkill?.version ?? "1.0.0",
+      },
+    });
+
     return NextResponse.json(
-      { slug, message: "Skill published" },
+      {
+        slug,
+        status: nextStatus,
+        message: reviewRequired ? "Skill submitted for review" : "Skill published",
+      },
       { status: 201, headers: rateLimitHeaders(rl) }
     );
   } catch (error) {

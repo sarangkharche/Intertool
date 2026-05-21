@@ -17,6 +17,7 @@ import type { RegistrySettings } from "./settings";
 import { getOrgSlug, isLocalSaasFallbackMode } from "./org";
 import {
   Skill,
+  SkillStatus,
   SkillVersion,
   Category,
   SearchFilters,
@@ -430,6 +431,25 @@ export async function getSkills(
   skills = skills.slice(offset, offset + limit);
 
   return { skills, total };
+}
+
+export async function getSkillsByStatus(
+  statuses: SkillStatus[],
+  limit = 100
+): Promise<Skill[]> {
+  const settings = await resolveSettings();
+  if (!settings) return [];
+
+  const statusSet = new Set(statuses);
+  const all = await fetchIndex(settings);
+  return all
+    .filter((s) => statusSet.has(s.status))
+    .sort(
+      (a, b) =>
+        new Date(b.updated_at ?? b.created_at).getTime() -
+        new Date(a.updated_at ?? a.created_at).getTime()
+    )
+    .slice(0, limit);
 }
 
 /** Return tab counts from the cached index without allocating a full array. */
@@ -899,6 +919,43 @@ export async function upsertSkill(
   changelog?: string
 ): Promise<void> {
   await withLocalRegistryLock(() => _upsertSkillInner(skill, changelog));
+}
+
+export async function updateSkillStatus(
+  slug: string,
+  status: SkillStatus,
+  reviewer: string
+): Promise<Skill> {
+  return withLocalRegistryLock(async () => {
+    const settings = await resolveSettings();
+    if (!settings) throw new Error("S3 not configured");
+
+    return withDistributedRegistryLock(settings, async () => {
+      const index = await fetchIndex(settings);
+      const indexed = index.find((s) => s.slug === slug);
+      if (!indexed) throw new Error("Skill not found");
+
+      const folder = typeToFolder(indexed.type);
+      const key = `${folder}/${slug}/skill.json`;
+      const raw = await getObject(settings, key);
+      if (!raw) throw new Error("Skill not found");
+
+      const skill = JSON.parse(raw) as Skill;
+      const now = new Date().toISOString();
+      const nextSkill: Skill = {
+        ...skill,
+        status,
+        updated_at: now,
+        ...(status === "published" || status === "archived"
+          ? { reviewed_by: reviewer, reviewed_at: now }
+          : {}),
+      };
+
+      await putObject(settings, key, JSON.stringify(nextSkill, null, 2));
+      await rebuildIndex(settings);
+      return nextSkill;
+    });
+  });
 }
 
 async function _upsertSkillInner(

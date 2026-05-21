@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+
+registry/settings.json
+registry/local-saas.json
+
+coverage
+playwright-report
+test-results
+tests/e2e/.auth

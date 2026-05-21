@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,9 @@ import {
   Globe,
   KeyRound,
 } from "lucide-react";
+import { getPrivatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = getPrivatePageMetadata("Design System");
 
 const TYPES: SkillType[] = [
   "skill",

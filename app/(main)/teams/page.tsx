@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getContributors } from "@/lib/registry";
 import { Users } from "lucide-react";
+import { getPrivatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = getPrivatePageMetadata("Team");
 
 export default async function TeamsPage() {
   const session = await auth();

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { SkillCard } from "@/components/skill-card";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { DashboardPagination } from "@/components/dashboard-pagination";
@@ -6,6 +7,9 @@ import { getSkills, getCategories } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
 import { PER_PAGE } from "@/lib/constants";
 import { Search } from "lucide-react";
+import { getPrivatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = getPrivatePageMetadata("Search");
 
 export default async function SearchPage({
   searchParams,

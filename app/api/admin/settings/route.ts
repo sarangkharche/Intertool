@@ -6,6 +6,7 @@ import { testConnection } from "@/lib/s3";
 import { isS3Configured } from "@/lib/s3";
 import { seedCategories } from "@/lib/registry";
 import { authorize } from "@/lib/rbac";
+import { appendAuditEvent } from "@/lib/audit-log";
 
 export const dynamic = "force-dynamic";
 
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
     github_org_required,
     webhook_url,
     webhook_events,
+    publish_review_required,
   } = body;
 
   if (!s3_bucket || !s3_access_key_id) {
@@ -253,6 +255,10 @@ export async function POST(request: NextRequest) {
         : existing?.webhook_url,
     webhook_events:
       webhook_events !== undefined ? webhook_events : existing?.webhook_events,
+    publish_review_required:
+      publish_review_required !== undefined
+        ? !!publish_review_required
+        : existing?.publish_review_required,
   };
 
   // Test connection before saving so a bad update does not poison runtime config.
@@ -281,6 +287,18 @@ export async function POST(request: NextRequest) {
   } catch {
     // Non-fatal — categories will fall back to hardcoded
   }
+
+  await appendAuditEvent({
+    org_slug: orgSlug,
+    actor: username,
+    action: "org.settings.updated",
+    target_type: "org",
+    target_id: orgSlug ?? "default",
+    metadata: {
+      storage_configured: true,
+      publish_review_required: newSettings.publish_review_required ?? false,
+    },
+  });
 
   return NextResponse.json({ success: true });
 }

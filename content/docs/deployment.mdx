@@ -88,6 +88,8 @@ npx vercel deploy
 
 ```bash
 vercel env add AUTH_SECRET              # openssl rand -base64 32
+vercel env add AUTH_URL                 # https://your-app.vercel.app
+vercel env add NEXT_PUBLIC_SITE_URL     # https://your-app.vercel.app
 vercel env add GITHUB_ID               # from GitHub OAuth app
 vercel env add GITHUB_SECRET           # from GitHub OAuth app
 vercel env add S3_BUCKET               # your-bucket-name
@@ -119,6 +121,7 @@ On Vercel, S3 credentials must be set via environment variables since the filesy
 | `AUTH_SECRET` | Yes | -- | NextAuth secret (`openssl rand -base64 32`) |
 | `AUTH_TRUST_HOST` | Yes | -- | Set to `true` |
 | `AUTH_URL` | Production | -- | Public app URL used for auth redirects and emails |
+| `NEXT_PUBLIC_SITE_URL` | Production | `AUTH_URL`, Vercel URL, `INTERTOOL_DOMAIN`, or `localhost:3000` | Public canonical origin used for SEO metadata, Open Graph URLs, `robots.txt`, `sitemap.xml`, and LLM documentation links |
 | `GITHUB_ID` | Yes | -- | GitHub OAuth client ID |
 | `GITHUB_SECRET` | Yes | -- | GitHub OAuth client secret |
 | `S3_BUCKET` | Vercel | -- | S3 bucket name |
@@ -134,6 +137,17 @@ On Vercel, S3 credentials must be set via environment variables since the filesy
 | `EMAIL_FROM` | No | `noreply@{AUTH_URL host}` | Sender address for invitation emails |
 | `UPSTASH_REDIS_REST_URL` | Scale/SaaS | -- | Redis URL for SaaS mode, distributed locks, rate limits, and analytics |
 | `UPSTASH_REDIS_REST_TOKEN` | Scale/SaaS | -- | Redis REST token |
+
+## Search and answer-engine discovery
+
+Intertool exposes a small public discovery surface for the product and documentation:
+
+- `/robots.txt` allows the homepage, brand kit, docs, and LLM documentation endpoints while disallowing private registry, settings, API, and auth routes.
+- `/sitemap.xml` lists the homepage, brand kit, and all Fumadocs pages with canonical absolute URLs.
+- `/llms.txt` and `/llms-full.txt` expose documentation links and the full docs corpus for LLM and agent consumption.
+- The homepage and docs emit JSON-LD structured data for the application, organization, documentation pages, and breadcrumbs.
+
+Set `NEXT_PUBLIC_SITE_URL` to the production origin before launch so these URLs do not resolve to preview or localhost origins.
 
 In SaaS mode, organization creation depends on Upstash Redis. If the Redis URL or token is missing or unreachable, `/create-org` will show a registry storage error and the create action will stay disabled until Redis is reachable.
 

@@ -1,8 +1,12 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { PublishWizard } from "@/components/publish-wizard";
 import { getCategories } from "@/lib/registry";
 import { SkillType } from "@/lib/types";
+import { getPrivatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = getPrivatePageMetadata("Publish");
 
 const VALID_TYPES: SkillType[] = [
   "skill",

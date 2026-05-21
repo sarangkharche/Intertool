@@ -1,4 +1,5 @@
 import { source } from "@/lib/source";
+import { getAbsoluteUrl, SITE_DESCRIPTION } from "@/lib/seo";
 
 export const revalidate = 3600;
 
@@ -8,14 +9,20 @@ export function GET() {
   const lines = [
     "# Intertool Documentation",
     "",
-    "> A private registry for AI agent skills, MCP servers, tools, and prompt templates.",
+    `> ${SITE_DESCRIPTION}`,
+    "",
+    "## Primary URLs",
+    "",
+    `- [Home](${getAbsoluteUrl("/")})`,
+    `- [Documentation](${getAbsoluteUrl("/docs")})`,
+    `- [Full LLM corpus](${getAbsoluteUrl("/llms-full.txt")})`,
     "",
     "## Pages",
     "",
   ];
 
   for (const page of pages) {
-    const url = page.url;
+    const url = getAbsoluteUrl(page.url);
     const title = page.data.title;
     const desc = page.data.description ?? "";
     lines.push(`- [${title}](${url}): ${desc}`);
