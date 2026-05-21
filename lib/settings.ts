@@ -354,8 +354,9 @@ export async function createOrg(
   } else {
     const existing = await getRedis().exists(kvKey(orgSlug));
     if (existing) throw new Error(`Organization "${orgSlug}" already exists`);
+    const adminId = adminUsername.toLowerCase();
     await getRedis().set(kvKey(orgSlug), settings);
-    await getRedis().set(`user:${adminUsername}:org`, orgSlug);
+    await getRedis().set(`user:${adminId}:org`, orgSlug);
   }
 
   // Ensure the creator is owner in RBAC
@@ -373,10 +374,11 @@ export async function createOrg(
 /** Get the org slug for a user (SaaS mode) */
 export async function getOrgForUser(username: string): Promise<string | null> {
   if (!isSaasMode()) return null;
+  const id = username.toLowerCase();
   if (isLocalSaasFallbackMode()) {
-    return readLocalSaasData().user_orgs?.[username.toLowerCase()] ?? null;
+    return readLocalSaasData().user_orgs?.[id] ?? null;
   }
-  return await getRedis().get<string>(`user:${username}:org`);
+  return await getRedis().get<string>(`user:${id}:org`);
 }
 
 // ── Org membership helpers (SaaS mode) ──
@@ -390,10 +392,10 @@ export async function addOrgMember(
   orgSlug: string,
   username: string
 ): Promise<void> {
+  const id = username.toLowerCase();
   if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
     data.members ??= {};
-    const id = username.toLowerCase();
     data.members[orgSlug] = Array.from(
       new Set([...(data.members[orgSlug] ?? []), id])
     );
@@ -402,7 +404,8 @@ export async function addOrgMember(
     writeLocalSaasData(data);
     return;
   }
-  await getRedis().sadd(memberSetKey(orgSlug), username.toLowerCase());
+  await getRedis().sadd(memberSetKey(orgSlug), id);
+  await getRedis().set(`user:${id}:org`, orgSlug);
 }
 
 /** Remove a user from an org's membership set */
@@ -410,9 +413,9 @@ export async function removeOrgMember(
   orgSlug: string,
   username: string
 ): Promise<void> {
+  const id = username.toLowerCase();
   if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
-    const id = username.toLowerCase();
     data.members ??= {};
     data.members[orgSlug] = (data.members[orgSlug] ?? []).filter(
       (member) => member !== id
@@ -421,7 +424,11 @@ export async function removeOrgMember(
     writeLocalSaasData(data);
     return;
   }
-  await getRedis().srem(memberSetKey(orgSlug), username.toLowerCase());
+  await getRedis().srem(memberSetKey(orgSlug), id);
+  const currentOrg = await getRedis().get<string>(`user:${id}:org`);
+  if (currentOrg === orgSlug) {
+    await getRedis().del(`user:${id}:org`);
+  }
 }
 
 /** Check if a user is a member of an org (also returns true for admin) */

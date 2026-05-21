@@ -8,7 +8,7 @@ import {
   getInvitationByEmail,
 } from "@/lib/invitations";
 import { sendInvitationEmail, getEmailTransport } from "@/lib/email";
-import { getSettings } from "@/lib/settings";
+import { addOrgMember, getSettings } from "@/lib/settings";
 import { appendAuditEvent } from "@/lib/audit-log";
 import type { OrgRole } from "@/lib/types";
 
@@ -200,6 +200,9 @@ export async function POST(request: NextRequest) {
       const { setUserRole } = await import("@/lib/rbac");
       await setUserRole(identifier, role, orgSlug);
       user.role = role;
+    }
+    if (orgSlug) {
+      await addOrgMember(orgSlug, identifier);
     }
 
     await appendAuditEvent({

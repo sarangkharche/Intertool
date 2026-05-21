@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
 import { authorize, getUserRole, setUserRole, removeMember } from "@/lib/rbac";
 import { appendAuditEvent } from "@/lib/audit-log";
+import { removeOrgMember } from "@/lib/settings";
 import type { OrgRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -118,6 +119,9 @@ export async function DELETE(
   }
 
   await removeMember(targetId, orgSlug);
+  if (orgSlug) {
+    await removeOrgMember(orgSlug, targetId);
+  }
   await appendAuditEvent({
     org_slug: orgSlug,
     actor: username,

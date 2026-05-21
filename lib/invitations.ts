@@ -222,6 +222,10 @@ export async function acceptInvitation(
     const { setUserRole } = await import("./rbac");
     await setUserRole(identifier, inv.role, inv.org_slug);
   }
+  if (inv.org_slug) {
+    const { addOrgMember } = await import("./settings");
+    await addOrgMember(inv.org_slug, identifier);
+  }
 
   // Clean up invitation keys
   await deleteInvitationKeys(token, inv.email, inv.org_slug);
