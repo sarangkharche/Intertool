@@ -8,9 +8,11 @@ description: Project structure, tech stack, data model, and SaaS mode.
 - **Framework**: [Next.js 16](https://nextjs.org) with App Router, React 19, Turbopack
 - **Auth**: [NextAuth v5](https://authjs.dev) with GitHub OAuth
 - **Storage**: [AWS S3 SDK v3](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/) (any S3-compatible service)
+- **Control plane**: Postgres via `postgres` for SaaS organizations, memberships, invitations, API tokens, audit events, and billing state
+- **Billing**: Stripe Checkout and subscription webhooks
 - **UI**: [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS 4](https://tailwindcss.com) + [Lucide](https://lucide.dev) icons
 - **Docs**: [Fumadocs](https://fumadocs.vercel.app) with MDX
-- **Fonts**: Inter (sans) + Geist Mono (monospace)
+- **Fonts**: Geist Sans + Geist Mono via the `geist` package
 - **Editor**: [@uiw/react-md-editor](https://github.com/uiwjs/react-md-editor) for markdown with preview
 - **CLI**: TypeScript with Commander.js, published as `intertool` on npm
 
@@ -30,15 +32,20 @@ app/
 ├── api/
 │   ├── admin/settings/          # S3 config (GET/PUT/POST)
 │   ├── audit-log/               # Admin audit log API
+│   ├── billing/checkout/        # Stripe Checkout session creation
+│   ├── billing/plan/            # Current SaaS plan and limit metadata
+│   ├── claude/marketplace/      # Claude Code marketplace manifest
 │   ├── cli-auth/                # CLI authentication flow
 │   ├── import/                  # GitHub repo import
 │   ├── me/                      # Current user info
 │   ├── members/                 # Member management
+│   ├── mcp/v0/servers/          # MCP Registry-style private server feed
 │   ├── orgs/                    # Org management (SaaS mode)
 │   ├── publish/                 # Publish API (form + bearer auth)
 │   ├── search/                  # Search API
 │   ├── skills/                  # Skills CRUD API
-│   └── tokens/                  # API token management
+│   ├── tokens/                  # API token management
+│   └── webhooks/stripe/         # Stripe subscription lifecycle webhook
 ├── docs/                        # Fumadocs route handler
 ├── llms.txt/                    # LLM-friendly docs index
 ├── llms-full.txt/               # Full LLM-friendly docs corpus
@@ -69,12 +76,16 @@ lib/
 ├── audit-log.ts                 # Governance audit event storage
 ├── auth.ts                      # NextAuth v5 config (GitHub OAuth)
 ├── constants.ts                 # Type labels, colors, config
+├── control-plane.ts             # Postgres-backed SaaS control-plane tables
+├── distribution.ts              # MCP and Claude marketplace export shapes
 ├── org.ts                       # Org slug resolution (SaaS mode)
+├── plans.ts                     # SaaS plan definitions and limits
 ├── rbac.ts                      # Role-based access control
 ├── registry.ts                  # S3-backed data layer
 ├── s3.ts                        # S3 client wrapper
 ├── seo.ts                       # Canonical origin, metadata, and JSON-LD helpers
 ├── settings.ts                  # Settings store (file + env + KV)
+├── stripe.ts                    # Stripe SDK and plan price mapping
 └── types.ts                     # TypeScript interfaces
 ```
 
@@ -103,6 +114,21 @@ s3://your-bucket/
 ├── _index.json                 # auto-rebuilt catalog
 └── _categories.json            # seeded on first setup
 ```
+
+MCP server records can include `mcp_config`, the original `server.json` object. Raw downloads and CLI installs use this stored config so command, args, URL, and other server fields round-trip from publish to install.
+
+SaaS deployments can also use a shared managed bucket. When `INTERTOOL_MANAGED_STORAGE=true`, new orgs are automatically configured with `s3_prefix=orgs/{orgSlug}` so all registry object operations are isolated under that prefix.
+
+The SaaS control plane lives in Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured. `lib/control-plane.ts` creates and uses these tables:
+
+- `intertool_orgs`
+- `intertool_user_orgs`
+- `intertool_org_members`
+- `intertool_api_tokens`
+- `intertool_invitations`
+- `intertool_audit_events`
+
+Redis remains available for rate limiting, analytics, distributed locks, and legacy fallback storage, but production tenant identity and billing state should live in Postgres.
 
 ## Skill types
 
@@ -133,8 +159,21 @@ Admins can enable `publish_review_required` in settings. When enabled, new membe
 
 Audit events are written through `lib/audit-log.ts` for org creation, settings changes, member changes, submissions, status transitions, and deletions. Redis-backed deployments store events under `audit:{org}`, while local/self-hosted fallback stores best-effort events in `registry/audit-log.json`.
 
+Baseline security scanning runs during publish and stores a `security` result on each registry item. Critical findings block the publish before package files are written.
+
+SaaS plan limits live in `lib/plans.ts`. The default `free` plan allows 3 members and 10 active or pending registry items; higher plans raise or remove those limits. Stripe Checkout starts from `POST /api/billing/checkout`, and `POST /api/webhooks/stripe` updates `plan`, `subscription_status`, `stripe_customer_id`, and `stripe_subscription_id`.
+
+## Private distribution
+
+Intertool exposes private distribution endpoints for approved clients:
+
+- `/api/mcp/v0/servers` and `/api/mcp/v0/servers/:slug` return published MCP servers in an MCP Registry-style shape.
+- `/api/claude/marketplace` returns a Claude Code marketplace manifest for published registry items.
+
+Both surfaces require normal Intertool session or bearer-token authentication.
+
 ## SaaS mode
 
-Intertool supports multi-tenant SaaS mode with path-based organization routing. Each organization gets its own path (for example, `intertool.sh/acme`) with isolated settings and data stored in Upstash Redis.
+Intertool supports multi-tenant SaaS mode with path-based organization routing. Each organization gets its own path (for example, `intertool.sh/acme`) with isolated settings and data stored in Postgres plus isolated registry objects in S3-compatible storage.
 
-SaaS mode is activated by setting `INTERTOOL_MODE=saas` and configuring Redis credentials.
+SaaS mode is activated by setting `INTERTOOL_MODE=saas` and configuring a Postgres connection string. Redis credentials are still useful for rate limits, analytics, locks, and legacy fallback mode.

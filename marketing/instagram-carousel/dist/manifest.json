@@ -1,0 +1,46 @@
+{
+  "format": "Instagram carousel",
+  "size": "1080x1080",
+  "slides": [
+    {
+      "index": 1,
+      "file": "dist/intertool-carousel-01.png",
+      "title": "Stop agent-tool sprawl."
+    },
+    {
+      "index": 2,
+      "file": "dist/intertool-carousel-02.png",
+      "title": "Capabilities are scattered across every surface."
+    },
+    {
+      "index": 3,
+      "file": "dist/intertool-carousel-03.png",
+      "title": "Publish once. Install from one governed source."
+    },
+    {
+      "index": 4,
+      "file": "dist/intertool-carousel-04.png",
+      "title": "Review before rollout."
+    },
+    {
+      "index": 5,
+      "file": "dist/intertool-carousel-05.png",
+      "title": "Every capability gets history."
+    },
+    {
+      "index": 6,
+      "file": "dist/intertool-carousel-06.png",
+      "title": "Keep internal agent tools internal."
+    },
+    {
+      "index": 7,
+      "file": "dist/intertool-carousel-07.png",
+      "title": "Start open source. Scale into governance."
+    },
+    {
+      "index": 8,
+      "file": "dist/intertool-carousel-08.png",
+      "title": "Give agents one source of truth."
+    }
+  ]
+}

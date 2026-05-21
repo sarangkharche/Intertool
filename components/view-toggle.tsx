@@ -11,7 +11,8 @@ export function ViewToggle() {
       <button
         onClick={() => setPreference("defaultView", "grid")}
         aria-label="Grid view"
-        className={`flex items-center justify-center rounded-l-md p-1.5 transition-colors duration-100 ${
+        aria-pressed={prefs.defaultView === "grid"}
+        className={`flex h-10 w-10 items-center justify-center rounded-l-md transition-colors duration-100 focus-ring ${
           prefs.defaultView === "grid"
             ? "bg-muted text-foreground"
             : "text-muted-foreground hover:text-foreground"
@@ -22,7 +23,8 @@ export function ViewToggle() {
       <button
         onClick={() => setPreference("defaultView", "list")}
         aria-label="List view"
-        className={`flex items-center justify-center rounded-r-md p-1.5 transition-colors duration-100 ${
+        aria-pressed={prefs.defaultView === "list"}
+        className={`flex h-10 w-10 items-center justify-center rounded-r-md transition-colors duration-100 focus-ring ${
           prefs.defaultView === "list"
             ? "bg-muted text-foreground"
             : "text-muted-foreground hover:text-foreground"

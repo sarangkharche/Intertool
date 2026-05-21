@@ -1,0 +1,36 @@
+{
+  "format": "Instagram topic carousels",
+  "size": "1080x1080",
+  "campaigns": [
+    {
+      "slug": "01-agent-tool-sprawl",
+      "name": "Agent-Tool Sprawl",
+      "directory": "dist/01-agent-tool-sprawl",
+      "slides": 6
+    },
+    {
+      "slug": "02-private-mcp-registry",
+      "name": "Private MCP Registry",
+      "directory": "dist/02-private-mcp-registry",
+      "slides": 6
+    },
+    {
+      "slug": "03-review-before-rollout",
+      "name": "Review Before Rollout",
+      "directory": "dist/03-review-before-rollout",
+      "slides": 6
+    },
+    {
+      "slug": "04-version-audit-history",
+      "name": "Version And Audit History",
+      "directory": "dist/04-version-audit-history",
+      "slides": 6
+    },
+    {
+      "slug": "05-rollout-pricing-path",
+      "name": "Rollout And Pricing Path",
+      "directory": "dist/05-rollout-pricing-path",
+      "slides": 6
+    }
+  ]
+}

@@ -9,7 +9,18 @@ description: Set up the Intertool CLI and install your first skill.
 - A GitHub account that belongs to your organization
 - Your team's Intertool registry URL
 
-## Install the CLI
+## Install the CLI from source
+
+Until the npm package is published, build and link the CLI from this repository:
+
+```bash
+cd cli
+npm install
+npm run build
+npm link
+```
+
+After the npm package is released, you can install it globally instead:
 
 ```bash
 npm install -g intertool
@@ -63,6 +74,7 @@ intertool list
 
 ## Next steps
 
+- [Using the CLI](/docs/using-cli) for end-to-end install, update, publish, and automation workflows
 - [Publishing skills](/docs/publishing) to share your own work
 - [CLI reference](/docs/cli-reference) for all available commands
 - [API overview](/docs/api/overview) for programmatic access

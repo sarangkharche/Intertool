@@ -21,6 +21,7 @@ interface Skill {
   readme: string;
   install_commands: Record<string, string>;
   transport?: string;
+  mcp_config?: Record<string, unknown>;
   version?: string;
   files?: SkillFile[];
 }
@@ -98,16 +99,7 @@ export async function installItem(name: string): Promise<InstallResult> {
     case "mcp-server":
       writeFileSync(
         join(rootDir, "server.json"),
-        JSON.stringify(
-          {
-            name: skill.name,
-            description: skill.description,
-            transport: skill.transport,
-            install_commands: skill.install_commands,
-          },
-          null,
-          2
-        )
+        JSON.stringify(skill.mcp_config ?? fallbackMcpConfig(skill), null, 2)
       );
       break;
     default:
@@ -142,6 +134,15 @@ export async function installItem(name: string): Promise<InstallResult> {
     },
     install_commands:
       skill.type === "mcp-server" ? (skill.install_commands ?? {}) : undefined,
+  };
+}
+
+function fallbackMcpConfig(skill: Skill): Record<string, unknown> {
+  return {
+    name: skill.name,
+    description: skill.description,
+    transport: skill.transport,
+    install_commands: skill.install_commands,
   };
 }
 

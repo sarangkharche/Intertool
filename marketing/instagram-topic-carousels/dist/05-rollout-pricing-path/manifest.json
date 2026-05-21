@@ -1,0 +1,37 @@
+{
+  "campaign": "Rollout And Pricing Path",
+  "size": "1080x1080",
+  "slides": [
+    {
+      "index": 1,
+      "file": "05-rollout-pricing-path-slide-01.png",
+      "title": "Start free. Scale when governance matters."
+    },
+    {
+      "index": 2,
+      "file": "05-rollout-pricing-path-slide-02.png",
+      "title": "$0 self-hosted registry."
+    },
+    {
+      "index": 3,
+      "file": "05-rollout-pricing-path-slide-03.png",
+      "title": "$199/month plus seats."
+    },
+    {
+      "index": 4,
+      "file": "05-rollout-pricing-path-slide-04.png",
+      "title": "$3k+ annual support."
+    },
+    {
+      "index": 5,
+      "file": "05-rollout-pricing-path-slide-05.png",
+      "title": "Custom for regulated teams."
+    },
+    {
+      "index": 6,
+      "file": "05-rollout-pricing-path-slide-06.png",
+      "title": "Choose the path that matches your rollout."
+    }
+  ],
+  "contactSheet": "05-rollout-pricing-path-contact-sheet.png"
+}

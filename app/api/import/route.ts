@@ -18,6 +18,7 @@ interface ImportResult {
   source_url: string;
   source_format: SourceFormat;
   transport?: McpTransport;
+  mcp_config?: Record<string, unknown>;
   author?: string;
 }
 
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
             slug: slugify((data.slug as string) ?? (data.name as string)),
             type: ((data.type as string) ?? "skill") as SkillType,
             description: (data.description as string) ?? "",
-            readme: "",
+            readme: typeof data.readme === "string" ? data.readme : "",
             tags: Array.isArray(data.tags) ? data.tags : [],
             compatibility: Array.isArray(data.compatibility)
               ? data.compatibility
@@ -189,6 +190,7 @@ export async function POST(request: NextRequest) {
           source_url: sourceUrl,
           source_format: "server-json",
           transport: parsed.transport,
+          mcp_config: parsed.config,
           author: owner,
         };
         return NextResponse.json(result, { headers: noStoreHeaders() });

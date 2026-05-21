@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { rmSync, existsSync } from "fs";
 import { join } from "path";
-import { check, cross, dim, bold } from "../lib/format.js";
+import { check, cross, dim, bold, isJsonMode } from "../lib/format.js";
 
 export const removeCommand = new Command("remove")
   .alias("rm")
@@ -15,6 +15,17 @@ export const removeCommand = new Command("remove")
 
     if (existsSync(skillDir)) {
       rmSync(skillDir, { recursive: true });
+      if (isJsonMode()) {
+        console.log(
+          JSON.stringify({
+            removed: true,
+            slug,
+            type: "skill",
+            path: `.claude/skills/${slug}/`,
+          })
+        );
+        return;
+      }
       console.log(check(`Removed skill ${bold(slug)}`));
       console.log(dim(`  Deleted .claude/skills/${slug}/`));
       return;
@@ -22,11 +33,32 @@ export const removeCommand = new Command("remove")
 
     if (existsSync(mcpDir)) {
       rmSync(mcpDir, { recursive: true });
+      if (isJsonMode()) {
+        console.log(
+          JSON.stringify({
+            removed: true,
+            slug,
+            type: "mcp-server",
+            path: `.claude/mcp-servers/${slug}/`,
+          })
+        );
+        return;
+      }
       console.log(check(`Removed MCP server ${bold(slug)}`));
       console.log(dim(`  Deleted .claude/mcp-servers/${slug}/`));
       return;
     }
 
+    if (isJsonMode()) {
+      console.log(
+        JSON.stringify({
+          removed: false,
+          slug,
+          error: `${slug} is not installed in this project.`,
+        })
+      );
+      process.exit(1);
+    }
     console.log(cross(`${bold(slug)} is not installed in this project.`));
     process.exit(1);
   });

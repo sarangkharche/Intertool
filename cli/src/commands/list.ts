@@ -1,12 +1,25 @@
 import { Command } from "commander";
-import { readdirSync, existsSync } from "fs";
+import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { bold, dim, isJsonMode, table } from "../lib/format.js";
 
+type InstalledType = "skill" | "mcp-server" | "agent-tool" | "prompt-template";
+
 interface InstalledItem {
   name: string;
-  type: "skill" | "mcp-server";
+  slug: string;
+  type: InstalledType;
   path: string;
+  version?: string;
+  registry?: string;
+}
+
+interface InstalledMetadata {
+  slug?: string;
+  name?: string;
+  type?: InstalledType;
+  version?: string;
+  registry?: string;
 }
 
 export const listCommand = new Command("list")
@@ -21,10 +34,14 @@ export const listCommand = new Command("list")
         if (!dir.isDirectory()) continue;
         const skillPath = join(skillsDir, dir.name, "SKILL.md");
         if (existsSync(skillPath)) {
+          const metadata = readMetadata(join(skillsDir, dir.name));
           items.push({
-            name: dir.name,
-            type: "skill",
+            name: metadata.name ?? dir.name,
+            slug: metadata.slug ?? dir.name,
+            type: metadata.type ?? "skill",
             path: `.claude/skills/${dir.name}/`,
+            version: metadata.version,
+            registry: metadata.registry,
           });
         }
       }
@@ -36,10 +53,14 @@ export const listCommand = new Command("list")
         if (!dir.isDirectory()) continue;
         const serverPath = join(mcpDir, dir.name, "server.json");
         if (existsSync(serverPath)) {
+          const metadata = readMetadata(join(mcpDir, dir.name));
           items.push({
-            name: dir.name,
-            type: "mcp-server",
+            name: metadata.name ?? dir.name,
+            slug: metadata.slug ?? dir.name,
+            type: metadata.type ?? "mcp-server",
             path: `.claude/mcp-servers/${dir.name}/`,
+            version: metadata.version,
+            registry: metadata.registry,
           });
         }
       }
@@ -58,7 +79,26 @@ export const listCommand = new Command("list")
 
     console.log(bold(`${items.length} installed:\n`));
     table(
-      ["Name", "Type", "Path"],
-      items.map((item) => [item.name, item.type, item.path])
+      ["Name", "Type", "Version", "Path"],
+      items.map((item) => [
+        item.name,
+        item.type,
+        item.version ?? "-",
+        item.path,
+      ])
     );
   });
+
+function readMetadata(dir: string): InstalledMetadata {
+  const metadataPath = join(dir, ".intertool.json");
+  if (!existsSync(metadataPath)) return {};
+
+  try {
+    const metadata = JSON.parse(
+      readFileSync(metadataPath, "utf-8")
+    ) as InstalledMetadata;
+    return metadata;
+  } catch {
+    return {};
+  }
+}

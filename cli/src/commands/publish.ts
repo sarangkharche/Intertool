@@ -1,8 +1,9 @@
 import { Command } from "commander";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
+import { dirname, join } from "path";
 import { getConfig } from "../lib/config.js";
 import { apiPostForm } from "../lib/api.js";
-import { parseSkillMd, parseServerJson } from "../lib/parse.js";
+import { parseSkillMd, parseSkillYaml, parseServerJson } from "../lib/parse.js";
 import {
   bold,
   dim,
@@ -51,19 +52,31 @@ Examples:
 
     // Auto-detect from frontmatter or JSON
     let detected: {
+      slug?: string;
       name?: string;
       description?: string;
       type?: string;
       category?: string;
       tags?: string[];
+      compatibility?: string[];
+      readme?: string;
+      transport?: string;
+      mcpConfig?: Record<string, unknown>;
     } = {};
     if (filePath.endsWith(".json")) {
       const parsed = parseServerJson(content);
+      const sidecar = readMetadataSidecar(filePath);
       detected = {
-        name: parsed.name,
-        description: parsed.description,
+        ...sidecar,
+        name: parsed.name ?? sidecar.name,
+        description: parsed.description ?? sidecar.description,
         type: "mcp-server",
+        transport: parsed.transport,
+        mcpConfig: parsed.config,
+        readme: sidecar.readme ?? readAdjacentReadme(filePath),
       };
+    } else if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) {
+      detected = parseSkillYaml(content);
     } else {
       detected = parseSkillMd(content);
     }
@@ -76,6 +89,7 @@ Examples:
     const tags = opts.tags
       ? opts.tags.split(",").map((t: string) => t.trim())
       : (detected.tags ?? []);
+    const compatibility = detected.compatibility ?? [];
 
     // Validate required fields
     const missing: string[] = [];
@@ -97,11 +111,13 @@ Examples:
       process.exit(1);
     }
 
-    const slug = name!
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
+    const slug =
+      detected.slug ??
+      name!
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
 
     const formData = new FormData();
     formData.append("name", name!);
@@ -110,10 +126,23 @@ Examples:
     formData.append("description", description!);
     formData.append("category", category!);
     formData.append("tags", JSON.stringify(tags));
-    formData.append("compatibility", JSON.stringify([]));
-    formData.append("readme", content);
+    formData.append("compatibility", JSON.stringify(compatibility));
+    const readme =
+      typeof detected.readme === "string" ? detected.readme : content;
+    formData.append("readme", readme);
     if (opts.sourceUrl) {
       formData.append("source_url", opts.sourceUrl);
+    }
+    if (detected.transport) {
+      formData.append("transport", detected.transport);
+    }
+    if (detected.mcpConfig) {
+      formData.append("source_format", "server-json");
+      formData.append("mcp_config", JSON.stringify(detected.mcpConfig));
+    } else if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) {
+      formData.append("source_format", "skill-yaml");
+    } else if (filePath.endsWith(".md")) {
+      formData.append("source_format", "skill-md");
     }
 
     const s = spinner(`Publishing ${name}...`);
@@ -121,20 +150,46 @@ Examples:
     try {
       const result = (await apiPostForm(`/api/publish`, formData)) as {
         slug: string;
+        status?: string;
+        message?: string;
       };
       s.stop();
+
+      const status = result.status ?? "published";
+      const published = status === "published";
+      const submittedForReview = status === "review";
+      const url = `${config.apiUrl}/skills/${result.slug}`;
 
       if (isJsonMode()) {
         console.log(
           JSON.stringify({
-            published: true,
+            ok: true,
+            published,
+            submitted_for_review: submittedForReview,
+            status,
             slug: result.slug,
-            url: `${config.apiUrl}/skills/${result.slug}`,
+            url,
+            message:
+              result.message ??
+              (submittedForReview
+                ? "Skill submitted for review"
+                : "Skill published"),
           })
         );
       } else {
-        console.log(check(`${bold(name!)} published`));
-        console.log(dim(`  ${cyan(`${config.apiUrl}/skills/${result.slug}`)}`));
+        console.log(
+          check(
+            submittedForReview
+              ? `${bold(name!)} submitted for review`
+              : `${bold(name!)} published`
+          )
+        );
+        console.log(dim(`  ${cyan(url)}`));
+        if (submittedForReview) {
+          console.log(
+            dim("  It will be installable after owner/admin approval.")
+          );
+        }
       }
     } catch (err) {
       s.stop();
@@ -144,3 +199,42 @@ Examples:
       process.exit(1);
     }
   });
+
+function readMetadataSidecar(filePath: string) {
+  const dir = dirname(filePath);
+  const candidates = [
+    "intertool.yaml",
+    "intertool.yml",
+    "skill.yaml",
+    "skill.yml",
+  ];
+
+  for (const name of candidates) {
+    const sidecarPath = join(dir, name);
+    if (!existsSync(sidecarPath)) continue;
+    try {
+      return parseSkillYaml(readFileSync(sidecarPath, "utf-8"));
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
+function readAdjacentReadme(filePath: string): string | undefined {
+  const dir = dirname(filePath);
+  const candidates = ["README.md", "README.mdx", "readme.md"];
+
+  for (const name of candidates) {
+    const readmePath = join(dir, name);
+    if (!existsSync(readmePath)) continue;
+    try {
+      return readFileSync(readmePath, "utf-8");
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}

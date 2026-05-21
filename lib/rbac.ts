@@ -4,6 +4,18 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { isLocalSaasFallbackMode } from "./org";
+import {
+  cpCreateApiToken,
+  cpEnsureUserRecord,
+  cpGetApiTokenByHash,
+  cpGetUserRole,
+  cpListMembers,
+  cpListUserTokens,
+  cpRemoveMember,
+  cpRevokeToken,
+  cpSetUserRole,
+  hasControlPlane,
+} from "./control-plane";
 
 // ── Permission matrix ──
 
@@ -180,6 +192,10 @@ export async function getUserRole(
 ): Promise<OrgRole | null> {
   const id = identifier.toLowerCase();
 
+  if (hasControlPlane()) {
+    return cpGetUserRole(id, orgSlug);
+  }
+
   const r = getRedis();
   if (r) {
     // Check migration
@@ -199,6 +215,11 @@ export async function setUserRole(
   orgSlug?: string
 ): Promise<void> {
   const id = identifier.toLowerCase();
+
+  if (hasControlPlane()) {
+    await cpSetUserRole(id, role, orgSlug);
+    return;
+  }
 
   const r = getRedis();
   if (r) {
@@ -260,6 +281,12 @@ export async function ensureUserRecord(
 ): Promise<OrgUser> {
   const id = identifier.toLowerCase();
   const now = new Date().toISOString();
+
+  if (hasControlPlane()) {
+    const existingRole = await cpGetUserRole(id, orgSlug);
+    const resolvedRole = existingRole ?? (await resolveInitialRole(id, orgSlug));
+    return cpEnsureUserRecord(id, profile, resolvedRole, orgSlug);
+  }
 
   const r = getRedis();
   if (r) {
@@ -351,6 +378,10 @@ export async function authorize(
 }
 
 export async function listMembers(orgSlug?: string): Promise<OrgUser[]> {
+  if (hasControlPlane()) {
+    return cpListMembers(orgSlug);
+  }
+
   const r = getRedis();
   if (r) {
     await ensureMigrated(orgSlug);
@@ -392,6 +423,11 @@ export async function removeMember(
   orgSlug?: string
 ): Promise<void> {
   const id = identifier.toLowerCase();
+
+  if (hasControlPlane()) {
+    await cpRemoveMember(id, orgSlug);
+    return;
+  }
 
   const r = getRedis();
   if (r) {
@@ -457,6 +493,11 @@ export async function createApiToken(
     created_at: new Date().toISOString(),
   };
 
+  if (hasControlPlane()) {
+    await cpCreateApiToken(apiToken);
+    return { raw, token: apiToken };
+  }
+
   const r = getRedis();
   if (r) {
     await r.hset(tokenKey(hash), apiToken as unknown as Record<string, string>);
@@ -479,6 +520,10 @@ export async function lookupToken(raw: string): Promise<ApiToken | null> {
 export async function getApiTokenByHash(
   hash: string
 ): Promise<ApiToken | null> {
+  if (hasControlPlane()) {
+    return cpGetApiTokenByHash(hash);
+  }
+
   const r = getRedis();
   if (r) {
     const token = (await r.hgetall(
@@ -496,6 +541,10 @@ export async function listUserTokens(
   orgSlug?: string
 ): Promise<ApiToken[]> {
   const id = userId.toLowerCase();
+
+  if (hasControlPlane()) {
+    return cpListUserTokens(id, orgSlug);
+  }
 
   const r = getRedis();
   if (r) {
@@ -520,6 +569,10 @@ export async function revokeToken(
   hash: string,
   orgSlug?: string
 ): Promise<ApiToken | null> {
+  if (hasControlPlane()) {
+    return cpRevokeToken(hash, orgSlug);
+  }
+
   const r = getRedis();
   if (r) {
     const token = (await r.hgetall(

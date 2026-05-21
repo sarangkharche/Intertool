@@ -6,15 +6,18 @@ test.describe("public registry surface", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Stop agent-tool sprawl before it becomes production risk.",
+        name: "Own the agent capabilities your teams are allowed to use.",
       })
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: /deploy self-hosted/i })
     ).toHaveAttribute("href", "/docs/getting-started");
     await expect(
-      page.getByText("Private control plane for AI agent capabilities")
+      page.getByText("Approval layer for Claude, Codex, Cursor, and MCP")
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /see where it fits/i })
+    ).toHaveAttribute("href", "#where-it-fits");
   });
 
   test("renders the public pricing page", async ({ page }) => {
@@ -22,8 +25,11 @@ test.describe("public registry surface", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Start with a private registry. Scale into governance.",
+        name: "Start with private approval. Scale into agent governance.",
       })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Not another native skill store" })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Community" })

@@ -3,7 +3,7 @@ import { saveConfig, getConfig } from "../lib/config.js";
 import { createServer } from "http";
 import { exec } from "child_process";
 import { platform } from "os";
-import { bold, dim, check, cross, spinner } from "../lib/format.js";
+import { bold, dim, check, cross, isJsonMode, spinner } from "../lib/format.js";
 
 function openBrowser(url: string) {
   const cmd =
@@ -28,6 +28,8 @@ Examples:
 `
   )
   .action(async (opts) => {
+    const jsonMode = isJsonMode();
+
     // If just setting URL without auth
     if (opts.url && !opts.token) {
       const config = getConfig();
@@ -36,12 +38,26 @@ Examples:
       saveConfig({ apiUrl: opts.url });
 
       if (config.token && hadUrl) {
+        if (jsonMode) {
+          console.log(
+            JSON.stringify({
+              authenticated: true,
+              apiUrl: opts.url,
+              token_preserved: true,
+            })
+          );
+          return;
+        }
         console.log(check(`Updated API URL to ${bold(opts.url)}`));
         return;
       }
 
       // Start browser auth flow
-      await browserAuth(opts.url);
+      const result = await browserAuth(opts.url);
+      if (jsonMode) {
+        console.log(JSON.stringify(result));
+      }
+      if (!result.authenticated) process.exit(1);
       return;
     }
 
@@ -50,6 +66,16 @@ Examples:
       const updates: Record<string, string> = { token: opts.token };
       if (opts.url) updates.apiUrl = opts.url;
       saveConfig(updates);
+      if (jsonMode) {
+        console.log(
+          JSON.stringify({
+            authenticated: true,
+            token_saved: true,
+            apiUrl: opts.url ?? getConfig().apiUrl,
+          })
+        );
+        return;
+      }
       console.log(check("Token saved."));
       return;
     }
@@ -57,12 +83,25 @@ Examples:
     // No args — show current config or help
     const config = getConfig();
     if (config.token) {
+      if (jsonMode) {
+        console.log(
+          JSON.stringify({
+            authenticated: true,
+            apiUrl: config.apiUrl,
+          })
+        );
+        return;
+      }
       console.log(`  ${dim("URL:")}    ${config.apiUrl}`);
       console.log(`  ${dim("Token:")}  ${"*".repeat(8)}`);
       console.log(
         dim(`\nRun 'intertool login --url <url>' to change instance.`)
       );
     } else {
+      if (jsonMode) {
+        console.log(JSON.stringify({ authenticated: false }));
+        process.exit(1);
+      }
       console.log(dim("Not logged in.\n"));
       console.log(
         `  intertool login --url https://your-instance.com   ${dim("# Browser auth")}`
@@ -73,9 +112,27 @@ Examples:
     }
   });
 
-async function browserAuth(apiUrl: string): Promise<void> {
+async function browserAuth(apiUrl: string): Promise<{
+  authenticated: boolean;
+  apiUrl: string;
+  username?: string;
+  error?: string;
+}> {
   return new Promise((resolve) => {
     let s: ReturnType<typeof spinner>;
+    let settled = false;
+
+    function finish(result: {
+      authenticated: boolean;
+      apiUrl: string;
+      username?: string;
+      error?: string;
+    }) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      server.close(() => resolve(result));
+    }
 
     const server = createServer((req, res) => {
       const url = new URL(req.url ?? "/", `http://localhost`);
@@ -102,16 +159,24 @@ async function browserAuth(apiUrl: string): Promise<void> {
           s?.stop(
             check(`Authenticated${username ? ` as ${bold(username)}` : ""}`)
           );
-          console.log(dim(`  Instance: ${apiUrl}`));
+          if (!isJsonMode()) {
+            console.log(dim(`  Instance: ${apiUrl}`));
+          }
 
-          server.close();
-          resolve();
+          finish({
+            authenticated: true,
+            apiUrl,
+            username: username ?? undefined,
+          });
         } else {
           res.writeHead(400, { "Content-Type": "text/plain" });
           res.end("Authentication failed — no token received.");
           s?.stop(cross("Authentication failed. No token received."));
-          server.close();
-          resolve();
+          finish({
+            authenticated: false,
+            apiUrl,
+            error: "Authentication failed. No token received.",
+          });
         }
       } else {
         res.writeHead(404);
@@ -124,8 +189,11 @@ async function browserAuth(apiUrl: string): Promise<void> {
       const addr = server.address();
       if (!addr || typeof addr === "string") {
         console.error(cross("Failed to start local server"));
-        server.close();
-        resolve();
+        finish({
+          authenticated: false,
+          apiUrl,
+          error: "Failed to start local server",
+        });
         return;
       }
 
@@ -133,15 +201,23 @@ async function browserAuth(apiUrl: string): Promise<void> {
       const authUrl = `${apiUrl}/api/cli-auth?port=${port}`;
 
       s = spinner("Waiting for browser authentication...");
-      console.log(dim(`If it doesn't open, visit: ${authUrl}`));
+      const openMessage = `If it doesn't open, visit: ${authUrl}`;
+      if (isJsonMode()) {
+        console.error(openMessage);
+      } else {
+        console.log(dim(openMessage));
+      }
       openBrowser(authUrl);
     });
 
     // Timeout after 2 minutes
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       s?.stop(cross("Authentication timed out."));
-      server.close();
-      resolve();
+      finish({
+        authenticated: false,
+        apiUrl,
+        error: "Authentication timed out.",
+      });
     }, 120_000);
   });
 }

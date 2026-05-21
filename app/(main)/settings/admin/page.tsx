@@ -662,15 +662,13 @@ export default function AdminSettingsPage() {
                 role="switch"
                 aria-checked={githubOrgRequired}
                 aria-label="Restrict to GitHub organization"
-                className={`relative h-5 w-9 rounded-full interactive-toggle ${
-                  githubOrgRequired
-                    ? "bg-emerald-500"
-                    : "bg-muted-foreground/20"
+                className={`relative h-7 w-12 rounded-full interactive-toggle touch-target ${
+                  githubOrgRequired ? "bg-success" : "bg-muted-foreground/20"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white toggle-knob ${
-                    githubOrgRequired ? "translate-x-4" : ""
+                  className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-background shadow-sm ring-1 ring-border toggle-knob ${
+                    githubOrgRequired ? "translate-x-5" : ""
                   }`}
                 />
               </button>
@@ -718,13 +716,13 @@ export default function AdminSettingsPage() {
                 role="switch"
                 aria-checked={googleEnabled}
                 aria-label="Enable Google Workspace sign-in"
-                className={`relative h-5 w-9 rounded-full interactive-toggle ${
-                  googleEnabled ? "bg-emerald-500" : "bg-muted-foreground/20"
+                className={`relative h-7 w-12 rounded-full interactive-toggle touch-target ${
+                  googleEnabled ? "bg-success" : "bg-muted-foreground/20"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white toggle-knob ${
-                    googleEnabled ? "translate-x-4" : ""
+                  className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-background shadow-sm ring-1 ring-border toggle-knob ${
+                    googleEnabled ? "translate-x-5" : ""
                   }`}
                 />
               </button>
@@ -839,15 +837,13 @@ export default function AdminSettingsPage() {
               role="switch"
               aria-checked={publishReviewRequired}
               aria-label="Require admin review for new submissions"
-              className={`relative h-5 w-9 shrink-0 rounded-full interactive-toggle ${
-                publishReviewRequired
-                  ? "bg-emerald-500"
-                  : "bg-muted-foreground/20"
+              className={`relative h-7 w-12 shrink-0 rounded-full interactive-toggle touch-target ${
+                publishReviewRequired ? "bg-success" : "bg-muted-foreground/20"
               }`}
             >
               <span
-                className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white toggle-knob ${
-                  publishReviewRequired ? "translate-x-4" : ""
+                className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-background shadow-sm ring-1 ring-border toggle-knob ${
+                  publishReviewRequired ? "translate-x-5" : ""
                 }`}
               />
             </button>

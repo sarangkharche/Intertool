@@ -4,6 +4,11 @@ import { randomUUID } from "node:crypto";
 import { Redis } from "@upstash/redis";
 import { isLocalSaasFallbackMode } from "./org";
 import type { AuditEvent } from "./types";
+import {
+  cpAppendAuditEvent,
+  cpListAuditEvents,
+  hasControlPlane,
+} from "./control-plane";
 
 const AUDIT_PATH = path.resolve(process.cwd(), "registry", "audit-log.json");
 const MAX_AUDIT_EVENTS = 1000;
@@ -57,6 +62,15 @@ export async function appendAuditEvent(
     created_at: event.created_at ?? new Date().toISOString(),
   };
 
+  if (hasControlPlane()) {
+    try {
+      await cpAppendAuditEvent(auditEvent);
+      return auditEvent;
+    } catch {
+      // Fall through to Redis/local best-effort storage.
+    }
+  }
+
   const r = getRedis();
   if (r) {
     try {
@@ -82,6 +96,14 @@ export async function listAuditEvents(
   limit = 100
 ): Promise<AuditEvent[]> {
   const safeLimit = Math.max(1, Math.min(limit, MAX_AUDIT_EVENTS));
+
+  if (hasControlPlane()) {
+    try {
+      return await cpListAuditEvents(orgSlug, safeLimit);
+    } catch {
+      // Fall through to Redis/local best-effort storage.
+    }
+  }
 
   const r = getRedis();
   if (r) {

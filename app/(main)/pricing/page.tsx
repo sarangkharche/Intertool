@@ -7,25 +7,45 @@ import { ArrowRight, Check, HelpCircle } from "lucide-react";
 export const metadata: Metadata = getPublicPageMetadata({
   title: "Pricing",
   description:
-    "Intertool pricing for open-source self-hosting, hosted team registries, self-hosted Pro support, and enterprise AI agent governance.",
+    "Intertool pricing for private agent capability approval, hosted team registries, self-hosted support, and enterprise AI governance.",
   path: "/pricing",
 });
+
+const valueProps = [
+  {
+    title: "Not another native skill store",
+    body: "Claude, Codex, Cursor, and Copilot each expose their own surfaces. Intertool gives your team one approval record across them.",
+  },
+  {
+    title: "Govern what gets installed",
+    body: "Review skills, prompts, MCP servers, and internal tools before they become searchable or installable by the team.",
+  },
+  {
+    title: "Keep private capability history",
+    body: "Track ownership, versions, source metadata, package files, audit events, and risk signals outside public marketplaces.",
+  },
+];
 
 const faqs = [
   {
     question: "Can we start self-hosted and move to paid later?",
     answer:
-      "Yes. Community is the recommended starting point for teams proving the workflow. Paid plans add hosting, governance support, deployment help, and enterprise rollout assistance.",
+      "Yes. Community is the recommended starting point for proving the approval workflow. Paid plans add managed hosting, governance support, deployment help, and enterprise rollout assistance.",
+  },
+  {
+    question: "Why not just use Claude or Codex skills?",
+    answer:
+      "Use their native skill systems for execution. Use Intertool when you need one reviewed, versioned, auditable source of truth across Claude, Codex, Cursor, Copilot, MCP clients, and custom agents.",
   },
   {
     question: "Does Intertool replace public MCP registries?",
     answer:
-      "No. Public registries are useful for public discovery. Intertool is for private team-owned skills, prompts, MCP servers, and agent tools that need review, versioning, and access control.",
+      "No. Public registries are useful for public discovery. Intertool is for private team-owned MCP servers, skills, prompts, and agent tools that need review, versioning, and access control.",
   },
   {
     question: "Is Team Cloud available today?",
     answer:
-      "Team Cloud is early access pricing. The self-hosted app is the stable path today; managed hosting is intended for teams that want Intertool without operating storage and deployment.",
+      "Team Cloud is early access pricing. The self-hosted app is the stable path today; managed hosting is for teams that want the approval workflow without operating storage and deployment.",
   },
   {
     question: "What counts as an Intertool seat?",
@@ -44,20 +64,20 @@ export default function PricingPage() {
           </p>
           <div className="grid gap-8 lg:grid-cols-[1fr_340px] lg:items-end">
             <div>
-              <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                Start with a private registry. Scale into governance.
+              <h1 className="text-display max-w-3xl text-3xl leading-[1.05] sm:text-5xl">
+                Start with private approval. Scale into agent governance.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
                 Intertool is open source for teams that want to self-host. Paid
-                plans are for hosted workflows, private deployment support, and
-                company-wide AI agent capability governance.
+                plans are for hosted approval workflows, private deployment
+                support, and company-wide AI agent capability governance.
               </p>
             </div>
             <div className="rounded-lg border border-border/70 bg-muted/25 p-4">
               <p className="text-sm font-medium">Recommended path</p>
               <ol className="mt-3 space-y-2 text-xs leading-6 text-muted-foreground">
                 <li>1. Prove the workflow on Community.</li>
-                <li>2. Add review and audit discipline with Team Cloud.</li>
+                <li>2. Add hosted review and audit with Team Cloud.</li>
                 <li>3. Move to Pro or Enterprise when procurement matters.</li>
               </ol>
             </div>
@@ -65,15 +85,28 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 py-12">
-        <div className="grid gap-4 lg:grid-cols-4">
+      <section className="mx-auto max-w-5xl px-4 py-10">
+        <div className="grid gap-5 border-y border-border-subtle py-8 md:grid-cols-3">
+          {valueProps.map((item) => (
+            <div key={item.title}>
+              <h2 className="text-sm font-semibold">{item.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {item.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 py-12 pt-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 lg:items-start">
           {pricingPlans.map((plan) => (
             <article
               key={plan.name}
-              className={`flex min-h-[34rem] flex-col rounded-lg border p-5 ${
+              className={`flex flex-col rounded-lg border p-4 sm:p-5 ${
                 plan.featured
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border/70 bg-surface"
+                  ? "border-foreground bg-foreground text-background lg:-mt-4 lg:min-h-[35rem]"
+                  : "border-border/70 bg-surface lg:min-h-[32rem]"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -113,7 +146,7 @@ export default function PricingPage() {
               </div>
 
               <p
-                className={`mt-5 min-h-24 text-sm leading-6 ${
+                className={`mt-5 text-sm leading-6 md:min-h-24 ${
                   plan.featured ? "text-background/75" : "text-muted-foreground"
                 }`}
               >
@@ -136,7 +169,7 @@ export default function PricingPage() {
 
               <Link
                 href={plan.href}
-                className={`mt-6 inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                className={`mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors focus-ring ${
                   plan.featured
                     ? "border-background/25 bg-background text-foreground hover:bg-background/90"
                     : "border-border hover:bg-muted"
@@ -156,7 +189,7 @@ export default function PricingPage() {
             <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
               Questions
             </p>
-            <h2 className="text-2xl font-semibold leading-tight">
+            <h2 className="text-display text-2xl leading-tight">
               Built for teams still deciding how agent governance should work.
             </h2>
           </div>
@@ -164,7 +197,7 @@ export default function PricingPage() {
             {faqs.map((faq) => (
               <div
                 key={faq.question}
-                className="rounded-lg border border-border/70 bg-background p-4"
+                className="border-t border-border-subtle py-5"
               >
                 <div className="flex gap-3">
                   <HelpCircle

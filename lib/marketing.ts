@@ -29,17 +29,17 @@ export const marketSignals = [
   },
   {
     value: "Public",
-    label: "MCP registry metadata excludes private servers",
+    label: "official MCP discovery is built around public servers",
     source: "Model Context Protocol Registry",
     href: "https://modelcontextprotocol.io/registry/about",
   },
 ];
 
 export const platformProof = [
-  "Claude Team and Enterprise orgs can provision skills organization-wide.",
-  "Codex supports plugins and skills for team-specific workflows.",
-  "Copilot coding agent can use MCP servers configured at the repository layer.",
-  "Cursor and other agentic editors are normalizing MCP-based tool access.",
+  "Claude and Codex validate skills as a real workflow primitive, but each manages its own surface.",
+  "Copilot and Cursor pull MCP configuration closer to the repository, where review matters.",
+  "The public MCP Registry is for public discovery; private servers need a private source of truth.",
+  "Engineering teams still need one approval path across every agent their developers use.",
 ];
 
 export const capabilityPillars: Array<{
@@ -49,27 +49,27 @@ export const capabilityPillars: Array<{
 }> = [
   {
     icon: ClipboardCheck,
-    title: "Review before rollout",
+    title: "Approve before agents run",
     description:
-      "Route new skills, prompts, and MCP servers through approval before they become team-installable.",
+      "Route skills, prompts, MCP servers, and agent tools through review before they become installable.",
   },
   {
     icon: FileCheck2,
-    title: "Version every capability",
+    title: "Version the artifact",
     description:
-      "Keep changelogs, snapshots, source metadata, and package files attached to the artifact users install.",
+      "Keep changelogs, snapshots, source metadata, risk status, and package files attached to each capability.",
   },
   {
     icon: Terminal,
-    title: "Install from one place",
+    title: "Distribute to every surface",
     description:
-      "Generate commands for Claude Code, Cursor, the Intertool CLI, and MCP-compatible workflows.",
+      "Give developers approved install paths for Claude Code, Codex, Cursor, Copilot, and MCP clients.",
   },
   {
     icon: Shield,
-    title: "Keep internals internal",
+    title: "Keep private tools private",
     description:
-      "Run self-hosted or in a private org path with S3-backed storage, OAuth, RBAC, and audit history.",
+      "Run self-hosted or managed with private storage, OAuth, RBAC, audit history, and org-scoped access.",
   },
 ];
 
@@ -80,27 +80,27 @@ export const useCases: Array<{
 }> = [
   {
     icon: Server,
-    title: "Private MCP registry",
+    title: "Private MCP catalog",
     description:
-      "Catalog internal servers that should never appear in a public marketplace.",
+      "Publish internal server configs that should not live in a public marketplace.",
   },
   {
     icon: Code2,
-    title: "Claude and Codex skills",
+    title: "Cross-agent skills",
     description:
-      "Share tested playbooks for reviews, migrations, docs, frontend work, and support workflows.",
+      "Keep reusable Claude, Codex, and project playbooks in one reviewed source of truth.",
   },
   {
     icon: Layers3,
-    title: "Prompt template system",
+    title: "Prompt playbook library",
     description:
-      "Move reusable prompts out of Slack, local files, and copied snippets into a searchable registry.",
+      "Move repeatable prompts out of Slack, local files, and copied snippets into a searchable registry.",
   },
   {
     icon: Workflow,
-    title: "Agent governance",
+    title: "Capability governance",
     description:
-      "Give DevEx and security teams a control point for what agents can discover and run.",
+      "Give DevEx and security teams an audit trail for what agents can discover and run.",
   },
 ];
 
@@ -111,18 +111,18 @@ export const pricingPlans = [
     price: "$0",
     cadence: "self-hosted",
     description:
-      "For individuals and small teams standardizing their local agent workflows.",
+      "For teams proving a private approval workflow in their own infrastructure.",
     cta: "Start self-hosted",
     href: "/docs/getting-started",
     featured: false,
     icon: Database,
     features: [
-      "Single registry",
+      "Single private registry",
       "S3-compatible storage",
-      "CLI install and publish",
+      "CLI publish, install, and update",
       "Skills, MCP servers, prompts, and tools",
       "GitHub OAuth",
-      "Community support",
+      "Review queue and audit log",
     ],
   },
   {
@@ -131,7 +131,7 @@ export const pricingPlans = [
     price: "$199",
     cadence: "per month base, then $20 per seat",
     description:
-      "For product engineering teams that want hosted registries without running infrastructure.",
+      "For engineering teams that want managed cross-agent governance without running infrastructure.",
     cta: "Join early access",
     href: "/sign-in",
     featured: true,
@@ -139,8 +139,8 @@ export const pricingPlans = [
     features: [
       "Managed hosting",
       "Org paths and member management",
-      "Review queue",
-      "Audit log",
+      "Review queue and audit history",
+      "Claude, Codex, Cursor, and MCP install paths",
       "Version history",
       "Priority onboarding",
     ],
@@ -151,17 +151,17 @@ export const pricingPlans = [
     price: "$3k+",
     cadence: "per year",
     description:
-      "For DevEx and AI platform teams that need private deployment with support.",
+      "For DevEx and AI platform teams that need private deployment guidance and support.",
     cta: "Talk through deployment",
     href: "https://github.com/sarangkharche/intertool/issues",
     featured: false,
     icon: LockKeyhole,
     features: [
       "Private deployment support",
-      "Governance workflow setup",
+      "Governance workflow design",
       "Audit retention guidance",
       "Upgrade assistance",
-      "Security review packet",
+      "Security review materials",
       "Priority fixes",
     ],
   },
@@ -171,7 +171,7 @@ export const pricingPlans = [
     price: "Custom",
     cadence: "for regulated teams",
     description:
-      "For companies standardizing agent capabilities across many teams and environments.",
+      "For companies standardizing approved agent capabilities across many teams and environments.",
     cta: "Request enterprise plan",
     href: "https://github.com/sarangkharche/intertool/issues",
     featured: false,
@@ -182,7 +182,7 @@ export const pricingPlans = [
       "Procurement support",
       "Dedicated deployment review",
       "Custom retention requirements",
-      "Executive rollout planning",
+      "Company rollout planning",
     ],
   },
 ];

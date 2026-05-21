@@ -1,7 +1,7 @@
 import { Command } from "commander";
-import { writeFileSync, existsSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 import { join } from "path";
-import { bold, green, dim, cross, check } from "../lib/format.js";
+import { bold, check, cross, dim, green, isJsonMode } from "../lib/format.js";
 
 const SKILL_TYPES = [
   "skill",
@@ -9,6 +9,15 @@ const SKILL_TYPES = [
   "agent-tool",
   "prompt-template",
 ] as const;
+
+type SkillType = (typeof SKILL_TYPES)[number];
+
+const DEFAULT_CATEGORY_BY_TYPE: Record<SkillType, string> = {
+  skill: "dev-tools",
+  "mcp-server": "integrations",
+  "agent-tool": "dev-tools",
+  "prompt-template": "prompts",
+};
 
 function prompt(question: string): Promise<string> {
   return new Promise((resolve) => {
@@ -24,19 +33,35 @@ function prompt(question: string): Promise<string> {
   });
 }
 
-function generateSkillMd(opts: {
+function yamlString(value: string): string {
+  return JSON.stringify(value);
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function generateSkillMd(opts: {
   name: string;
   description: string;
   type: string;
+  category: string;
   tags: string[];
 }): string {
   const tagList = opts.tags.length
-    ? `\ntags: [${opts.tags.map((t) => `"${t}"`).join(", ")}]`
+    ? `tags: [${opts.tags.map(yamlString).join(", ")}]\n`
     : "";
+
   return `---
-name: ${opts.name}
-description: ${opts.description}${tagList}
----
+name: ${yamlString(opts.name)}
+type: ${opts.type}
+description: ${yamlString(opts.description)}
+category: ${opts.category}
+${tagList}---
 
 # ${opts.name}
 
@@ -50,7 +75,7 @@ Describe how to use this skill or tool.
 
 \`\`\`bash
 # Example command
-intertool install @your-username/${opts.name.toLowerCase().replace(/\s+/g, "-")}
+intertool install @your-username/${slugify(opts.name)}
 \`\`\`
 
 ## Configuration
@@ -63,7 +88,25 @@ Provide concrete examples of the skill in action.
 `;
 }
 
-function generateServerJson(opts: {
+export function generateIntertoolYaml(opts: {
+  name: string;
+  description: string;
+  type: string;
+  category: string;
+  tags: string[];
+}): string {
+  const tagList = opts.tags.length
+    ? `tags: [${opts.tags.map(yamlString).join(", ")}]\n`
+    : "";
+
+  return `name: ${yamlString(opts.name)}
+type: ${opts.type}
+description: ${yamlString(opts.description)}
+category: ${opts.category}
+${tagList}`;
+}
+
+export function generateServerJson(opts: {
   name: string;
   description: string;
 }): string {
@@ -74,9 +117,7 @@ function generateServerJson(opts: {
       transport: {
         type: "stdio",
         command: "npx",
-        args: [
-          `@your-username/${opts.name.toLowerCase().replace(/\s+/g, "-")}`,
-        ],
+        args: [`@your-username/${slugify(opts.name)}`],
       },
     },
     null,
@@ -92,41 +133,76 @@ export const initCommand = new Command("init")
   )
   .option("-n, --name <name>", "Skill name")
   .option("-d, --description <desc>", "Short description")
+  .option("-c, --category <cat>", "Category slug")
   .option("--tags <tags>", "Comma-separated tags")
   .action(
     async (opts: {
       type?: string;
       name?: string;
       description?: string;
+      category?: string;
       tags?: string;
     }) => {
-      console.log();
-      console.log(bold("  Initialize a new skill"));
-      console.log();
+      const jsonMode = isJsonMode();
+
+      if (jsonMode) {
+        const missing: string[] = [];
+        if (!opts.type) missing.push("--type");
+        if (!opts.name) missing.push("--name");
+        if (!opts.description) missing.push("--description");
+        if (missing.length > 0) {
+          console.log(
+            JSON.stringify({
+              created: false,
+              error: `Missing required options for --json: ${missing.join(", ")}`,
+            })
+          );
+          process.exit(1);
+        }
+      } else {
+        console.log();
+        console.log(bold("  Initialize a new skill"));
+        console.log();
+      }
+
+      const fail = (message: string): never => {
+        if (jsonMode) {
+          console.log(JSON.stringify({ created: false, error: message }));
+        } else {
+          console.error(cross(message));
+        }
+        process.exit(1);
+      };
 
       const type =
-        opts.type &&
-        SKILL_TYPES.includes(opts.type as (typeof SKILL_TYPES)[number])
+        opts.type && SKILL_TYPES.includes(opts.type as SkillType)
           ? opts.type
           : await prompt(`  Type (${SKILL_TYPES.join(", ")}): `);
 
-      if (!SKILL_TYPES.includes(type as (typeof SKILL_TYPES)[number])) {
-        console.error(
-          cross(
-            `Invalid type: ${type}. Must be one of: ${SKILL_TYPES.join(", ")}`
-          )
+      if (!SKILL_TYPES.includes(type as SkillType)) {
+        fail(
+          `Invalid type: ${type}. Must be one of: ${SKILL_TYPES.join(", ")}`
         );
-        process.exit(1);
       }
 
       const name = opts.name || (await prompt("  Name: "));
       if (!name) {
-        console.error(cross("Name is required."));
-        process.exit(1);
+        fail("Name is required.");
       }
 
       const description = opts.description || (await prompt("  Description: "));
-      const tagsRaw = opts.tags || (await prompt("  Tags (comma-separated): "));
+      if (!description) {
+        fail("Description is required.");
+      }
+
+      const defaultCategory = DEFAULT_CATEGORY_BY_TYPE[type as SkillType];
+      const category =
+        opts.category ||
+        (jsonMode ? "" : await prompt(`  Category (${defaultCategory}): `)) ||
+        defaultCategory;
+      const tagsRaw =
+        opts.tags ||
+        (jsonMode ? "" : await prompt("  Tags (comma-separated): "));
       const tags = tagsRaw
         ? tagsRaw
             .split(",")
@@ -134,45 +210,73 @@ export const initCommand = new Command("init")
             .filter(Boolean)
         : [];
 
-      console.log();
+      if (!jsonMode) console.log();
 
       const cwd = process.cwd();
+      const createdFiles: string[] = [];
+      let publishTarget = "SKILL.md";
 
       if (type === "mcp-server") {
         const filePath = join(cwd, "server.json");
         if (existsSync(filePath)) {
-          console.error(cross("server.json already exists in this directory."));
-          process.exit(1);
+          fail("server.json already exists in this directory.");
         }
         writeFileSync(filePath, generateServerJson({ name, description }));
-        console.log(check(`Created ${dim("server.json")}`));
+        createdFiles.push("server.json");
+        if (!jsonMode) console.log(check(`Created ${dim("server.json")}`));
 
-        // Also create a README
         const readmePath = join(cwd, "README.md");
         if (!existsSync(readmePath)) {
           writeFileSync(
             readmePath,
             `# ${name}\n\n${description}\n\n## Setup\n\n1. Install dependencies\n2. Configure transport\n3. Publish to registry\n`
           );
-          console.log(check(`Created ${dim("README.md")}`));
+          createdFiles.push("README.md");
+          if (!jsonMode) console.log(check(`Created ${dim("README.md")}`));
         }
+
+        const metadataPath = join(cwd, "intertool.yaml");
+        if (!existsSync(metadataPath)) {
+          writeFileSync(
+            metadataPath,
+            generateIntertoolYaml({ name, description, type, category, tags })
+          );
+          createdFiles.push("intertool.yaml");
+          if (!jsonMode) console.log(check(`Created ${dim("intertool.yaml")}`));
+        }
+        publishTarget = "server.json";
       } else {
         const filePath = join(cwd, "SKILL.md");
         if (existsSync(filePath)) {
-          console.error(cross("SKILL.md already exists in this directory."));
-          process.exit(1);
+          fail("SKILL.md already exists in this directory.");
         }
         writeFileSync(
           filePath,
-          generateSkillMd({ name, description, type, tags })
+          generateSkillMd({ name, description, type, category, tags })
         );
-        console.log(check(`Created ${dim("SKILL.md")}`));
+        createdFiles.push("SKILL.md");
+        if (!jsonMode) console.log(check(`Created ${dim("SKILL.md")}`));
       }
 
-      console.log();
-      console.log(
-        `  ${dim("Next: edit the generated file, then run")} ${green("intertool publish")}`
-      );
-      console.log();
+      if (jsonMode) {
+        console.log(
+          JSON.stringify({
+            created: true,
+            type,
+            name,
+            category,
+            files: createdFiles,
+            next: `intertool publish ${publishTarget}`,
+          })
+        );
+      } else {
+        console.log();
+        console.log(
+          `  ${dim("Next: edit the generated file, then run")} ${green(
+            `intertool publish ${publishTarget}`
+          )}`
+        );
+        console.log();
+      }
     }
   );

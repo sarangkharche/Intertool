@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { GITHUB_URL } from "@/lib/constants";
 
 export const SITE_NAME = "Intertool";
-export const SITE_TITLE = "Intertool - Private AI Agent Registry";
+export const SITE_TITLE = "Intertool - Private Agent Capability Registry";
 export const SITE_DESCRIPTION =
-  "A self-hosted registry for AI agent skills, MCP servers, agent tools, and prompt templates with S3 storage, OAuth, RBAC, CLI install flows, and LLM-ready documentation.";
+  "A private registry and approval layer for AI agent skills, MCP servers, prompt playbooks, and internal tools across Claude, Codex, Cursor, Copilot, and custom agents.";
 
 export const SEO_KEYWORDS = [
   "AI agent registry",
+  "agent capability governance",
   "agent skills",
   "MCP server registry",
   "prompt template registry",
@@ -171,11 +172,12 @@ export function buildHomeJsonLd() {
         },
         codeRepository: GITHUB_URL,
         featureList: [
-          "Private registry for AI agent skills",
-          "MCP server and prompt template catalog",
+          "Private registry for approved AI agent capabilities",
+          "MCP server and prompt playbook catalog",
           "CLI install and publishing workflows",
           "S3-compatible storage",
           "OAuth and role-based access control",
+          "Review queue and audit history",
           "LLM-readable documentation endpoints",
         ],
         publisher: {

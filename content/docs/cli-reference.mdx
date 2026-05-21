@@ -11,6 +11,10 @@ description: Complete reference for all Intertool CLI commands.
 | `--version` | Show CLI version |
 | `--help` | Show help |
 
+Commands that mutate local state return structured success or error details when `--json` is present, without progress spinners on stdout.
+
+For end-to-end workflows and examples, see [Using the CLI](/docs/using-cli).
+
 ## Commands
 
 ### `login`
@@ -99,6 +103,7 @@ Publish a skill to the registry.
 
 ```bash
 intertool publish SKILL.md
+intertool publish skill.yaml
 intertool publish server.json --type mcp-server --category integrations
 ```
 
@@ -111,7 +116,11 @@ intertool publish server.json --type mcp-server --category integrations
 | `--tags` | Comma-separated tags |
 | `--source-url` | Source repository URL |
 
+`publish` auto-detects metadata from `SKILL.md` frontmatter, `skill.yaml`, and `server.json`. MCP server publishes preserve the full `server.json` configuration for install and raw download.
+
 If the registry requires admin review for new submissions, `publish` succeeds but the item is submitted for review. It will not appear in search or install results until an owner or admin approves it.
+
+In JSON mode, the response includes `status`, `published`, and `submitted_for_review` so automation can distinguish immediate publishes from review submissions.
 
 ### `update`
 
@@ -123,3 +132,32 @@ intertool update @team/skill-name
 ```
 
 When no name is provided, Intertool scans `.claude/skills/*/.intertool.json` and `.claude/mcp-servers/*/.intertool.json`.
+
+### `init`
+
+Scaffold a publishable registry item in the current directory.
+
+```bash
+intertool init --type skill --name "Code Reviewer" --description "Reviews pull requests" --category dev-tools
+intertool init --type mcp-server --name "Internal API" --description "Connects to internal APIs"
+```
+
+| Flag | Description |
+|------|-------------|
+| `--type` | Type: skill, mcp-server, agent-tool, prompt-template |
+| `--name` | Item name |
+| `--description` | Short description |
+| `--category` | Category slug. Defaults to a type-specific category when omitted interactively |
+| `--tags` | Comma-separated tags |
+
+For skills, agent tools, and prompt templates, `init` writes a `SKILL.md` with publish metadata. For MCP servers, it writes `server.json`, `README.md`, and `intertool.yaml`; `publish server.json` reads the sidecar metadata without adding Intertool-only fields to the MCP config.
+
+### `completions`
+
+Generate shell completion scripts.
+
+```bash
+intertool completions bash
+intertool completions zsh
+intertool completions fish
+```

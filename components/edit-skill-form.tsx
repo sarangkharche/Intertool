@@ -77,6 +77,8 @@ export function EditSkillForm({
       if (skill.source_format)
         formData.append("source_format", skill.source_format);
       if (skill.transport) formData.append("transport", skill.transport);
+      if (skill.mcp_config)
+        formData.append("mcp_config", JSON.stringify(skill.mcp_config));
       if (changelog) formData.append("changelog", changelog);
 
       const res = await fetch("/api/publish", {
@@ -133,8 +135,14 @@ export function EditSkillForm({
         {/* Left: main content */}
         <div className="min-w-0 space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Name</label>
+            <label
+              htmlFor="skill-name"
+              className="text-xs text-muted-foreground"
+            >
+              Name
+            </label>
             <Input
+              id="skill-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="h-8 text-sm"
@@ -142,8 +150,14 @@ export function EditSkillForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Description</label>
+            <label
+              htmlFor="skill-description"
+              className="text-xs text-muted-foreground"
+            >
+              Description
+            </label>
             <Textarea
+              id="skill-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -152,11 +166,15 @@ export function EditSkillForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">
+            <label
+              htmlFor="skill-changelog"
+              className="text-xs text-muted-foreground"
+            >
               Changelog{" "}
               <span className="text-muted-foreground/60">(what changed?)</span>
             </label>
             <Input
+              id="skill-changelog"
               placeholder="Fixed bug in prompt template..."
               value={changelog}
               onChange={(e) => setChangelog(e.target.value)}
@@ -165,8 +183,19 @@ export function EditSkillForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Content</label>
-            <MarkdownEditor value={readme} onChange={setReadme} height={400} />
+            <label
+              htmlFor="skill-content"
+              className="text-xs text-muted-foreground"
+            >
+              Content
+            </label>
+            <MarkdownEditor
+              value={readme}
+              onChange={setReadme}
+              height={400}
+              textareaId="skill-content"
+              ariaLabel="Skill content"
+            />
           </div>
         </div>
 
@@ -175,7 +204,7 @@ export function EditSkillForm({
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">Type</label>
             <Select value={type} onValueChange={(v) => setType(v as SkillType)}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-8 text-sm" aria-label="Type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -196,7 +225,7 @@ export function EditSkillForm({
                 if (v) setCategory(v);
               }}
             >
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-8 text-sm" aria-label="Category">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -210,8 +239,14 @@ export function EditSkillForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Tags</label>
+            <label
+              htmlFor="skill-tags"
+              className="text-xs text-muted-foreground"
+            >
+              Tags
+            </label>
             <Input
+              id="skill-tags"
               placeholder="Add a tag..."
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
@@ -231,6 +266,8 @@ export function EditSkillForm({
                     {tag}
                     <button
                       onClick={() => setTags(tags.filter((t) => t !== tag))}
+                      className="rounded-sm focus-ring"
+                      aria-label={`Remove ${tag}`}
                     >
                       <X className="h-2.5 w-2.5" />
                     </button>
@@ -255,7 +292,8 @@ export function EditSkillForm({
                           : [...prev, item]
                       )
                     }
-                    className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                    aria-pressed={compatibility.includes(item)}
+                    className={`min-h-9 rounded-full border px-3 py-1 text-xs transition-colors focus-ring ${
                       compatibility.includes(item)
                         ? "border-foreground/20 bg-muted text-foreground"
                         : "border-border text-muted-foreground hover:border-foreground/10"
@@ -269,8 +307,14 @@ export function EditSkillForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Source URL</label>
+            <label
+              htmlFor="skill-source-url"
+              className="text-xs text-muted-foreground"
+            >
+              Source URL
+            </label>
             <Input
+              id="skill-source-url"
               placeholder="github.com/owner/repo"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}

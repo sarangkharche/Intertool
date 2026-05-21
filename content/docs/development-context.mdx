@@ -22,9 +22,9 @@ Core promises:
 - `app/` contains Next.js App Router pages and route handlers.
 - `app/(main)/` contains the main registry UI: home, browse, dashboard, publish, review, settings, teams, skill detail, edit, versions, and diff pages.
 - `app/(auth)/` contains sign-in, invitation, and org creation pages.
-- `app/api/` contains JSON and file endpoints for auth, orgs, settings, members, invitations, tokens, import, publish, search, analytics, audit logs, and skill files.
+- `app/api/` contains JSON and file endpoints for auth, orgs, settings, members, invitations, tokens, import, publish, search, analytics, audit logs, Stripe billing, private distribution manifests, and skill files.
 - `components/` contains shared React UI, including the publish wizard, command palette, skill cards, markdown rendering, filters, preferences, and shadcn-style primitives under `components/ui/`.
-- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, S3 access, registry reads/writes, validation, rate limits, analytics, audit logs, webhooks, and email.
+- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, Postgres control plane, S3 access, registry reads/writes, validation, rate limits, analytics, audit logs, plan limits, Stripe billing, distribution exports, security scanning, webhooks, and email.
 - `cli/` contains the separate `intertool` npm CLI implemented with Commander.
 - `content/docs/` contains MDX docs. Update these when CLI, API, auth, publishing, install behavior, or other user-facing behavior changes.
 - `registry/` contains local category seed data and local development registry state.
@@ -46,6 +46,8 @@ PublishWizard or CLI -> /api/publish -> authenticateApi -> validateSkillInput ->
 
 When `publish_review_required` is enabled, new non-admin submissions are written with `status: review`. Browse, search, CLI install, and list APIs only expose `published` items. Owners and admins approve or archive pending submissions from `/review`, which calls `PATCH /api/skills/:slug`.
 
+Publishing also enforces SaaS plan limits from `lib/plans.ts` and runs `scanRegistryItem` from `lib/security-scan.ts`. Critical scan findings reject the publish before files are written to storage.
+
 CLI flows usually follow this path:
 
 ```text
@@ -56,6 +58,24 @@ SaaS routing follows this path:
 
 ```text
 /{org}/route -> proxy.ts strips org prefix -> x-org-slug header -> lib/org.ts -> settings/RBAC lookup
+```
+
+SaaS control-plane reads and writes prefer Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured:
+
+```text
+settings/RBAC/invitations/tokens/audit -> lib/control-plane.ts -> intertool_* Postgres tables
+```
+
+Stripe billing follows this path:
+
+```text
+Owner -> /api/billing/checkout -> Stripe Checkout -> /api/webhooks/stripe -> saveSettings(plan/subscription ids)
+```
+
+Private distribution endpoints follow this path:
+
+```text
+Authenticated client -> /api/mcp/v0/servers or /api/claude/marketplace -> lib/registry -> lib/distribution
 ```
 
 ## Storage contracts
@@ -76,6 +96,8 @@ Supported source formats:
 - `server-json`
 - `zip`
 
+MCP server items may include `mcp_config`, which stores the original `server.json` object. CLI install and raw download should use that object when present and only fall back to generated install metadata for older records.
+
 Important storage limits:
 
 - Package files are stored under `{type-folder}/{slug}/files/{path}`.
@@ -83,6 +105,7 @@ Important storage limits:
 - Each package file must be 10MB or smaller.
 - Package files must be 50MB or smaller in total.
 - Paths are normalized by `sanitizeSkillFilePath`.
+- SaaS managed storage may set `s3_prefix=orgs/{orgSlug}`. All S3 helpers must preserve prefix isolation and return unprefixed keys to registry callers.
 
 Self-hosted settings resolve in this order:
 
@@ -90,7 +113,7 @@ Self-hosted settings resolve in this order:
 2. Upstash Redis key `self-hosted:settings`
 3. S3 environment variables
 
-SaaS settings resolve by org slug, from local fallback JSON in development or Upstash Redis in normal SaaS mode.
+SaaS settings resolve by org slug from Postgres first, then local fallback JSON in development, then the legacy Upstash Redis metadata path. Hosted SaaS should use Postgres as the source of truth for org settings, memberships, invitations, API tokens, audit events, and Stripe identifiers.
 
 ## Auth and permissions
 
@@ -105,6 +128,8 @@ API routes use `authenticateApi` from `lib/api-auth.ts`. It accepts:
 RBAC lives in `lib/rbac.ts`. Roles are `owner`, `admin`, and `member`. Permission checks should use `hasPermission` instead of duplicating role logic in routes.
 
 Governance audit events use `appendAuditEvent` from `lib/audit-log.ts`. Audit writes are best effort and should not block the primary user action unless a future compliance mode explicitly requires that.
+
+Billing integrations should update `RegistrySettings.plan` and `RegistrySettings.subscription_status`. Hosted Stripe billing uses owner-only `POST /api/billing/checkout` for subscription Checkout Sessions and `POST /api/webhooks/stripe` for signed subscription lifecycle events. `PATCH /api/billing/plan` remains owner-only and is intended for back-office corrections or migrations.
 
 ## CLI commands
 
@@ -161,6 +186,7 @@ npm run test:e2e:install
 - Use role, permission, and validation helpers instead of duplicating checks.
 - If changing CLI, API, auth, publishing, install behavior, or user-facing UX, update `content/docs/`.
 - If changing publish review, item status semantics, or audit events, update `content/docs/publishing.mdx`, `content/docs/api/overview.mdx`, and this page.
+- If changing plan limits, managed storage, Stripe billing, Postgres control-plane behavior, security scan semantics, or distribution manifests, update `content/docs/architecture.mdx`, `content/docs/deployment.mdx`, `content/docs/api/overview.mdx`, and this page.
 - If changing browser-visible behavior, add or update Playwright coverage where practical.
 - If changing public routes, docs, canonical origins, metadata, or machine-readable discovery output, update the SEO/AEO helpers and deployment docs together.
 - If changing storage shape, update `lib/types.ts`, registry read/write logic, docs, and CLI consumers together.
@@ -168,6 +194,8 @@ npm run test:e2e:install
 ## High-risk areas
 
 - Auth callback behavior, cookies, org routing, and OAuth provider setup.
+- Postgres control-plane schema changes and migrations.
+- Stripe webhook signature verification and subscription state mapping.
 - S3 object keys, registry indexing, file downloads, and package file limits.
 - RBAC permission gates for publish, edit, delete, members, tokens, and settings.
 - CLI install/update paths that write into user projects.

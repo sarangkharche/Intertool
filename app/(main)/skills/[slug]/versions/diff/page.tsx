@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,10 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { VersionDiff } from "@/components/version-diff";
 import { VersionPicker } from "./version-picker";
+import { auth } from "@/lib/auth";
+import { getOrgSlug } from "@/lib/org";
+import { getUserRole } from "@/lib/rbac";
+import { canViewRegistryItem } from "@/lib/registry-access";
 
 export default async function DiffPage({
   params,
@@ -17,6 +21,9 @@ export default async function DiffPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
+  const session = await auth();
+  if (!session?.user) redirect("/sign-in");
+
   const { slug } = await params;
   const { from, to } = await searchParams;
 
@@ -27,6 +34,11 @@ export default async function DiffPage({
     getSkillVersions(slug),
   ]);
   if (!skill) notFound();
+
+  const username = (session.user as { username?: string }).username ?? "";
+  const orgSlug = await getOrgSlug();
+  const role = username ? await getUserRole(username, orgSlug) : null;
+  if (!canViewRegistryItem(skill, { username, role })) notFound();
 
   const [oldVer, newVer] = await Promise.all([
     getSkillVersion(slug, from),
@@ -58,11 +70,11 @@ export default async function DiffPage({
           Diff &mdash; {skill.name}
         </h1>
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <span className="rounded bg-red-500/10 px-1.5 py-0.5 font-mono text-xs text-red-400">
+          <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-xs text-destructive">
             v{from}
           </span>
           <span>&rarr;</span>
-          <span className="rounded bg-green-500/10 px-1.5 py-0.5 font-mono text-xs text-green-400">
+          <span className="rounded bg-success/10 px-1.5 py-0.5 font-mono text-xs text-success">
             v{newLabel}
           </span>
         </div>

@@ -1,0 +1,37 @@
+{
+  "campaign": "Version And Audit History",
+  "size": "1080x1080",
+  "slides": [
+    {
+      "index": 1,
+      "file": "04-version-audit-history-slide-01.png",
+      "title": "Agent capabilities change. History should not disappear."
+    },
+    {
+      "index": 2,
+      "file": "04-version-audit-history-slide-02.png",
+      "title": "Attach ownership to every artifact."
+    },
+    {
+      "index": 3,
+      "file": "04-version-audit-history-slide-03.png",
+      "title": "Know what changed before people install it."
+    },
+    {
+      "index": 4,
+      "file": "04-version-audit-history-slide-04.png",
+      "title": "Approvals become events, not memories."
+    },
+    {
+      "index": 5,
+      "file": "04-version-audit-history-slide-05.png",
+      "title": "Diff versions before the next rollout."
+    },
+    {
+      "index": 6,
+      "file": "04-version-audit-history-slide-06.png",
+      "title": "Give every capability a paper trail."
+    }
+  ],
+  "contactSheet": "04-version-audit-history-contact-sheet.png"
+}

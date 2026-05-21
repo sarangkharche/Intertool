@@ -20,6 +20,7 @@ export function storageCacheScope(s: RegistrySettings): string {
         bucket: s.s3_bucket,
         region: s.s3_region || "us-east-1",
         endpoint: s.s3_endpoint ?? "",
+        prefix: normalizePrefix(s.s3_prefix),
         accessKeyId: s.s3_access_key_id,
         secretAccessKey: s.s3_secret_access_key,
         sessionToken: s.s3_session_token ?? "",
@@ -85,6 +86,27 @@ function cacheKey(settings: RegistrySettings, key: string): string {
   return `${storageCacheScope(settings)}:${key}`;
 }
 
+function normalizePrefix(prefix?: string): string {
+  return (prefix ?? "")
+    .replaceAll("\\", "/")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+}
+
+function objectKey(settings: RegistrySettings, key: string): string {
+  const cleanKey = key.replace(/^\/+/, "");
+  const prefix = normalizePrefix(settings.s3_prefix);
+  return prefix ? `${prefix}/${cleanKey}` : cleanKey;
+}
+
+function stripObjectKey(settings: RegistrySettings, key: string): string {
+  const prefix = normalizePrefix(settings.s3_prefix);
+  if (!prefix) return key;
+
+  const fullPrefix = `${prefix}/`;
+  return key.startsWith(fullPrefix) ? key.slice(fullPrefix.length) : key;
+}
+
 function setCacheEntry(k: string, etag: string, body: string): void {
   etagCache.set(k, { etag, body, accessedAt: Date.now() });
 
@@ -119,7 +141,10 @@ export async function getObject(
   try {
     return await withRetry(async () => {
       const res = await buildClient(settings).send(
-        new GetObjectCommand({ Bucket: settings.s3_bucket, Key: key })
+        new GetObjectCommand({
+          Bucket: settings.s3_bucket,
+          Key: objectKey(settings, key),
+        })
       );
       const body = (await res.Body?.transformToString("utf-8")) ?? null;
       if (body && res.ETag) {
@@ -170,7 +195,7 @@ async function _getObjectIfChanged(
   try {
     const cmd = new GetObjectCommand({
       Bucket: settings.s3_bucket,
-      Key: key,
+      Key: objectKey(settings, key),
       ...(cached ? { IfNoneMatch: cached.etag } : {}),
     });
 
@@ -209,7 +234,7 @@ export async function putObject(
     buildClient(settings).send(
       new PutObjectCommand({
         Bucket: settings.s3_bucket,
-        Key: key,
+        Key: objectKey(settings, key),
         Body: body,
         ContentType: contentType,
       })
@@ -226,7 +251,10 @@ export async function getObjectBytes(
   try {
     return await withRetry(async () => {
       const res = await buildClient(settings).send(
-        new GetObjectCommand({ Bucket: settings.s3_bucket, Key: key })
+        new GetObjectCommand({
+          Bucket: settings.s3_bucket,
+          Key: objectKey(settings, key),
+        })
       );
       const body = (await res.Body?.transformToByteArray()) ?? null;
       if (!body) return null;
@@ -247,7 +275,10 @@ export async function deleteObject(
 ): Promise<void> {
   await withRetry(() =>
     buildClient(settings).send(
-      new DeleteObjectCommand({ Bucket: settings.s3_bucket, Key: key })
+      new DeleteObjectCommand({
+        Bucket: settings.s3_bucket,
+        Key: objectKey(settings, key),
+      })
     )
   );
   etagCache.delete(cacheKey(settings, key));
@@ -265,13 +296,13 @@ export async function listObjects(
       buildClient(settings).send(
         new ListObjectsV2Command({
           Bucket: settings.s3_bucket,
-          Prefix: prefix,
+          Prefix: objectKey(settings, prefix),
           ContinuationToken: continuationToken,
         })
       )
     );
     for (const obj of res.Contents ?? []) {
-      if (obj.Key) keys.push(obj.Key);
+      if (obj.Key) keys.push(stripObjectKey(settings, obj.Key));
     }
     continuationToken = res.NextContinuationToken;
   } while (continuationToken);

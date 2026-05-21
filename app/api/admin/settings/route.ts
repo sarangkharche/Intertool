@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
     s3_secret_access_key,
     s3_endpoint,
     s3_session_token,
+    s3_prefix,
     github_client_id,
     github_client_secret,
     google_client_id,
@@ -223,8 +224,12 @@ export async function POST(request: NextRequest) {
     s3_endpoint: s3_endpoint || undefined,
     s3_session_token:
       s3_session_token || existing?.s3_session_token || undefined,
+    s3_prefix:
+      s3_prefix !== undefined ? s3_prefix || undefined : existing?.s3_prefix,
     org_slug: orgSlug,
     org_name: existing?.org_name,
+    plan: existing?.plan,
+    subscription_status: existing?.subscription_status,
     github_client_id:
       github_client_id !== undefined
         ? github_client_id || undefined

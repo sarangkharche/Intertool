@@ -79,6 +79,7 @@ export function PublishWizard({
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourceFormat, setSourceFormat] = useState<SourceFormat | "">("");
   const [transport, setTransport] = useState<McpTransport | "">("");
+  const [mcpConfigJson, setMcpConfigJson] = useState("");
 
   // File uploads
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -106,6 +107,7 @@ export function PublishWizard({
       sourceUrl,
       sourceFormat,
       transport,
+      mcpConfigJson,
     }),
     [
       type,
@@ -119,6 +121,7 @@ export function PublishWizard({
       sourceUrl,
       sourceFormat,
       transport,
+      mcpConfigJson,
     ]
   );
   const restoreDraftState = useCallback((draft: DraftState) => {
@@ -133,6 +136,7 @@ export function PublishWizard({
     setSourceUrl(draft.sourceUrl);
     if (draft.sourceFormat) setSourceFormat(draft.sourceFormat as SourceFormat);
     if (draft.transport) setTransport(draft.transport as McpTransport);
+    if (draft.mcpConfigJson) setMcpConfigJson(draft.mcpConfigJson);
   }, []);
   const { saveDraft, clearDraft } = useDraftPersistence(
     getDraftState,
@@ -154,6 +158,7 @@ export function PublishWizard({
     sourceUrl,
     sourceFormat,
     transport,
+    mcpConfigJson,
     saveDraft,
   ]);
 
@@ -254,6 +259,7 @@ export function PublishWizard({
         setDescription(data.description as string);
         setType("mcp-server");
         setSourceFormat("server-json");
+        setMcpConfigJson(JSON.stringify(data, null, 2));
 
         if (data.transport) {
           const t = data.transport as Record<string, unknown>;
@@ -275,6 +281,52 @@ export function PublishWizard({
     }
     return false;
   }, []);
+
+  /** Detect skill.yaml content */
+  const detectSkillYaml = useCallback(
+    async (content: string): Promise<boolean> => {
+      try {
+        const { parse } = await import("yaml");
+        const data = parse(content) as Record<string, unknown> | null;
+        if (!data?.name || !data.description) return false;
+
+        handleNameChange(String(data.name));
+        if (typeof data.slug === "string") {
+          setSlug(data.slug);
+        }
+        setDescription(String(data.description));
+        setSourceFormat("skill-yaml");
+
+        if (data.type && SKILL_TYPES.includes(data.type as SkillType)) {
+          setType(data.type as SkillType);
+        }
+        if (typeof data.category === "string") {
+          setCategory(data.category);
+        }
+        if (Array.isArray(data.tags)) {
+          setTags(
+            data.tags.filter((tag): tag is string => typeof tag === "string")
+          );
+        }
+        if (Array.isArray(data.compatibility)) {
+          setCompatibility(
+            data.compatibility.filter(
+              (item): item is string => typeof item === "string"
+            )
+          );
+        }
+        if (typeof data.readme === "string") {
+          setReadme(data.readme);
+        }
+
+        toast.success("skill.yaml detected — fields auto-populated");
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    []
+  );
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -303,6 +355,9 @@ export function PublishWizard({
       } else if (file.name.toLowerCase() === "server.json") {
         const text = await file.text();
         detectServerJson(text);
+      } else if (ext === "yaml" || ext === "yml") {
+        const text = await file.text();
+        await detectSkillYaml(text);
       }
 
       if (ext === "zip") {
@@ -365,6 +420,9 @@ export function PublishWizard({
       setSourceUrl(data.source_url);
       setSourceFormat(data.source_format);
       if (data.transport) setTransport(data.transport);
+      if (data.mcp_config) {
+        setMcpConfigJson(JSON.stringify(data.mcp_config, null, 2));
+      }
 
       toast.success(`Imported from ${data.source_format.replace("-", " ")}`);
       setStep(1); // Move to review/edit
@@ -400,6 +458,7 @@ export function PublishWizard({
       if (sourceUrl) formData.append("source_url", sourceUrl);
       if (sourceFormat) formData.append("source_format", sourceFormat);
       if (transport) formData.append("transport", transport);
+      if (mcpConfigJson) formData.append("mcp_config", mcpConfigJson);
 
       for (const file of uploadedFiles) {
         formData.append("files", file);
@@ -512,7 +571,7 @@ export function PublishWizard({
                 setMode("quick");
                 setStep(0);
               }}
-              className="group rounded-lg border border-border p-5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/30"
+              className="group rounded-lg border border-border p-5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-ring"
             >
               <div className={`mb-3 ${opt.color}`}>{opt.icon}</div>
               <p className="mb-1 text-sm font-medium">
@@ -531,7 +590,7 @@ export function PublishWizard({
               setMode("manual");
               setStep(0);
             }}
-            className="flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="flex min-h-10 items-center gap-2 rounded-md px-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-ring"
           >
             <PenLine className="h-3 w-3" />
             Or fill in manually step by step
@@ -554,7 +613,8 @@ export function PublishWizard({
               setMode("choose");
               setStep(0);
             }}
-            className="text-muted-foreground hover:text-foreground"
+            className="btn-ghost h-9 w-9 p-0"
+            aria-label="Back to publish options"
           >
             &larr;
           </button>
@@ -570,12 +630,16 @@ export function PublishWizard({
           <div className="space-y-5">
             {/* GitHub URL */}
             <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="quick-github-url"
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+              >
                 <LinkIcon className="h-3 w-3" />
                 GitHub URL
               </label>
               <div className="flex gap-2">
                 <Input
+                  id="quick-github-url"
                   placeholder="https://github.com/owner/repo"
                   value={githubUrl}
                   onChange={(e) => setGithubUrl(e.target.value)}
@@ -590,7 +654,7 @@ export function PublishWizard({
                 <button
                   onClick={handleGitHubImport}
                   disabled={importing || !githubUrl.trim()}
-                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-border px-3 text-sm transition-colors hover:bg-muted disabled:opacity-40"
+                  className="flex h-10 shrink-0 items-center gap-1.5 rounded-md border border-border px-3 text-sm transition-colors hover:bg-muted disabled:opacity-40 focus-ring"
                 >
                   {importing ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -613,8 +677,8 @@ export function PublishWizard({
             </div>
 
             {/* File drop */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
+            <label
+              htmlFor="quick-file-upload"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.add(
@@ -641,7 +705,7 @@ export function PublishWizard({
                   handleQuickFileDrop(event);
                 }
               }}
-              className="cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:border-muted-foreground/30"
+              className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:border-muted-foreground/30 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
             >
               <Upload className="mx-auto mb-3 h-6 w-6 text-muted-foreground/40" />
               <p className="mb-1 text-sm font-medium">
@@ -651,6 +715,7 @@ export function PublishWizard({
                 SKILL.md, server.json, skill.yaml, or .zip
               </p>
               <input
+                id="quick-file-upload"
                 ref={fileInputRef}
                 type="file"
                 multiple
@@ -658,7 +723,7 @@ export function PublishWizard({
                 onChange={handleQuickFileDrop}
                 className="hidden"
               />
-            </div>
+            </label>
 
             {/* Uploaded files */}
             {uploadedFiles.length > 0 && (
@@ -680,7 +745,8 @@ export function PublishWizard({
                     <Check className="h-3.5 w-3.5 text-success" />
                     <button
                       onClick={() => removeFile(file.name)}
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-ring"
+                      aria-label={`Remove ${file.name}`}
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -720,11 +786,13 @@ export function PublishWizard({
             {/* Name — full width, slug shown as derived hint */}
             <div className="space-y-1.5">
               <label
+                htmlFor="quick-skill-name"
                 className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}
               >
                 Name <span className="text-destructive/50">*</span>
               </label>
               <Input
+                id="quick-skill-name"
                 placeholder="e.g. Code Review Agent"
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
@@ -741,11 +809,13 @@ export function PublishWizard({
             {/* Description — right after name, natural sequence */}
             <div className="space-y-1.5">
               <label
+                htmlFor="quick-skill-description"
                 className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}
               >
                 Description <span className="text-destructive/50">*</span>
               </label>
               <Textarea
+                id="quick-skill-description"
                 placeholder="Brief summary of what this does"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -762,7 +832,7 @@ export function PublishWizard({
                   value={type}
                   onValueChange={(v) => setType(v as SkillType)}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className="h-9 text-sm" aria-label="Type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -776,6 +846,7 @@ export function PublishWizard({
               </div>
               <div className="space-y-1.5">
                 <label
+                  htmlFor="quick-skill-category"
                   className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}
                 >
                   Category <span className="text-destructive/50">*</span>
@@ -784,7 +855,11 @@ export function PublishWizard({
                   value={category}
                   onValueChange={(v) => setCategory(v ?? "")}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger
+                    id="quick-skill-category"
+                    className="h-9 text-sm"
+                    aria-label="Category"
+                  >
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -808,7 +883,7 @@ export function PublishWizard({
                   value={transport}
                   onValueChange={(v) => setTransport(v as McpTransport)}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className="h-9 text-sm" aria-label="Transport">
                     <SelectValue placeholder="Select transport" />
                   </SelectTrigger>
                   <SelectContent>
@@ -826,9 +901,15 @@ export function PublishWizard({
             <div className="border-t border-border pt-4">
               {/* Tags */}
               <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Tags</label>
+                <label
+                  htmlFor="quick-skill-tags"
+                  className="text-xs text-muted-foreground"
+                >
+                  Tags
+                </label>
                 <div className="flex gap-2">
                   <Input
+                    id="quick-skill-tags"
                     placeholder="Type a tag and press Enter"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
@@ -849,6 +930,8 @@ export function PublishWizard({
                         {tag}
                         <button
                           onClick={() => setTags(tags.filter((t) => t !== tag))}
+                          className="rounded-sm focus-ring"
+                          aria-label={`Remove ${tag}`}
                         >
                           <X className="h-2.5 w-2.5" />
                         </button>
@@ -877,11 +960,12 @@ export function PublishWizard({
                             : [...prev, item]
                         )
                       }
-                      className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                      className={`min-h-9 rounded-full border px-3 py-1 text-xs transition-colors focus-ring ${
                         compatibility.includes(item)
                           ? "border-foreground/20 bg-muted text-foreground"
                           : "border-border text-muted-foreground hover:border-foreground/10"
                       }`}
+                      aria-pressed={compatibility.includes(item)}
                     >
                       {item}
                     </button>
@@ -954,7 +1038,8 @@ export function PublishWizard({
             setMode("choose");
             setStep(0);
           }}
-          className="text-muted-foreground hover:text-foreground"
+          className="btn-ghost h-9 w-9 p-0"
+          aria-label="Back to publish options"
         >
           &larr;
         </button>
@@ -972,7 +1057,8 @@ export function PublishWizard({
             <button
               key={t}
               onClick={() => setType(t)}
-              className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+              aria-pressed={type === t}
+              className={`rounded-lg border p-3 text-left text-sm transition-colors focus-ring ${
                 type === t
                   ? "border-foreground/20 bg-muted/50"
                   : "border-border hover:border-foreground/10"
@@ -987,8 +1073,8 @@ export function PublishWizard({
       {/* Step 1: File upload */}
       {effectiveStep === 1 && (
         <div className="space-y-4">
-          <div
-            onClick={() => fileInputRef.current?.click()}
+          <label
+            htmlFor="manual-file-upload"
             onDragOver={(e) => {
               e.preventDefault();
               e.currentTarget.classList.add(
@@ -1015,7 +1101,7 @@ export function PublishWizard({
                 handleFileSelect(event);
               }
             }}
-            className="cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:border-muted-foreground/30"
+            className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:border-muted-foreground/30 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
           >
             <Upload className="mx-auto mb-3 h-6 w-6 text-muted-foreground/40" />
             <p className="mb-1 text-sm font-medium">
@@ -1025,6 +1111,7 @@ export function PublishWizard({
               SKILL.md, server.json, .zip, .yaml, .txt — max 10MB per file
             </p>
             <input
+              id="manual-file-upload"
               ref={fileInputRef}
               type="file"
               multiple
@@ -1032,7 +1119,7 @@ export function PublishWizard({
               onChange={handleFileSelect}
               className="hidden"
             />
-          </div>
+          </label>
 
           {uploadedFiles.length > 0 && (
             <div className="space-y-1">
@@ -1071,7 +1158,8 @@ export function PublishWizard({
                   <Check className="h-3.5 w-3.5 text-success" />
                   <button
                     onClick={() => removeFile(file.name)}
-                    className="text-muted-foreground transition-colors hover:text-foreground"
+                    className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-ring"
+                    aria-label={`Remove ${file.name}`}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -1121,11 +1209,13 @@ export function PublishWizard({
           {/* Name — full width, slug shown as derived hint */}
           <div className="space-y-1.5">
             <label
+              htmlFor="manual-skill-name"
               className={`text-xs ${!name ? "text-destructive/70" : "text-muted-foreground"}`}
             >
               Name <span className="text-destructive/50">*</span>
             </label>
             <Input
+              id="manual-skill-name"
               placeholder="e.g. Code Review Agent"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
@@ -1140,7 +1230,7 @@ export function PublishWizard({
                 {checkingSlug ? (
                   <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/40" />
                 ) : slugAvailable === true ? (
-                  <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                  <Check className="h-3 w-3 text-success" />
                 ) : slugAvailable === false ? (
                   <X className="h-3 w-3 text-destructive" />
                 ) : null}
@@ -1151,11 +1241,13 @@ export function PublishWizard({
           {/* Description */}
           <div className="space-y-1.5">
             <label
+              htmlFor="manual-skill-description"
               className={`text-xs ${!description ? "text-destructive/70" : "text-muted-foreground"}`}
             >
               Description <span className="text-destructive/50">*</span>
             </label>
             <Textarea
+              id="manual-skill-description"
               placeholder="Brief summary of what this does"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -1167,7 +1259,12 @@ export function PublishWizard({
           {/* README */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">README</label>
+              <label
+                htmlFor="manual-skill-readme"
+                className="text-xs text-muted-foreground"
+              >
+                README
+              </label>
               {readmeFromFile && (
                 <span className="text-xs text-primary">
                   Loaded from uploaded file
@@ -1178,12 +1275,15 @@ export function PublishWizard({
               value={readme}
               onChange={handleReadmeChange}
               height={250}
+              textareaId="manual-skill-readme"
+              ariaLabel="README"
             />
           </div>
 
           {/* Category */}
           <div className="space-y-1.5">
             <label
+              htmlFor="manual-skill-category"
               className={`text-xs ${!category ? "text-destructive/70" : "text-muted-foreground"}`}
             >
               Category <span className="text-destructive/50">*</span>
@@ -1192,7 +1292,11 @@ export function PublishWizard({
               value={category}
               onValueChange={(v) => setCategory(v ?? "")}
             >
-              <SelectTrigger className="h-9 text-sm">
+              <SelectTrigger
+                id="manual-skill-category"
+                className="h-9 text-sm"
+                aria-label="Category"
+              >
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
@@ -1212,7 +1316,7 @@ export function PublishWizard({
                 value={transport}
                 onValueChange={(v) => setTransport(v as McpTransport)}
               >
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger className="h-9 text-sm" aria-label="Transport">
                   <SelectValue placeholder="Select transport" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1229,9 +1333,15 @@ export function PublishWizard({
           {/* Optional fields */}
           <div className="border-t border-border pt-4 space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Tags</label>
+              <label
+                htmlFor="manual-skill-tags"
+                className="text-xs text-muted-foreground"
+              >
+                Tags
+              </label>
               <div className="flex gap-2">
                 <Input
+                  id="manual-skill-tags"
                   placeholder="Type a tag and press Enter"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
@@ -1252,6 +1362,8 @@ export function PublishWizard({
                       {tag}
                       <button
                         onClick={() => setTags(tags.filter((t) => t !== tag))}
+                        className="rounded-sm focus-ring"
+                        aria-label={`Remove ${tag}`}
                       >
                         <X className="h-2.5 w-2.5" />
                       </button>
@@ -1278,11 +1390,12 @@ export function PublishWizard({
                             : [...prev, item]
                         )
                       }
-                      className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                      className={`min-h-9 rounded-full border px-3 py-1 text-xs transition-colors focus-ring ${
                         compatibility.includes(item)
                           ? "border-foreground/20 bg-muted text-foreground"
                           : "border-border text-muted-foreground hover:border-foreground/10"
                       }`}
+                      aria-pressed={compatibility.includes(item)}
                     >
                       {item}
                     </button>
@@ -1293,10 +1406,14 @@ export function PublishWizard({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">
+            <label
+              htmlFor="manual-source-url"
+              className="text-xs text-muted-foreground"
+            >
               Source URL (optional)
             </label>
             <Input
+              id="manual-source-url"
               placeholder="https://github.com/owner/repo"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}

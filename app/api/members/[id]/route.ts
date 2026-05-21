@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getOrgSlug } from "@/lib/org";
-import { authorize, getUserRole, setUserRole, removeMember } from "@/lib/rbac";
+import {
+  authorize,
+  getUserRole,
+  hasPermission,
+  setUserRole,
+  removeMember,
+} from "@/lib/rbac";
 import { appendAuditEvent } from "@/lib/audit-log";
 import { removeOrgMember } from "@/lib/settings";
 import type { OrgRole } from "@/lib/types";
@@ -38,6 +44,9 @@ export async function PATCH(
       { status: 403 }
     );
   }
+  if (!targetRole) {
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  }
 
   let body: { role?: OrgRole };
   try {
@@ -47,17 +56,47 @@ export async function PATCH(
   }
 
   const newRole = body.role;
-  if (!newRole || !["member", "admin"].includes(newRole)) {
+  if (!newRole || !["member", "admin", "owner"].includes(newRole)) {
     return NextResponse.json(
-      { error: "Role must be 'member' or 'admin'" },
+      { error: "Role must be 'member', 'admin', or 'owner'" },
       { status: 400 }
     );
   }
 
-  // Only owner can promote to admin
-  if (newRole === "admin" && authz.role !== "owner") {
-    // Admins can also promote - per the permission matrix
-    // (members:change_role is granted to admin+)
+  if (newRole === "owner") {
+    if (!authz.role || !hasPermission(authz.role, "org:transfer_ownership")) {
+      return NextResponse.json(
+        { error: "Only the owner can transfer ownership" },
+        { status: 403 }
+      );
+    }
+    if (targetId === username.toLowerCase()) {
+      return NextResponse.json(
+        { error: "You are already the owner" },
+        { status: 400 }
+      );
+    }
+
+    await setUserRole(targetId, "owner", orgSlug);
+    await setUserRole(username, "admin", orgSlug);
+    await appendAuditEvent({
+      org_slug: orgSlug,
+      actor: username,
+      action: "member.role_changed",
+      target_type: "member",
+      target_id: targetId,
+      metadata: {
+        role: "owner",
+        previous_role: targetRole,
+        previous_owner: username,
+      },
+    });
+    return NextResponse.json(
+      { ok: true, role: "owner" },
+      {
+        headers: { "Cache-Control": "no-store" },
+      }
+    );
   }
 
   await setUserRole(targetId, newRole, orgSlug);

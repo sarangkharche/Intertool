@@ -1,0 +1,37 @@
+{
+  "campaign": "Review Before Rollout",
+  "size": "1080x1080",
+  "slides": [
+    {
+      "index": 1,
+      "file": "03-review-before-rollout-slide-01.png",
+      "title": "Agent capabilities deserve code-review energy."
+    },
+    {
+      "index": 2,
+      "file": "03-review-before-rollout-slide-02.png",
+      "title": "Submit the capability."
+    },
+    {
+      "index": 3,
+      "file": "03-review-before-rollout-slide-03.png",
+      "title": "Inspect risk and intent."
+    },
+    {
+      "index": 4,
+      "file": "03-review-before-rollout-slide-04.png",
+      "title": "Approve, reject, or archive."
+    },
+    {
+      "index": 5,
+      "file": "03-review-before-rollout-slide-05.png",
+      "title": "Publish the approved install command."
+    },
+    {
+      "index": 6,
+      "file": "03-review-before-rollout-slide-06.png",
+      "title": "Turn agent rollout into a governed workflow."
+    }
+  ],
+  "contactSheet": "03-review-before-rollout-contact-sheet.png"
+}

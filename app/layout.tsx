@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
 import { JsonLd } from "@/components/json-ld";
@@ -13,16 +14,6 @@ import {
   getSiteUrl,
 } from "@/lib/seo";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: getSiteUrl(),
@@ -79,7 +70,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${geistMono.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
       <head>
@@ -90,7 +81,7 @@ export default function RootLayout({
         />
         <JsonLd data={buildHomeJsonLd()} />
       </head>
-      <body className="antialiased">
+      <body className={`${GeistSans.className} antialiased`}>
         <Providers>{children}</Providers>
         <Toaster />
       </body>

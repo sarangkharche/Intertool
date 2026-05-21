@@ -36,7 +36,7 @@ export function DeleteSkillButton({ slug }: { slug: string }) {
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="btn-pill !border-red-500/40 !bg-red-500/10 !text-red-400 hover:!bg-red-500/20"
+          className="btn-pill !border-destructive/40 !bg-destructive/10 !text-destructive hover:!bg-destructive/20"
         >
           {deleting ? "Deleting..." : "Confirm"}
         </button>
@@ -54,7 +54,7 @@ export function DeleteSkillButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost hover:text-red-400"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground interactive-ghost hover:text-destructive"
       aria-label="Delete"
     >
       <Trash2 className="h-3.5 w-3.5" />

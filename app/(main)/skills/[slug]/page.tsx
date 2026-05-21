@@ -119,7 +119,7 @@ export default async function SkillDetailPage({
               <ShareButton slug={skill.slug} />
               <a
                 href={`/api/skills/${skill.slug}/raw`}
-                download={`${skill.slug}.md`}
+                download={`${skill.slug}.${skill.type === "mcp-server" ? "json" : "md"}`}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
                 aria-label="Download"
               >
@@ -491,14 +491,14 @@ function FreshnessBadge({ date }: { date: string }) {
 
   if (days < 1) {
     label = "Updated today";
-    colorClass = "text-emerald-600 dark:text-emerald-400";
+    colorClass = "text-success";
   } else if (days < 30) {
     label = `Updated ${rtf.format(-days, "day")}`;
-    colorClass = "text-emerald-600 dark:text-emerald-400";
+    colorClass = "text-success";
   } else if (days < 90) {
     const weeks = Math.floor(days / 7);
     label = `Updated ${rtf.format(-weeks, "week")}`;
-    colorClass = "text-amber-600 dark:text-amber-400";
+    colorClass = "text-warning";
   } else {
     const months = Math.floor(days / 30);
     label = `Updated ${rtf.format(-months, "month")}`;

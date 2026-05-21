@@ -1,17 +1,18 @@
 # Intertool
 
-A private, self-hosted registry for AI agent skills, MCP servers, agent tools, and prompt templates. Your team publishes and discovers tools in one place, backed by your own S3 bucket.
+A private registry and approval layer for AI agent skills, MCP servers, prompt playbooks, and internal tools. Your team publishes, reviews, versions, and installs approved capabilities from one place.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/sarangkharche/Intertool/actions/workflows/ci.yml/badge.svg)](https://github.com/sarangkharche/Intertool/actions/workflows/ci.yml)
 
-**Zero database. Zero vendor lock-in. Your data stays in your S3.**
+**Private by default. No agent-platform lock-in. Registry artifacts stay in your S3-compatible storage.**
 
 ## What it does
 
-- **Browse & search** skills, MCP servers, agent tools, and prompt templates with `Cmd+K`
+- **Browse & search** approved skills, MCP servers, agent tools, and prompt playbooks with `Cmd+K`
 - **Publish** via web UI, CLI, or API with drag-and-drop SKILL.md files or GitHub import
-- **Install** with generated commands for Claude Code, Cursor, and CLI
+- **Review** submissions before they become installable by the team
+- **Install** approved artifacts with CLI flows for agent projects
 - **Versioning** with automatic snapshots and changelogs
 - **GitHub OAuth** with role-based access control (owner, admin, member)
 - **CLI** for search, install, publish, and management from the terminal

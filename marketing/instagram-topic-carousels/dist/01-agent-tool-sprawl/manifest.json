@@ -1,0 +1,37 @@
+{
+  "campaign": "Agent-Tool Sprawl",
+  "size": "1080x1080",
+  "slides": [
+    {
+      "index": 1,
+      "file": "01-agent-tool-sprawl-slide-01.png",
+      "title": "Your agents are learning from scattered tools."
+    },
+    {
+      "index": 2,
+      "file": "01-agent-tool-sprawl-slide-02.png",
+      "title": "Nobody knows which capability is current."
+    },
+    {
+      "index": 3,
+      "file": "01-agent-tool-sprawl-slide-03.png",
+      "title": "Intertool turns fragments into a registry."
+    },
+    {
+      "index": 4,
+      "file": "01-agent-tool-sprawl-slide-04.png",
+      "title": "Developers install what the team approved."
+    },
+    {
+      "index": 5,
+      "file": "01-agent-tool-sprawl-slide-05.png",
+      "title": "Owners, status, and review travel with the artifact."
+    },
+    {
+      "index": 6,
+      "file": "01-agent-tool-sprawl-slide-06.png",
+      "title": "Stop sprawl before it becomes production risk."
+    }
+  ],
+  "contactSheet": "01-agent-tool-sprawl-contact-sheet.png"
+}

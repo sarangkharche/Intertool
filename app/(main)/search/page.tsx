@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { SkillCard } from "@/components/skill-card";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { DashboardPagination } from "@/components/dashboard-pagination";
@@ -8,6 +9,7 @@ import { SearchFilters, SkillType } from "@/lib/types";
 import { PER_PAGE } from "@/lib/constants";
 import { Search } from "lucide-react";
 import { getPrivatePageMetadata } from "@/lib/seo";
+import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = getPrivatePageMetadata("Search");
 
@@ -16,6 +18,9 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  const session = await auth();
+  if (!session?.user) redirect("/sign-in");
+
   const params = await searchParams;
   const query = params.q ?? "";
 
@@ -23,6 +28,7 @@ export default async function SearchPage({
     query,
     type: params.type as SkillType | undefined,
     category: params.category,
+    tag: params.tag,
     sort: (params.sort as SearchFilters["sort"]) ?? "newest",
     page: params.page ? Number(params.page) : 1,
   };

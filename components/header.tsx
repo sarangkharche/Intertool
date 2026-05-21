@@ -22,6 +22,7 @@ import {
   Settings,
   Shield,
   BookOpen,
+  CircleDollarSign,
   ClipboardCheck,
 } from "lucide-react";
 import { CommandPalette } from "./command-palette";
@@ -43,26 +44,29 @@ export function Header() {
     <>
       <CommandPalette />
       <header className="sticky top-0 z-50 border-b border-border-subtle bg-background/90 backdrop-blur-sm">
-        <div className="mx-auto flex h-12 max-w-5xl items-center gap-6 px-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:h-12 sm:flex-nowrap sm:gap-6 sm:py-0">
           <Link
             href="/"
-            className="flex items-center gap-2 text-sm font-medium tracking-tight"
+            className="flex h-11 items-center gap-2 rounded-md text-sm font-medium tracking-tight focus-ring sm:h-8"
           >
             <Package className="h-4 w-4 text-foreground" aria-hidden="true" />
             <span>intertool</span>
           </Link>
 
-          <div className="flex-1">
+          <div className="order-3 w-full sm:order-none sm:flex-1">
             <button
               onClick={() =>
                 document.dispatchEvent(
                   new KeyboardEvent("keydown", { key: "k", metaKey: true })
                 )
               }
-              className="mx-auto flex h-7 w-full max-w-sm items-center gap-2 rounded-md border border-border-subtle bg-transparent px-3 text-xs text-muted-foreground interactive-ghost hover:bg-muted/30"
+              className="mx-auto flex h-11 w-full items-center gap-2 rounded-md border border-border-subtle bg-transparent px-3 text-sm text-muted-foreground interactive-ghost hover:bg-muted/30 sm:h-8 sm:max-w-sm sm:text-xs"
               aria-label="Search skills"
             >
-              <Search className="h-3 w-3" aria-hidden="true" />
+              <Search
+                className="h-3.5 w-3.5 sm:h-3 sm:w-3"
+                aria-hidden="true"
+              />
               <span className="flex-1 text-left">Search skills…</span>
               <kbd className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">
                 ⌘K
@@ -70,25 +74,31 @@ export function Header() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
             <Link
               href="/docs"
-              className="flex h-7 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost"
+              className="flex h-11 w-11 items-center justify-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost sm:h-8 sm:w-auto"
+              aria-label="Documentation"
             >
               <BookOpen className="h-3 w-3" aria-hidden="true" />
               <span className="hidden sm:inline">Docs</span>
             </Link>
             <Link
               href="/pricing"
-              className="hidden h-7 items-center rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost sm:flex"
+              className="flex h-11 w-11 items-center justify-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost sm:h-8 sm:w-auto"
+              aria-label="Pricing"
             >
-              Pricing
+              <CircleDollarSign
+                className="h-3.5 w-3.5 sm:hidden"
+                aria-hidden="true"
+              />
+              <span className="hidden sm:inline">Pricing</span>
             </Link>
             <a
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground interactive-ghost sm:h-8 sm:w-8"
               aria-label="GitHub repository"
             >
               <svg
@@ -102,7 +112,7 @@ export function Header() {
             </a>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+              className="relative flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground interactive-ghost sm:h-8 sm:w-8"
               aria-label="Toggle theme"
             >
               <Sun
@@ -118,20 +128,21 @@ export function Header() {
             {status === "loading" ? (
               <div className="flex items-center gap-3">
                 <div className="hidden h-4 w-12 animate-pulse rounded bg-muted sm:block" />
-                <div className="h-7 w-7 animate-pulse rounded-full bg-muted" />
+                <div className="h-10 w-10 animate-pulse rounded-full bg-muted sm:h-7 sm:w-7" />
               </div>
             ) : user ? (
               <>
                 <Link
                   href="/publish"
-                  className="flex items-center gap-1 text-sm text-muted-foreground interactive-ghost rounded-md px-1.5 py-0.5"
+                  className="flex h-11 w-11 items-center justify-center gap-1 rounded-md px-1.5 py-0.5 text-sm text-muted-foreground interactive-ghost sm:h-8 sm:w-auto"
+                  aria-label="Publish"
                 >
                   <Plus className="h-3 w-3" aria-hidden="true" />
                   <span className="hidden sm:inline">Publish</span>
                 </Link>
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-full">
-                    <Avatar className="h-7 w-7 transition-opacity hover:opacity-80">
+                  <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background">
+                    <Avatar className="h-11 w-11 transition-opacity hover:opacity-80 sm:h-8 sm:w-8">
                       {user.image && (
                         <AvatarImage
                           src={user.image}
@@ -182,7 +193,7 @@ export function Header() {
             ) : (
               <Link
                 href="/sign-in"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className="flex h-11 items-center rounded-md px-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-ring sm:h-8"
               >
                 Sign in
               </Link>

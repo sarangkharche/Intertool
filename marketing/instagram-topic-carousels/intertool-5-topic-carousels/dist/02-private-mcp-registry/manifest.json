@@ -1,0 +1,37 @@
+{
+  "campaign": "Private MCP Registry",
+  "size": "1080x1080",
+  "slides": [
+    {
+      "index": 1,
+      "file": "02-private-mcp-registry-slide-01.png",
+      "title": "Internal MCP servers need a private registry."
+    },
+    {
+      "index": 2,
+      "file": "02-private-mcp-registry-slide-02.png",
+      "title": "List servers with owners, status, and scope."
+    },
+    {
+      "index": 3,
+      "file": "02-private-mcp-registry-slide-03.png",
+      "title": "Approve the server before it reaches the team."
+    },
+    {
+      "index": 4,
+      "file": "02-private-mcp-registry-slide-04.png",
+      "title": "One install path across agent surfaces."
+    },
+    {
+      "index": 5,
+      "file": "02-private-mcp-registry-slide-05.png",
+      "title": "Keep private tools out of public discovery."
+    },
+    {
+      "index": 6,
+      "file": "02-private-mcp-registry-slide-06.png",
+      "title": "Make MCP discoverable inside your company."
+    }
+  ],
+  "contactSheet": "02-private-mcp-registry-contact-sheet.png"
+}

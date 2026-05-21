@@ -134,8 +134,8 @@ function InviteContent() {
   if (accepted) {
     return (
       <>
-        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
+          <CheckCircle2 className="h-5 w-5 text-success" />
         </div>
         <h1 className="mb-2 text-lg font-medium tracking-tight">Welcome!</h1>
         <p className="mb-6 text-sm text-muted-foreground">
@@ -154,8 +154,8 @@ function InviteContent() {
   if (declined) {
     return (
       <>
-        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-zinc-500/10">
-          <XCircle className="h-5 w-5 text-zinc-400" />
+        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+          <XCircle className="h-5 w-5 text-muted-foreground" />
         </div>
         <h1 className="mb-2 text-lg font-medium tracking-tight">
           Invitation declined
@@ -201,7 +201,7 @@ function InviteContent() {
 
         <div className="space-y-2">
           <button
-            className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-ring"
             onClick={() => signIn("github", { callbackUrl })}
           >
             <svg
@@ -215,7 +215,7 @@ function InviteContent() {
             Continue with GitHub
           </button>
           <button
-            className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-ring"
             onClick={() => signIn("google", { callbackUrl })}
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">

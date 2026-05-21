@@ -20,7 +20,7 @@ export default function Image() {
         background: "#0d1117",
         color: "#f8fafc",
         padding: "72px",
-        fontFamily: "Inter, Arial, sans-serif",
+        fontFamily: "Geist, Arial, sans-serif",
       }}
     >
       <div
@@ -60,7 +60,7 @@ export default function Image() {
             letterSpacing: 0,
           }}
         >
-          Private AI agent registry for serious teams.
+          Private approval layer for agent capabilities.
         </div>
         <div
           style={{
@@ -83,7 +83,7 @@ export default function Image() {
       >
         <span>Skills</span>
         <span>MCP servers</span>
-        <span>Prompt templates</span>
+        <span>Prompt playbooks</span>
         <span>CLI installs</span>
       </div>
     </div>,

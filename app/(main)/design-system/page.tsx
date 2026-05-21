@@ -232,7 +232,7 @@ export default async function DesignSystemPage() {
               <div className="space-y-3">
                 <div className="rounded-lg border border-border/60 p-4">
                   <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                    Inter (sans) &mdash; UI text
+                    Geist Sans &mdash; UI text
                   </p>
                   <p className="text-lg">
                     The quick brown fox jumps over the lazy dog
@@ -313,7 +313,7 @@ export default async function DesignSystemPage() {
                   <ArrowRight className="h-3.5 w-3.5" /> btn-pill-lg
                 </button>
                 <button className="btn-ghost">btn-ghost</button>
-                <button className="btn-pill !border-red-500/40 !bg-red-500/10 !text-red-400">
+                <button className="btn-pill !border-destructive/40 !bg-destructive/10 !text-destructive">
                   Destructive
                 </button>
                 <button className="btn-pill" disabled>
@@ -680,9 +680,9 @@ export default async function DesignSystemPage() {
                   Warm canvas (hue 83), oklch palette
                 </p>
               </div>
-              <div className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-zinc-100">
+              <div className="flex-1 rounded-lg border border-border bg-card p-4 text-card-foreground">
                 <p className="mb-1 text-xs font-medium">Dark</p>
-                <p className="text-[10px] text-zinc-400">
+                <p className="text-[10px] text-muted-foreground">
                   Warm dark (hue 75), transparency borders
                 </p>
               </div>
@@ -778,7 +778,7 @@ export default async function DesignSystemPage() {
               <div className="space-y-1.5">
                 <Token
                   name="--font-sans"
-                  value="Inter (set in :root for fumadocs to inherit)"
+                  value="Geist Sans (set in :root for fumadocs to inherit)"
                 />
                 <Token
                   name="--font-mono"

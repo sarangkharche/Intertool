@@ -3,6 +3,18 @@ import path from "node:path";
 import { Redis } from "@upstash/redis";
 import { isLocalSaasFallbackMode, isSaasMode } from "./org";
 import { setUserRole, ensureUserRecord } from "./rbac";
+import {
+  cpAddUserOrg,
+  cpGetOrgForUser,
+  cpGetOrgMembers,
+  cpGetOrgsForUser,
+  cpGetSettings,
+  cpIsOrgMember,
+  cpOrgExists,
+  cpRemoveUserOrg,
+  cpSaveSettings,
+  hasControlPlane,
+} from "./control-plane";
 
 const SETTINGS_PATH = path.resolve(process.cwd(), "registry", "settings.json");
 const LOCAL_SAAS_PATH = path.resolve(
@@ -30,6 +42,8 @@ export interface RegistrySettings {
   s3_endpoint?: string;
   /** AWS session token for temporary/SSO credentials */
   s3_session_token?: string;
+  /** Optional object key prefix for shared-bucket SaaS tenant isolation */
+  s3_prefix?: string;
   /** Org slug (SaaS mode only) */
   org_slug?: string;
   /** Org display name (SaaS mode only) */
@@ -56,6 +70,14 @@ export interface RegistrySettings {
   webhook_events?: ("publish" | "update" | "delete")[];
   /** Require admin review before non-admins publish new registry items */
   publish_review_required?: boolean;
+  /** SaaS plan identifier */
+  plan?: "free" | "team" | "business" | "enterprise";
+  /** Subscription lifecycle state from the billing provider */
+  subscription_status?: "trialing" | "active" | "past_due" | "canceled";
+  /** Stripe customer id for hosted billing */
+  stripe_customer_id?: string;
+  /** Stripe subscription id for hosted billing */
+  stripe_subscription_id?: string;
 }
 
 // ── KV store (SaaS mode) ──
@@ -78,6 +100,7 @@ function kvKey(orgSlug: string): string {
 interface LocalSaasData {
   orgs?: Record<string, RegistrySettings>;
   user_orgs?: Record<string, string>;
+  user_org_memberships?: Record<string, string[]>;
   members?: Record<string, string[]>;
 }
 
@@ -119,10 +142,40 @@ function getSettingsFromEnv(): RegistrySettings | null {
     s3_secret_access_key: secretAccessKey,
     s3_endpoint: process.env.S3_ENDPOINT || undefined,
     s3_session_token: process.env.S3_SESSION_TOKEN || undefined,
+    s3_prefix: process.env.S3_PREFIX || undefined,
     google_auth_enabled: googleDomains ? true : undefined,
     google_allowed_domains: googleDomains,
     github_org: process.env.GITHUB_ORG || undefined,
     github_org_required: !!process.env.GITHUB_ORG,
+  };
+}
+
+function hostedStorageSettings(
+  orgSlug: string,
+  orgName: string,
+  adminUsername: string
+): RegistrySettings | null {
+  if (process.env.INTERTOOL_MANAGED_STORAGE !== "true") return null;
+
+  const bucket = process.env.S3_BUCKET;
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+  if (!bucket || !accessKeyId || !secretAccessKey) return null;
+
+  return {
+    admin_username: adminUsername,
+    configured_at: new Date().toISOString(),
+    s3_bucket: bucket,
+    s3_region: process.env.S3_REGION ?? "us-east-1",
+    s3_access_key_id: accessKeyId,
+    s3_secret_access_key: secretAccessKey,
+    s3_endpoint: process.env.S3_ENDPOINT || undefined,
+    s3_session_token: process.env.S3_SESSION_TOKEN || undefined,
+    s3_prefix: `orgs/${orgSlug}`,
+    org_slug: orgSlug,
+    org_name: orgName,
+    plan: "free",
+    subscription_status: "trialing",
   };
 }
 
@@ -161,6 +214,9 @@ export async function getSettings(
 ): Promise<RegistrySettings | null> {
   if (isSaasMode()) {
     if (!orgSlug) return null;
+    if (hasControlPlane()) {
+      return cpGetSettings(orgSlug);
+    }
     if (isLocalSaasFallbackMode()) {
       return readLocalSaasData().orgs?.[orgSlug] ?? null;
     }
@@ -194,6 +250,10 @@ export async function saveSettings(
   if (isSaasMode()) {
     const slug = orgSlug ?? settings.org_slug;
     if (!slug) throw new Error("org_slug required in SaaS mode");
+    if (hasControlPlane()) {
+      await cpSaveSettings({ ...settings, org_slug: slug }, slug);
+      return true;
+    }
     if (isLocalSaasFallbackMode()) {
       const data = readLocalSaasData();
       data.orgs ??= {};
@@ -311,6 +371,9 @@ export function typeToFolder(type: string): string {
 /** Check if an org exists (SaaS mode) */
 export async function orgExists(orgSlug: string): Promise<boolean> {
   if (!isSaasMode()) return true;
+  if (hasControlPlane()) {
+    return cpOrgExists(orgSlug);
+  }
   if (isLocalSaasFallbackMode()) {
     return !!readLocalSaasData().orgs?.[orgSlug];
   }
@@ -325,18 +388,27 @@ export async function createOrg(
   adminUsername: string
 ): Promise<void> {
   if (!isSaasMode()) return;
-  const settings: RegistrySettings = {
-    admin_username: adminUsername,
-    configured_at: new Date().toISOString(),
-    s3_bucket: "",
-    s3_region: "us-east-1",
-    s3_access_key_id: "",
-    s3_secret_access_key: "",
-    org_slug: orgSlug,
-    org_name: orgName,
-  };
+  const settings: RegistrySettings =
+    hostedStorageSettings(orgSlug, orgName, adminUsername) ?? {
+      admin_username: adminUsername,
+      configured_at: new Date().toISOString(),
+      s3_bucket: "",
+      s3_region: "us-east-1",
+      s3_access_key_id: "",
+      s3_secret_access_key: "",
+      org_slug: orgSlug,
+      org_name: orgName,
+      plan: "free",
+      subscription_status: "trialing",
+    };
 
-  if (isLocalSaasFallbackMode()) {
+  if (hasControlPlane()) {
+    if (await cpOrgExists(orgSlug)) {
+      throw new Error(`Organization "${orgSlug}" already exists`);
+    }
+    await cpSaveSettings(settings, orgSlug);
+    await cpAddUserOrg(adminUsername, orgSlug, true);
+  } else if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
     data.orgs ??= {};
     data.user_orgs ??= {};
@@ -347,6 +419,10 @@ export async function createOrg(
     const adminId = adminUsername.toLowerCase();
     data.orgs[orgSlug] = settings;
     data.user_orgs[adminId] = orgSlug;
+    data.user_org_memberships ??= {};
+    data.user_org_memberships[adminId] = Array.from(
+      new Set([...(data.user_org_memberships[adminId] ?? []), orgSlug])
+    );
     data.members[orgSlug] = Array.from(
       new Set([...(data.members[orgSlug] ?? []), adminId])
     );
@@ -357,6 +433,7 @@ export async function createOrg(
     const adminId = adminUsername.toLowerCase();
     await getRedis().set(kvKey(orgSlug), settings);
     await getRedis().set(`user:${adminId}:org`, orgSlug);
+    await getRedis().sadd(`user:${adminId}:orgs`, orgSlug);
   }
 
   // Ensure the creator is owner in RBAC
@@ -375,10 +452,38 @@ export async function createOrg(
 export async function getOrgForUser(username: string): Promise<string | null> {
   if (!isSaasMode()) return null;
   const id = username.toLowerCase();
-  if (isLocalSaasFallbackMode()) {
-    return readLocalSaasData().user_orgs?.[id] ?? null;
+  if (hasControlPlane()) {
+    return cpGetOrgForUser(id);
   }
-  return await getRedis().get<string>(`user:${id}:org`);
+  if (isLocalSaasFallbackMode()) {
+    const data = readLocalSaasData();
+    return (
+      data.user_orgs?.[id] ?? data.user_org_memberships?.[id]?.[0] ?? null
+    );
+  }
+  const activeOrg = await getRedis().get<string>(`user:${id}:org`);
+  if (activeOrg) return activeOrg;
+  const orgs = await getRedis().smembers(`user:${id}:orgs`);
+  return orgs[0] ?? null;
+}
+
+/** Get all org slugs for a user (SaaS mode). */
+export async function getOrgsForUser(username: string): Promise<string[]> {
+  if (!isSaasMode()) return [];
+  const id = username.toLowerCase();
+  if (hasControlPlane()) {
+    return cpGetOrgsForUser(id);
+  }
+  if (isLocalSaasFallbackMode()) {
+    const data = readLocalSaasData();
+    return Array.from(
+      new Set([
+        ...(data.user_org_memberships?.[id] ?? []),
+        ...(data.user_orgs?.[id] ? [data.user_orgs[id]] : []),
+      ])
+    );
+  }
+  return await getRedis().smembers(`user:${id}:orgs`);
 }
 
 // ── Org membership helpers (SaaS mode) ──
@@ -393,6 +498,10 @@ export async function addOrgMember(
   username: string
 ): Promise<void> {
   const id = username.toLowerCase();
+  if (hasControlPlane()) {
+    await cpAddUserOrg(id, orgSlug, true);
+    return;
+  }
   if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
     data.members ??= {};
@@ -401,11 +510,16 @@ export async function addOrgMember(
     );
     data.user_orgs ??= {};
     data.user_orgs[id] = orgSlug;
+    data.user_org_memberships ??= {};
+    data.user_org_memberships[id] = Array.from(
+      new Set([...(data.user_org_memberships[id] ?? []), orgSlug])
+    );
     writeLocalSaasData(data);
     return;
   }
   await getRedis().sadd(memberSetKey(orgSlug), id);
   await getRedis().set(`user:${id}:org`, orgSlug);
+  await getRedis().sadd(`user:${id}:orgs`, orgSlug);
 }
 
 /** Remove a user from an org's membership set */
@@ -414,6 +528,10 @@ export async function removeOrgMember(
   username: string
 ): Promise<void> {
   const id = username.toLowerCase();
+  if (hasControlPlane()) {
+    await cpRemoveUserOrg(id, orgSlug);
+    return;
+  }
   if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
     data.members ??= {};
@@ -421,13 +539,30 @@ export async function removeOrgMember(
       (member) => member !== id
     );
     if (data.user_orgs?.[id] === orgSlug) delete data.user_orgs[id];
+    if (data.user_org_memberships?.[id]) {
+      data.user_org_memberships[id] = data.user_org_memberships[id].filter(
+        (memberOrg) => memberOrg !== orgSlug
+      );
+      if (!data.user_org_memberships[id].length) {
+        delete data.user_org_memberships[id];
+      } else if (!data.user_orgs?.[id]) {
+        data.user_orgs ??= {};
+        data.user_orgs[id] = data.user_org_memberships[id][0];
+      }
+    }
     writeLocalSaasData(data);
     return;
   }
   await getRedis().srem(memberSetKey(orgSlug), id);
+  await getRedis().srem(`user:${id}:orgs`, orgSlug);
   const currentOrg = await getRedis().get<string>(`user:${id}:org`);
   if (currentOrg === orgSlug) {
-    await getRedis().del(`user:${id}:org`);
+    const remainingOrgs = await getRedis().smembers(`user:${id}:orgs`);
+    if (remainingOrgs.length > 0) {
+      await getRedis().set(`user:${id}:org`, remainingOrgs[0]);
+    } else {
+      await getRedis().del(`user:${id}:org`);
+    }
   }
 }
 
@@ -439,6 +574,9 @@ export async function isOrgMember(
   const settings = await getSettings(orgSlug);
   if (settings?.admin_username?.toLowerCase() === username.toLowerCase())
     return true;
+  if (hasControlPlane()) {
+    return cpIsOrgMember(orgSlug, username);
+  }
   if (isLocalSaasFallbackMode()) {
     return (
       readLocalSaasData().members?.[orgSlug]?.includes(
@@ -455,6 +593,9 @@ export async function isOrgMember(
 
 /** Get all members of an org */
 export async function getOrgMembers(orgSlug: string): Promise<string[]> {
+  if (hasControlPlane()) {
+    return cpGetOrgMembers(orgSlug);
+  }
   if (isLocalSaasFallbackMode()) {
     return readLocalSaasData().members?.[orgSlug] ?? [];
   }

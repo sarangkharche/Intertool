@@ -49,7 +49,8 @@ export default function PreferencesPage() {
                 <button
                   key={opt.value}
                   onClick={() => setTheme(opt.value)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md ${
+                  aria-pressed={theme === opt.value}
+                  className={`flex min-h-10 items-center gap-1.5 px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md focus-ring ${
                     theme === opt.value
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -76,10 +77,11 @@ export default function PreferencesPage() {
                   key={color.value}
                   onClick={() => setPreference("accentColor", color.value)}
                   aria-label={color.label}
-                  className={`h-6 w-6 rounded-full ${color.class} transition-all duration-100 ${
+                  aria-pressed={prefs.accentColor === color.value}
+                  className={`h-11 w-11 rounded-full ${color.class} transition-all duration-100 focus-ring ${
                     prefs.accentColor === color.value
                       ? "ring-2 ring-ring ring-offset-2 ring-offset-background"
-                      : "hover:scale-110"
+                      : "hover:scale-105"
                   }`}
                 />
               ))}
@@ -107,7 +109,8 @@ export default function PreferencesPage() {
                 <button
                   key={opt}
                   onClick={() => setPreference("density", opt)}
-                  className={`px-3 py-1.5 text-xs capitalize transition-colors duration-100 first:rounded-l-md last:rounded-r-md ${
+                  aria-pressed={prefs.density === opt}
+                  className={`min-h-10 px-3 py-1.5 text-xs capitalize transition-colors duration-100 first:rounded-l-md last:rounded-r-md focus-ring ${
                     prefs.density === opt
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -132,7 +135,8 @@ export default function PreferencesPage() {
                 <button
                   key={opt}
                   onClick={() => setPreference("defaultView", opt)}
-                  className={`px-3 py-1.5 text-xs capitalize transition-colors duration-100 first:rounded-l-md last:rounded-r-md ${
+                  aria-pressed={prefs.defaultView === opt}
+                  className={`min-h-10 px-3 py-1.5 text-xs capitalize transition-colors duration-100 first:rounded-l-md last:rounded-r-md focus-ring ${
                     prefs.defaultView === opt
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -174,7 +178,8 @@ export default function PreferencesPage() {
                 <button
                   key={opt.value}
                   onClick={() => setPreference("defaultTab", opt.value)}
-                  className={`px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md ${
+                  aria-pressed={prefs.defaultTab === opt.value}
+                  className={`min-h-10 px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md focus-ring ${
                     prefs.defaultTab === opt.value
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -196,7 +201,8 @@ export default function PreferencesPage() {
                 <button
                   key={opt}
                   onClick={() => setPreference("defaultSort", opt)}
-                  className={`px-3 py-1.5 text-xs capitalize transition-colors duration-100 first:rounded-l-md last:rounded-r-md ${
+                  aria-pressed={prefs.defaultSort === opt}
+                  className={`min-h-10 px-3 py-1.5 text-xs capitalize transition-colors duration-100 first:rounded-l-md last:rounded-r-md focus-ring ${
                     prefs.defaultSort === opt
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -218,7 +224,8 @@ export default function PreferencesPage() {
                 <button
                   key={opt}
                   onClick={() => setPreference("itemsPerPage", opt)}
-                  className={`px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md ${
+                  aria-pressed={prefs.itemsPerPage === opt}
+                  className={`min-h-10 px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md focus-ring ${
                     prefs.itemsPerPage === opt
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -259,7 +266,8 @@ export default function PreferencesPage() {
                 <button
                   key={opt.value}
                   onClick={() => setPreference("landingPage", opt.value)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md ${
+                  aria-pressed={prefs.landingPage === opt.value}
+                  className={`flex min-h-10 items-center gap-1.5 px-3 py-1.5 text-xs transition-colors duration-100 first:rounded-l-md last:rounded-r-md focus-ring ${
                     prefs.landingPage === opt.value
                       ? "bg-muted font-medium text-foreground"
                       : "text-muted-foreground hover:text-foreground"

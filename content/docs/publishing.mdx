@@ -14,6 +14,12 @@ description: How to publish skills, MCP servers, and prompt templates to your re
 
 ## From the CLI
 
+You can scaffold a publishable starter file:
+
+```bash
+intertool init --type skill --name "My Code Reviewer" --description "Reviews PRs for common issues" --category dev-tools
+```
+
 Create a `SKILL.md` file with frontmatter:
 
 ```markdown
@@ -34,18 +40,20 @@ Then publish:
 intertool publish SKILL.md
 ```
 
-The CLI extracts metadata from frontmatter. You can override any field with flags:
+The CLI extracts metadata from `SKILL.md` frontmatter or from `skill.yaml`. You can override any field with flags:
 
 ```bash
 intertool publish SKILL.md --name "My Skill" --type skill --category dev-tools
 ```
+
+When a submission requires admin review, the CLI reports that it was submitted for review. In JSON mode, `publish` includes `status`, `published`, and `submitted_for_review`.
 
 ## From the web UI
 
 1. Sign in to your registry
 2. Click **Publish** in the header
 3. Choose a type or use the quick import flow
-4. Upload `SKILL.md`, `server.json`, `.zip`, `.yaml`, `.md`, or `.txt` files, or import from a GitHub repository
+4. Upload `SKILL.md`, `skill.yaml`, `server.json`, `.zip`, `.md`, or `.txt` files, or import from a GitHub repository
 5. Review the detected metadata, edit the README, and submit
 
 Uploaded package files are stored with the registry item and installed by the CLI into the item's local install directory.
@@ -58,9 +66,23 @@ Pending submissions appear in **Review**. Owners and admins can approve a submis
 
 Updates to already-published items remain versioned immediately. A future pending-revision flow can extend review to updates without taking the currently published version offline.
 
+## Security scanning
+
+Every publish request runs a baseline static scan over README content, source URLs, and uploaded text-like package files. The scan records a security status on the item:
+
+- `passed` — no findings
+- `warning` — risky patterns such as prompt-injection style override language or shell install patterns
+- `blocked` — critical findings such as private keys or obvious cloud access keys
+
+Blocked submissions are rejected before files are written to storage. Warnings are saved with the registry item and appear in audit metadata.
+
+## Plan limits
+
+The default SaaS plan is `free`, which allows 10 active or pending registry items and 3 members. Team, Business, and Enterprise plans raise or remove those limits. Plan enforcement happens in the publish and member-management APIs.
+
 ## MCP servers
 
-For MCP servers, you can publish a `server.json`:
+For MCP servers, you can publish a `server.json`. Intertool stores the full JSON configuration and uses it for raw downloads and CLI installs:
 
 ```json
 {
@@ -77,6 +99,8 @@ For MCP servers, you can publish a `server.json`:
 ```bash
 intertool publish server.json --type mcp-server --category integrations
 ```
+
+If the MCP server was created with `intertool init`, `publish server.json` also reads the adjacent `intertool.yaml` sidecar for Intertool-only metadata such as category and tags, and uses `README.md` as the registry README when present.
 
 ## Updating a skill
 

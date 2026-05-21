@@ -70,6 +70,7 @@ export function parseServerJson(content: string): {
   command?: string;
   args?: string[];
   url?: string;
+  config: Record<string, unknown>;
 } | null {
   try {
     const data = JSON.parse(content) as Record<string, unknown>;
@@ -102,6 +103,7 @@ export function parseServerJson(content: string): {
       command,
       args,
       url,
+      config: data,
     };
   } catch {
     return null;
@@ -374,6 +376,12 @@ export async function getSkills(
   if (filters.type) skills = skills.filter((s) => s.type === filters.type);
   if (filters.category)
     skills = skills.filter((s) => s.category_slug === filters.category);
+  if (filters.tag) {
+    const tagLower = filters.tag.toLowerCase();
+    skills = skills.filter((s) =>
+      s.tags.some((t) => t.toLowerCase() === tagLower)
+    );
+  }
   if (filters.author) {
     const authorLower = filters.author.toLowerCase();
     skills = skills.filter((s) => s.author.toLowerCase() === authorLower);
@@ -400,8 +408,9 @@ export async function getSkills(
   // Free-text scoring
   if (freeTextQuery) {
     const q = freeTextQuery.toLowerCase();
+    const hydrated = await hydrateSkillsForSearch(skills);
     const scored = skills
-      .map((s) => ({ skill: s, score: scoreSkill(s, q) }))
+      .map((s, i) => ({ skill: s, score: scoreSkill(hydrated[i] ?? s, q) }))
       .filter((x) => x.score > 0);
     scored.sort((a, b) => b.score - a.score);
     skills = scored.map((x) => x.skill);
@@ -647,7 +656,11 @@ export async function getContributors(): Promise<
 }
 
 export async function searchSkills(
-  query: string
+  query: string,
+  filters: Pick<
+    SearchFilters,
+    "type" | "category" | "tag" | "author" | "limit"
+  > = {}
 ): Promise<Pick<Skill, "slug" | "name" | "type" | "description" | "author">[]> {
   const settings = await resolveSettings();
   if (!settings) return [];
@@ -657,26 +670,37 @@ export async function searchSkills(
   let skills = all.filter((s) => s.status === "published");
 
   // Apply structured filters
-  if (parsed.filters.type) {
-    skills = skills.filter((s) => s.type === parsed.filters.type);
+  const typeFilter = filters.type ?? parsed.filters.type;
+  const categoryFilter = filters.category;
+  const tagFilter = filters.tag?.toLowerCase() ?? parsed.filters.tag;
+  const authorFilter = filters.author?.toLowerCase() ?? parsed.filters.author;
+
+  if (typeFilter) {
+    skills = skills.filter((s) => s.type === typeFilter);
   }
-  if (parsed.filters.tag) {
-    const ft = parsed.filters.tag;
-    skills = skills.filter((s) => s.tags.some((t) => t.toLowerCase() === ft));
+  if (categoryFilter) {
+    skills = skills.filter((s) => s.category_slug === categoryFilter);
   }
-  if (parsed.filters.author) {
-    const fa = parsed.filters.author;
-    skills = skills.filter((s) => s.author.toLowerCase() === fa);
+  if (tagFilter) {
+    skills = skills.filter((s) =>
+      s.tags.some((t) => t.toLowerCase() === tagFilter)
+    );
   }
+  if (authorFilter) {
+    skills = skills.filter((s) => s.author.toLowerCase() === authorFilter);
+  }
+
+  const limit = Math.max(1, Math.min(filters.limit ?? 10, 100));
 
   // Score by free text
   if (parsed.text) {
     const q = parsed.text.toLowerCase();
+    const hydrated = await hydrateSkillsForSearch(skills);
     return skills
-      .map((s) => ({ skill: s, score: scoreSkill(s, q) }))
+      .map((s, i) => ({ skill: s, score: scoreSkill(hydrated[i] ?? s, q) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 10)
+      .slice(0, limit)
       .map((x) => ({
         slug: x.skill.slug,
         name: x.skill.name,
@@ -687,13 +711,19 @@ export async function searchSkills(
   }
 
   // No free text, just filters — return first 10
-  return skills.slice(0, 10).map((s) => ({
+  return skills.slice(0, limit).map((s) => ({
     slug: s.slug,
     name: s.name,
     type: s.type,
     description: s.description,
     author: s.author,
   }));
+}
+
+async function hydrateSkillsForSearch(skills: Skill[]): Promise<Skill[]> {
+  return Promise.all(
+    skills.map(async (skill) => (await getSkillBySlug(skill.slug)) ?? skill)
+  );
 }
 
 // ── Search query parsing ──
@@ -774,6 +804,7 @@ function scoreSkill(skill: Skill, query: string): number {
   const name = skill.name.toLowerCase();
   const slug = skill.slug.toLowerCase();
   const desc = skill.description.toLowerCase();
+  const readme = (skill.readme ?? "").toLowerCase();
   const tags = skill.tags.map((t) => t.toLowerCase());
   const author = skill.author.toLowerCase();
 
@@ -797,6 +828,9 @@ function scoreSkill(skill: Skill, query: string): number {
 
     // Description: 1x
     bestTokenScore = Math.max(bestTokenScore, scoreToken(token, desc));
+
+    // README/content: lower weight, but included for documented full-text search
+    bestTokenScore = Math.max(bestTokenScore, scoreToken(token, readme) * 0.5);
 
     if (bestTokenScore === 0) {
       allTokensMatch = false;

@@ -37,10 +37,26 @@ export async function GET(
   const settings = await getSettings(orgSlug);
   trackDownload(slug, settings).catch(() => {});
 
-  return new NextResponse(skill.readme, {
+  const isMcpServer = skill.type === "mcp-server";
+  const body = isMcpServer
+    ? JSON.stringify(
+        skill.mcp_config ?? {
+          name: skill.name,
+          description: skill.description,
+          transport: skill.transport,
+          install_commands: skill.install_commands,
+        },
+        null,
+        2
+      ) + "\n"
+    : skill.readme;
+
+  return new NextResponse(body, {
     headers: noStoreHeaders({
-      "Content-Type": "text/markdown; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${slug}.md"`,
+      "Content-Type": isMcpServer
+        ? "application/json; charset=utf-8"
+        : "text/markdown; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${slug}.${isMcpServer ? "json" : "md"}"`,
     }),
   });
 }

@@ -28,7 +28,7 @@ export function ShareButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={handleShare}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
       aria-label={copied ? "Copied" : "Share"}
     >
       {copied ? (

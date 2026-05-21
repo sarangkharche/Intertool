@@ -5,6 +5,14 @@ import path from "node:path";
 import type { Invitation, OrgRole } from "./types";
 import { ensureUserRecord } from "./rbac";
 import { isLocalSaasFallbackMode } from "./org";
+import {
+  cpCreateInvitation,
+  cpDeleteInvitation,
+  cpGetInvitation,
+  cpGetInvitationByEmail,
+  cpListPendingInvitations,
+  hasControlPlane,
+} from "./control-plane";
 
 const INVITE_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 
@@ -107,6 +115,11 @@ export async function createInvitation(
     expires_at: expiresAt.toISOString(),
   };
 
+  if (hasControlPlane()) {
+    await cpCreateInvitation(invitation);
+    return invitation;
+  }
+
   const r = getRedis();
   if (r) {
     await r.set(tokenKey(token), invitation, { ex: INVITE_TTL });
@@ -123,6 +136,10 @@ export async function createInvitation(
 }
 
 export async function getInvitation(token: string): Promise<Invitation | null> {
+  if (hasControlPlane()) {
+    return cpGetInvitation(token);
+  }
+
   const r = getRedis();
   if (r) {
     const inv = await r.get<Invitation>(tokenKey(token));
@@ -138,6 +155,10 @@ export async function getInvitationByEmail(
   email: string,
   orgSlug?: string
 ): Promise<Invitation | null> {
+  if (hasControlPlane()) {
+    return cpGetInvitationByEmail(email, orgSlug);
+  }
+
   const r = getRedis();
   if (r) {
     const token = await r.get<string>(emailKey(orgSlug, email));
@@ -160,6 +181,10 @@ export async function getInvitationByEmail(
 export async function listPendingInvitations(
   orgSlug?: string
 ): Promise<Invitation[]> {
+  if (hasControlPlane()) {
+    return cpListPendingInvitations(orgSlug);
+  }
+
   const r = getRedis();
   if (r) {
     const prefix = orgSlug ?? "default";
@@ -255,6 +280,11 @@ async function deleteInvitationKeys(
   email: string,
   orgSlug?: string
 ): Promise<void> {
+  if (hasControlPlane()) {
+    await cpDeleteInvitation(token);
+    return;
+  }
+
   const r = getRedis();
   if (r) {
     await r.del(tokenKey(token));

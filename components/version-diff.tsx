@@ -105,11 +105,11 @@ export function VersionDiff({
                 <span className="w-28 shrink-0 font-medium text-muted-foreground">
                   {change.field}
                 </span>
-                <span className="rounded bg-red-500/10 px-1.5 py-0.5 font-mono text-xs text-red-400 line-through">
+                <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-xs text-destructive line-through">
                   {change.old || "(empty)"}
                 </span>
                 <span className="text-muted-foreground">&rarr;</span>
-                <span className="rounded bg-green-500/10 px-1.5 py-0.5 font-mono text-xs text-green-400">
+                <span className="rounded bg-success/10 px-1.5 py-0.5 font-mono text-xs text-success">
                   {change.new || "(empty)"}
                 </span>
               </div>

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isSaasMode } from "@/lib/org";
-import { createOrg, orgExists, getOrgForUser } from "@/lib/settings";
+import {
+  createOrg,
+  orgExists,
+  getOrgForUser,
+  getOrgsForUser,
+} from "@/lib/settings";
 import { appendAuditEvent } from "@/lib/audit-log";
 
 export const dynamic = "force-dynamic";
@@ -187,14 +192,18 @@ export async function GET() {
   }
 
   let orgSlug: string | null;
+  let orgs: string[];
   try {
-    orgSlug = await getOrgForUser(username);
+    [orgSlug, orgs] = await Promise.all([
+      getOrgForUser(username),
+      getOrgsForUser(username),
+    ]);
   } catch {
     return storageUnavailableResponse();
   }
 
   return NextResponse.json(
-    { org: orgSlug },
+    { org: orgSlug, orgs },
     {
       headers: { "Cache-Control": "no-store" },
     }

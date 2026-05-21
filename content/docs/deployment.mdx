@@ -1,6 +1,6 @@
 ---
 title: Deployment
-description: Deploy Intertool to Vercel or any Node.js host with S3 storage.
+description: Deploy Intertool to Vercel or any Node.js host with S3, Postgres, and Stripe.
 ---
 
 ## S3 setup
@@ -92,10 +92,16 @@ vercel env add AUTH_URL                 # https://your-app.vercel.app
 vercel env add NEXT_PUBLIC_SITE_URL     # https://your-app.vercel.app
 vercel env add GITHUB_ID               # from GitHub OAuth app
 vercel env add GITHUB_SECRET           # from GitHub OAuth app
+vercel env add INTERTOOL_MODE          # saas for hosted multi-tenant mode
+vercel env add DATABASE_URL            # Postgres control-plane URL
 vercel env add S3_BUCKET               # your-bucket-name
 vercel env add S3_REGION               # us-east-1
 vercel env add S3_ACCESS_KEY_ID        # AKIA...
 vercel env add S3_SECRET_ACCESS_KEY    # your secret key
+vercel env add STRIPE_SECRET_KEY       # sk_live_...
+vercel env add STRIPE_WEBHOOK_SECRET   # whsec_...
+vercel env add STRIPE_TEAM_PRICE_ID    # price_...
+vercel env add STRIPE_BUSINESS_PRICE_ID # price_...
 ```
 
 ### 3. Update GitHub OAuth callback
@@ -124,19 +130,57 @@ On Vercel, S3 credentials must be set via environment variables since the filesy
 | `NEXT_PUBLIC_SITE_URL` | Production | `AUTH_URL`, Vercel URL, `INTERTOOL_DOMAIN`, or `localhost:3000` | Public canonical origin used for SEO metadata, Open Graph URLs, `robots.txt`, `sitemap.xml`, and LLM documentation links |
 | `GITHUB_ID` | Yes | -- | GitHub OAuth client ID |
 | `GITHUB_SECRET` | Yes | -- | GitHub OAuth client secret |
+| `INTERTOOL_MODE` | SaaS | `self-hosted` | Set to `saas` for path-based organizations |
+| `DATABASE_URL` | SaaS production | -- | Preferred Postgres control-plane connection string |
+| `POSTGRES_URL` | SaaS production | -- | Alternate Postgres control-plane connection string |
+| `POSTGRES_PRISMA_URL` | SaaS production | -- | Alternate Postgres control-plane connection string |
 | `S3_BUCKET` | Vercel | -- | S3 bucket name |
 | `S3_REGION` | Vercel | `us-east-1` | S3 region |
 | `S3_ACCESS_KEY_ID` | Vercel | -- | S3 access key |
 | `S3_SECRET_ACCESS_KEY` | Vercel | -- | S3 secret key |
 | `S3_ENDPOINT` | No | -- | Custom endpoint for S3-compatible services |
 | `S3_SESSION_TOKEN` | No | -- | AWS session token (temporary credentials only) |
+| `S3_PREFIX` | No | -- | Optional object prefix for single-tenant deployments |
+| `INTERTOOL_MANAGED_STORAGE` | SaaS | `false` | Set to `true` to provision new SaaS orgs into the shared `S3_BUCKET` under `orgs/{org}` |
+| `INTERTOOL_LOCAL_SAAS_FALLBACK` | Local SaaS dev | `false` | Store SaaS org metadata in local JSON files when Postgres/Redis are not configured |
 | `INTERTOOL_ADMIN` | No | -- | GitHub username of admin user |
 | `INTERTOOL_API_KEY` | No | -- | API key for CLI/API publishing |
 | `CRON_SECRET` | Production | -- | Bearer token required for scheduled `/api/analytics` calls |
 | `RESEND_API_KEY` | Invitations | -- | Recommended email transport for member invitations |
 | `EMAIL_FROM` | No | `noreply@{AUTH_URL host}` | Sender address for invitation emails |
+| `STRIPE_SECRET_KEY` | Billing | -- | Stripe secret key used by `/api/billing/checkout` and webhook verification |
+| `STRIPE_WEBHOOK_SECRET` | Billing | -- | Stripe webhook signing secret for `/api/webhooks/stripe` |
+| `STRIPE_TEAM_PRICE_ID` | Billing | -- | Stripe recurring Price ID for the Team plan |
+| `STRIPE_BUSINESS_PRICE_ID` | Billing | -- | Stripe recurring Price ID for the Business plan |
 | `UPSTASH_REDIS_REST_URL` | Scale/SaaS | -- | Redis URL for SaaS mode, distributed locks, rate limits, and analytics |
 | `UPSTASH_REDIS_REST_TOKEN` | Scale/SaaS | -- | Redis REST token |
+
+## SaaS control plane
+
+Production SaaS deployments should set `INTERTOOL_MODE=saas` and configure one Postgres URL through `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL`. The Postgres control plane stores organizations, settings, memberships, API tokens, invitations, audit events, and Stripe customer/subscription identifiers.
+
+Redis is still supported for rate limits, analytics, distributed locks, and legacy SaaS fallback paths, but it should not be the primary source of truth for hosted SaaS tenant state.
+
+When `INTERTOOL_MANAGED_STORAGE=true`, each new organization is automatically assigned `s3_prefix=orgs/{orgSlug}` in the shared bucket. Keep the shared bucket credentials scoped to the production deployment and use object lifecycle policies or backups appropriate for customer data.
+
+## Stripe billing
+
+Intertool creates hosted subscription Checkout Sessions from `POST /api/billing/checkout`. The route is owner-only and accepts `team` or `business`; those plans must map to `STRIPE_TEAM_PRICE_ID` and `STRIPE_BUSINESS_PRICE_ID`.
+
+Create a Stripe webhook endpoint for:
+
+```text
+https://your-app.example.com/api/webhooks/stripe
+```
+
+Subscribe it to these events:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+The webhook verifies the `stripe-signature` header with `STRIPE_WEBHOOK_SECRET`, then updates the organization's `plan`, `subscription_status`, `stripe_customer_id`, and `stripe_subscription_id`.
 
 ## Search and answer-engine discovery
 
@@ -149,6 +193,8 @@ Intertool exposes a small public discovery surface for the product and documenta
 
 Set `NEXT_PUBLIC_SITE_URL` to the production origin before launch so these URLs do not resolve to preview or localhost origins.
 
-In SaaS mode, organization creation depends on Upstash Redis. If the Redis URL or token is missing or unreachable, `/create-org` will show a registry storage error and the create action will stay disabled until Redis is reachable.
+In SaaS mode, organization creation uses the Postgres control plane when a Postgres URL is configured. If Postgres is not configured, Intertool falls back to the legacy Redis-backed SaaS metadata path when Redis is available.
 
 For local SaaS development only, set `INTERTOOL_LOCAL_SAAS_FALLBACK=true` to store org metadata, memberships, invitations, and API tokens in local files under `registry/` instead of Redis.
+
+For hosted SaaS deployments, set `INTERTOOL_MANAGED_STORAGE=true` with the shared S3/R2 environment variables. New organizations are automatically configured with `s3_prefix=orgs/{orgSlug}` so one bucket can safely hold multiple isolated tenant registries.

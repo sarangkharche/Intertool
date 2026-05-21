@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
     query: params.get("q") ?? undefined,
     type: (params.get("type") as SkillType) ?? undefined,
     category: params.get("category") ?? undefined,
+    tag: params.get("tag") ?? undefined,
     author: params.get("author") ?? undefined,
     sort: (params.get("sort") as SearchFilters["sort"]) ?? "newest",
     page,

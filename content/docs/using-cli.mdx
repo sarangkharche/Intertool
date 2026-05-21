@@ -1,0 +1,238 @@
+---
+title: Using the CLI
+description: Practical workflows for installing, publishing, updating, and automating Intertool registry items from the command line.
+---
+
+The Intertool CLI installs approved registry items into local agent projects and publishes new items back to your registry.
+
+## Install the CLI
+
+Until the npm package is published, link the CLI from this repository:
+
+```bash
+cd cli
+npm install
+npm run build
+npm link
+```
+
+After the package is released to npm:
+
+```bash
+npm install -g intertool
+```
+
+Verify the binary is available:
+
+```bash
+intertool --version
+intertool --help
+```
+
+## Log in
+
+Use your registry URL. For SaaS registries, include the organization path.
+
+```bash
+intertool login --url https://your-registry.example.com
+intertool login --url https://intertool.sh/example-org
+```
+
+The browser flow creates a personal API token and stores it at `~/.intertool/config.json`.
+
+For CI or headless environments, pass a token directly:
+
+```bash
+intertool login --url https://your-registry.example.com --token itk_...
+```
+
+Check the active account:
+
+```bash
+intertool whoami
+```
+
+Clear local credentials:
+
+```bash
+intertool logout
+```
+
+## Find items
+
+Search the authenticated registry:
+
+```bash
+intertool search "code review"
+intertool search "type:mcp-server tag:automation"
+intertool search "author:platform"
+```
+
+Show full registry details for one item:
+
+```bash
+intertool info code-review
+```
+
+## Install items
+
+Run install from the project where your agent tooling should use the item:
+
+```bash
+cd ~/work/my-agent-project
+intertool install @team/code-review
+```
+
+Install writes files under the current project:
+
+| Item type | Installed file |
+|-----------|----------------|
+| `skill` | `.claude/skills/<slug>/SKILL.md` |
+| `agent-tool` | `.claude/skills/<slug>/SKILL.md` |
+| `prompt-template` | `.claude/skills/<slug>/SKILL.md` |
+| `mcp-server` | `.claude/mcp-servers/<slug>/server.json` |
+
+If the item includes package files, they are downloaded into the same install directory. The CLI also writes `.intertool.json` metadata for update checks and adds `.claude/skills/` and `.claude/mcp-servers/` to `.gitignore`.
+
+List what is installed locally:
+
+```bash
+intertool list
+```
+
+Remove an installed item:
+
+```bash
+intertool remove code-review
+intertool rm @team/code-review
+```
+
+## Update installed items
+
+Update one item:
+
+```bash
+intertool update @team/code-review
+```
+
+Update every Intertool-installed item in the current project:
+
+```bash
+intertool update
+```
+
+When no name is provided, the CLI scans `.claude/skills/*/.intertool.json` and `.claude/mcp-servers/*/.intertool.json`.
+
+## Publish a skill
+
+Scaffold a publishable `SKILL.md`:
+
+```bash
+intertool init --type skill --name "Code Reviewer" --description "Reviews pull requests" --category dev-tools --tags review,quality
+```
+
+Edit the generated file, then publish:
+
+```bash
+intertool publish SKILL.md
+```
+
+You can also publish an existing `SKILL.md` that contains frontmatter:
+
+```markdown
+---
+name: Code Reviewer
+type: skill
+description: Reviews pull requests
+category: dev-tools
+tags: [review, quality]
+---
+
+Review code for correctness, safety, and maintainability.
+```
+
+Override metadata with flags when needed:
+
+```bash
+intertool publish SKILL.md --name "Code Reviewer" --category dev-tools --tags review,quality
+```
+
+If admin review is required, the command succeeds but reports that the item was submitted for review. It becomes searchable and installable only after approval.
+
+## Publish an MCP server
+
+Scaffold a server package:
+
+```bash
+intertool init --type mcp-server --name "Internal API" --description "Connects to internal APIs"
+```
+
+This creates:
+
+- `server.json` for the MCP server configuration
+- `README.md` for the registry README
+- `intertool.yaml` for Intertool-only metadata such as category and tags
+
+Publish it:
+
+```bash
+intertool publish server.json
+```
+
+For existing MCP configs, you can pass metadata as flags:
+
+```bash
+intertool publish server.json --type mcp-server --category integrations --tags api,internal
+```
+
+Intertool preserves the full `server.json` config for install and raw download.
+
+## Automation and JSON output
+
+Use `--json` when scripting:
+
+```bash
+intertool search "code review" --json
+intertool install @team/code-review --json
+intertool publish SKILL.md --json
+```
+
+Publish JSON includes `status`, `published`, and `submitted_for_review`:
+
+```json
+{
+  "ok": true,
+  "published": false,
+  "submitted_for_review": true,
+  "status": "review",
+  "slug": "code-review",
+  "url": "https://your-registry.example.com/skills/code-review",
+  "message": "Skill submitted for review"
+}
+```
+
+## Shell completions
+
+Generate completions for your shell:
+
+```bash
+intertool completions bash >> ~/.bashrc
+intertool completions zsh >> ~/.zshrc
+intertool completions fish > ~/.config/fish/completions/intertool.fish
+```
+
+## Troubleshooting
+
+If a command cannot connect, confirm the registry is reachable and the saved URL is correct:
+
+```bash
+intertool login
+```
+
+If authentication fails, create a fresh token from the web app settings or rerun:
+
+```bash
+intertool login --url https://your-registry.example.com
+```
+
+If an item cannot be installed, confirm it is `published`. Items in `review` are hidden from search and install results for regular members.

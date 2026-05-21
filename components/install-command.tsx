@@ -25,7 +25,7 @@ export function InstallCommand({ command }: { command: string }) {
         className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground interactive-ghost"
       >
         {copied ? (
-          <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          <Check className="h-3.5 w-3.5 text-success" />
         ) : (
           <Copy className="h-3.5 w-3.5" />
         )}

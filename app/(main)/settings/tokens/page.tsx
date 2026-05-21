@@ -118,8 +118,8 @@ export default function TokensPage() {
 
       {/* New token display */}
       {newToken && (
-        <div className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
-          <p className="mb-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+        <div className="mb-4 rounded-lg border border-success/20 bg-success/5 p-4">
+          <p className="mb-2 text-xs font-medium text-success">
             Token created. Copy it now; it won&apos;t be shown again.
           </p>
           <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export default function TokensPage() {
             </code>
             <button onClick={handleCopy} className="btn-ghost shrink-0">
               {copied ? (
-                <Check className="h-3 w-3 text-emerald-500" />
+                <Check className="h-3 w-3 text-success" />
               ) : (
                 <Copy className="h-3 w-3" />
               )}
@@ -136,7 +136,7 @@ export default function TokensPage() {
           </div>
           <button
             onClick={() => setNewToken(null)}
-            className="mt-2 text-[11px] text-muted-foreground hover:text-foreground"
+            className="mt-2 rounded-sm text-[11px] text-muted-foreground hover:text-foreground focus-ring"
           >
             Dismiss
           </button>
@@ -145,7 +145,11 @@ export default function TokensPage() {
 
       {/* Create token */}
       <div className="mb-4 flex gap-2">
+        <label htmlFor="token-label" className="sr-only">
+          Token label
+        </label>
         <Input
+          id="token-label"
           placeholder="Token label (e.g. CI, laptop)"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -183,8 +187,9 @@ export default function TokensPage() {
 
             <button
               onClick={() => handleRevoke(token.hash)}
-              className="btn-ghost h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+              className="btn-ghost touch-target h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
               title="Revoke token"
+              aria-label={`Revoke ${token.label}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

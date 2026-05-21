@@ -292,8 +292,8 @@ export default function BrandPage() {
       <section className="mb-16">
         <h2 className="mb-1 text-lg font-medium tracking-tight">Typography</h2>
         <p className="mb-6 text-sm text-muted-foreground">
-          Inter for interface text. Geist Mono for code, commands, versions, and
-          identifiers.
+          Geist Sans for interface text. Geist Mono for code, commands,
+          versions, and identifiers.
         </p>
 
         <div className="mb-6 rounded-lg border border-border">
@@ -350,7 +350,7 @@ export default function BrandPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-border p-4">
             <p className="mb-2 text-xs font-medium text-muted-foreground">
-              Sans — Inter
+              Sans — Geist Sans
             </p>
             <p className="text-2xl font-light">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
             <p className="text-2xl font-light">abcdefghijklmnopqrstuvwxyz</p>
@@ -485,7 +485,7 @@ export default function BrandPage() {
               <button className="btn-pill-lg">Primary</button>
               <button className="btn-pill">Secondary</button>
               <button className="btn-ghost">Ghost</button>
-              <button className="btn-pill !border-red-500/40 !bg-red-500/10 !text-red-400">
+              <button className="btn-pill !border-destructive/40 !bg-destructive/10 !text-destructive">
                 Destructive
               </button>
               <button className="btn-pill" disabled>
@@ -562,7 +562,7 @@ export default function BrandPage() {
               <code className="flex-1 font-mono text-sm">
                 npx intertool install @org/my-skill
               </code>
-              <button className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground">
+              <button className="shrink-0 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-ring">
                 Copy
               </button>
             </div>
@@ -581,7 +581,7 @@ export default function BrandPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-border p-4">
-            <p className="mb-2 text-xs font-medium text-emerald-500">Do</p>
+            <p className="mb-2 text-xs font-medium text-success">Do</p>
             <ul className="space-y-1.5 text-sm text-muted-foreground">
               <li>Be direct and concise</li>
               <li>Use technical terms your audience knows</li>

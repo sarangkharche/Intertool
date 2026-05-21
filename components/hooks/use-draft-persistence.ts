@@ -18,6 +18,7 @@ export interface DraftState {
   sourceUrl: string;
   sourceFormat: string;
   transport: string;
+  mcpConfigJson?: string;
   savedAt: number;
 }
 

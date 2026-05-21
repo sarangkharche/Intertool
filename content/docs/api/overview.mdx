@@ -23,7 +23,9 @@ Authenticated registry endpoints are served with `Cache-Control: private, no-sto
 GET /api/skills?page=1&limit=20&type=skill&q=search-term
 ```
 
-Returns a paginated list of skills. Supports filtering by type, category, tags, and search query.
+Returns a paginated list of skills. Supports filtering by type, category, tag, author, and search query.
+
+Plan limits are enforced at publish time. The default `free` plan allows 10 active or pending registry items and 3 members. `team`, `business`, and `enterprise` plans raise those limits.
 
 ### Get skill detail
 
@@ -58,10 +60,10 @@ detail: non-published items are hidden from regular members.
 ### Search
 
 ```
-GET /api/search?q=query&type=skill&category=dev-tools&limit=20
+GET /api/search?q=query&type=skill&category=dev-tools&tag=code-review&author=alice&limit=20
 ```
 
-Full-text search across skill names, descriptions, and content. Supports rate limiting.
+Full-text search across skill names, slugs, descriptions, tags, authors, and README/content. Query text also supports inline filters such as `type:mcp-server`, `tag:automation`, and `author:alice`. Supports rate limiting.
 
 ### Publish
 
@@ -72,7 +74,7 @@ Content-Type: multipart/form-data
 
 Publishes or updates a skill. Requires authentication. See [Authentication](/docs/api/authentication) for details.
 
-Supported form fields include `name`, `slug`, `type`, `description`, `readme`, `category`, `tags`, `compatibility`, `source_url`, `source_format`, `transport`, `changelog`, and one or more `files` entries. Attached files are limited to 20 files, 10MB per file, and 50MB total.
+Supported form fields include `name`, `slug`, `type`, `description`, `readme`, `category`, `tags`, `compatibility`, `source_url`, `source_format`, `transport`, `mcp_config`, `changelog`, and one or more `files` entries. For MCP servers, `mcp_config` stores the original `server.json` object so raw downloads and CLI installs preserve command, args, URL, and other server configuration fields. Attached files are limited to 20 files, 10MB per file, and 50MB total.
 
 If admin review is required, new non-admin submissions return `status: "review"` and are excluded from list, search, and install results until approved.
 
@@ -107,3 +109,48 @@ GET /api/audit-log?limit=100
 ```
 
 Returns recent governance events for the current organization, including org creation, settings changes, member changes, submissions, approvals, and deletions. Requires admin role.
+
+### Billing plan
+
+```
+GET /api/billing/plan
+PATCH /api/billing/plan
+```
+
+Returns the current plan, subscription status, and enforced limits. `PATCH` is owner-only and is the internal attachment point for a billing provider or back-office migration.
+
+### Billing checkout
+
+```
+POST /api/billing/checkout
+Content-Type: application/json
+```
+
+Starts a Stripe-hosted subscription Checkout Session for the current organization. Requires an owner session or bearer token.
+
+Body:
+
+```json
+{ "plan": "team" }
+```
+
+`plan` must be `team` or `business`. The response contains `{ "url": "https://checkout.stripe.com/..." }` when the matching Stripe price ID is configured.
+
+Stripe webhooks are received at `POST /api/webhooks/stripe`. That route verifies the Stripe signature, handles Checkout/session and subscription lifecycle events, and updates the organization's plan state.
+
+### MCP registry feed
+
+```
+GET /api/mcp/v0/servers
+GET /api/mcp/v0/servers/:slug
+```
+
+Returns published MCP servers in an MCP Registry-style response shape for private discovery by approved clients.
+
+### Claude Code marketplace
+
+```
+GET /api/claude/marketplace
+```
+
+Returns a Claude Code marketplace manifest for published registry items. The manifest is private and requires the same session or bearer-token authentication as other registry API endpoints.

@@ -5,11 +5,11 @@ import { listMembers, authorize, ensureUserRecord } from "@/lib/rbac";
 import {
   listPendingInvitations,
   createInvitation,
-  getInvitationByEmail,
 } from "@/lib/invitations";
 import { sendInvitationEmail, getEmailTransport } from "@/lib/email";
 import { addOrgMember, getSettings } from "@/lib/settings";
 import { appendAuditEvent } from "@/lib/audit-log";
+import { getPlan, limitExceeded } from "@/lib/plans";
 import type { OrgRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +94,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const [members, invitations, settings] = await Promise.all([
+    listMembers(orgSlug),
+    listPendingInvitations(orgSlug),
+    getSettings(orgSlug),
+  ]);
+  const plan = getPlan(settings);
+
   // Email-based invitation flow
   const email = body.email?.trim().toLowerCase();
   if (email) {
@@ -116,7 +123,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if already a member
-    const members = await listMembers(orgSlug);
     if (members.some((m) => m.id === email)) {
       return NextResponse.json(
         { error: "This user is already a member" },
@@ -125,11 +131,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for existing invitation
-    const existing = await getInvitationByEmail(email, orgSlug);
+    const existing = invitations.find((inv) => inv.email === email);
     if (existing) {
       return NextResponse.json(
         { error: "An invitation is already pending for this email" },
         { status: 409 }
+      );
+    }
+
+    if (
+      limitExceeded(members.length + invitations.length, plan.limits.members)
+    ) {
+      return NextResponse.json(
+        {
+          error: `Plan limit reached: ${plan.label} allows ${plan.limits.members} members`,
+        },
+        { status: 402 }
       );
     }
 
@@ -138,7 +155,6 @@ export async function POST(request: NextRequest) {
     const baseUrl = publicBaseUrl();
     const acceptUrl = `${baseUrl}/invite?token=${invitation.token}`;
 
-    const settings = await getSettings(orgSlug);
     const registryName = settings?.org_name || "Intertool Registry";
 
     const result = await sendInvitationEmail(
@@ -184,6 +200,20 @@ export async function POST(request: NextRequest) {
   const identifier = body.identifier?.trim().toLowerCase();
   if (!identifier) {
     return NextResponse.json({ error: "email is required" }, { status: 400 });
+  }
+  if (members.some((m) => m.id === identifier)) {
+    return NextResponse.json(
+      { error: "This user is already a member" },
+      { status: 409 }
+    );
+  }
+  if (limitExceeded(members.length, plan.limits.members)) {
+    return NextResponse.json(
+      {
+        error: `Plan limit reached: ${plan.label} allows ${plan.limits.members} members`,
+      },
+      { status: 402 }
+    );
   }
 
   try {

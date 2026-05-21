@@ -1,18 +1,30 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSkillBySlug, getSkillVersions } from "@/lib/registry";
 import { ArrowLeft, GitCompareArrows } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { getOrgSlug } from "@/lib/org";
+import { getUserRole } from "@/lib/rbac";
+import { canViewRegistryItem } from "@/lib/registry-access";
 
 export default async function VersionsPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const session = await auth();
+  if (!session?.user) redirect("/sign-in");
+
   const { slug } = await params;
   const skill = await getSkillBySlug(slug);
   if (!skill) notFound();
+
+  const username = (session.user as { username?: string }).username ?? "";
+  const orgSlug = await getOrgSlug();
+  const role = username ? await getUserRole(username, orgSlug) : null;
+  if (!canViewRegistryItem(skill, { username, role })) notFound();
 
   const versions = await getSkillVersions(slug);
 

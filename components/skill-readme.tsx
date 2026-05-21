@@ -22,7 +22,7 @@ function CopyButton({ text }: { text: string }) {
       aria-label="Copy code"
     >
       {copied ? (
-        <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+        <Check className="h-3 w-3 text-success" />
       ) : (
         <Copy className="h-3 w-3" />
       )}

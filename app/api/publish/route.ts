@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import {
   generateInstallCommands,
   getSkillBySlug,
+  getSkillsByStatus,
   replaceSkillFiles,
   upsertSkill,
 } from "@/lib/registry";
@@ -9,6 +10,7 @@ import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
 import { validateSkillInput } from "@/lib/validation";
 import { apiError } from "@/lib/api-utils";
 import { appendAuditEvent } from "@/lib/audit-log";
+import { scanRegistryItem } from "@/lib/security-scan";
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -18,6 +20,7 @@ import { NextResponse } from "next/server";
 import { hasPermission } from "@/lib/rbac";
 import { getOrgSlug } from "@/lib/org";
 import { getSettings } from "@/lib/settings";
+import { getPlan, limitExceeded } from "@/lib/plans";
 import type {
   McpTransport,
   SourceFormat,
@@ -79,10 +82,35 @@ export async function POST(request: NextRequest) {
   const sourceFormat = (formData.get("source_format") as string) || undefined;
   const transport = (formData.get("transport") as string) || undefined;
   const changelog = (formData.get("changelog") as string) || undefined;
+  const mcpConfigRaw = formData.get("mcp_config");
+  let mcpConfig: Record<string, unknown> | undefined;
+  if (typeof mcpConfigRaw === "string" && mcpConfigRaw.trim()) {
+    try {
+      const parsed = JSON.parse(mcpConfigRaw) as unknown;
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
+        return apiError("mcp_config must be a JSON object", 400);
+      }
+      mcpConfig = parsed as Record<string, unknown>;
+    } catch {
+      return apiError("mcp_config must be valid JSON", 400);
+    }
+  }
   const uploadedFiles = formData
     .getAll("files")
     .filter(isUploadedFile)
     .filter((file) => file.size > 0);
+  const pendingFiles = await Promise.all(
+    uploadedFiles.map(async (file) => ({
+      path: file.name,
+      size: file.size,
+      contentType: file.type || "application/octet-stream",
+      body: new Uint8Array(await file.arrayBuffer()),
+    }))
+  );
 
   // Validate input
   const validation = validateSkillInput({
@@ -108,6 +136,7 @@ export async function POST(request: NextRequest) {
   const orgSlug = await getOrgSlug();
   const settings = await getSettings(orgSlug);
   const existingSkill = await getSkillBySlug(slug);
+  const plan = getPlan(settings);
   if (existingSkill) {
     if (existingSkill.type !== type) {
       return apiError("A published item cannot change type", 409);
@@ -126,9 +155,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (!existingSkill) {
+    const currentItems = (
+      await getSkillsByStatus(["published", "review"], Number.MAX_SAFE_INTEGER)
+    ).length;
+    if (limitExceeded(currentItems, plan.limits.registryItems)) {
+      return apiError(
+        `Plan limit reached: ${plan.label} allows ${plan.limits.registryItems} registry items`,
+        402
+      );
+    }
+  }
+
   const adminPublisher = hasPermission(authResult.role, "skill:edit_any");
   const reviewRequired =
-    settings?.publish_review_required === true &&
+    (settings?.publish_review_required === true ||
+      plan.limits.publishReviewRequired) &&
     !adminPublisher &&
     (!existingSkill || existingSkill.status === "review");
   const now = new Date().toISOString();
@@ -147,20 +189,23 @@ export async function POST(request: NextRequest) {
   });
 
   try {
+    const security = scanRegistryItem({
+      readme: readme || `# ${name}\n\n${description}\n`,
+      sourceUrl,
+      files: pendingFiles,
+    });
+    if (security.status === "blocked") {
+      return apiError("Security scan blocked this submission", 422, [
+        ...security.findings.map((finding) => ({
+          field: finding.path ?? "security",
+          message: `${finding.code}: ${finding.message}`,
+        })),
+      ]);
+    }
+
     const files =
       uploadedFiles.length > 0
-        ? await replaceSkillFiles(
-            slug,
-            type,
-            await Promise.all(
-              uploadedFiles.map(async (file) => ({
-                path: file.name,
-                size: file.size,
-                contentType: file.type || "application/octet-stream",
-                body: new Uint8Array(await file.arrayBuffer()),
-              }))
-            )
-          )
+        ? await replaceSkillFiles(slug, type, pendingFiles)
         : (existingSkill?.files ?? []);
 
     await upsertSkill(
@@ -182,10 +227,12 @@ export async function POST(request: NextRequest) {
         source_url: sourceUrl,
         source_format: sourceFormat as SourceFormat | undefined,
         transport: transport as McpTransport | undefined,
+        mcp_config: type === "mcp-server" ? mcpConfig : undefined,
         files: files.length > 0 ? files : undefined,
         status: nextStatus,
         review_requested_by: reviewRequired ? username : undefined,
         review_requested_at: reviewRequired ? now : undefined,
+        security,
         created_at: now,
       },
       changelog
@@ -205,6 +252,8 @@ export async function POST(request: NextRequest) {
         type,
         status: nextStatus,
         version: existingSkill?.version ?? "1.0.0",
+        security_status: security.status,
+        security_findings: security.findings.length,
       },
     });
 

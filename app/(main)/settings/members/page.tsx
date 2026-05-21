@@ -32,18 +32,15 @@ import type { OrgUser, OrgRole } from "@/lib/types";
 const ROLE_BADGE: Record<OrgRole, { label: string; className: string }> = {
   owner: {
     label: "Owner",
-    className:
-      "bg-amber-500/8 text-amber-700 dark:text-amber-400 border-amber-500/15",
+    className: "bg-warning/10 text-warning border-warning/25",
   },
   admin: {
     label: "Admin",
-    className:
-      "bg-blue-500/8 text-blue-700 dark:text-blue-400 border-blue-500/15",
+    className: "bg-primary/10 text-primary border-primary/25",
   },
   member: {
     label: "Member",
-    className:
-      "bg-zinc-500/8 text-zinc-600 dark:text-zinc-400 border-zinc-500/15",
+    className: "bg-muted text-muted-foreground border-border",
   },
 };
 
@@ -159,6 +156,13 @@ export default function MembersPage() {
   };
 
   const handleChangeRole = async (id: string, role: OrgRole) => {
+    if (
+      role === "owner" &&
+      !window.confirm(`Transfer ownership to ${id}? You will become an admin.`)
+    ) {
+      return;
+    }
+
     try {
       const res = await fetch(`/api/members/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -173,7 +177,11 @@ export default function MembersPage() {
         } catch {}
         throw new Error(msg);
       }
-      toast.success(`Changed ${id} to ${role}`);
+      toast.success(
+        role === "owner"
+          ? `Transferred ownership to ${id}`
+          : `Changed ${id} to ${role}`
+      );
       fetchMembers();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to change role");
@@ -222,7 +230,11 @@ export default function MembersPage() {
       {/* Invite bar */}
       {canManage && (
         <div className="mb-4 flex gap-2">
+          <label htmlFor="member-invite-email" className="sr-only">
+            Invite member by email
+          </label>
           <Input
+            id="member-invite-email"
             type="email"
             placeholder="Email address..."
             value={inviteEmail}
@@ -280,15 +292,16 @@ export default function MembersPage() {
 
                   <Badge
                     variant="outline"
-                    className="shrink-0 text-[10px] bg-amber-500/8 text-amber-700 dark:text-amber-400 border-amber-500/15"
+                    className="shrink-0 bg-warning/10 text-[10px] text-warning border-warning/25"
                   >
                     Pending
                   </Badge>
 
                   <button
                     onClick={() => handleRevoke(inv.token, inv.email)}
-                    className="btn-ghost h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    className="btn-ghost touch-target h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     title="Revoke invitation"
+                    aria-label={`Revoke invitation for ${inv.email}`}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -350,6 +363,14 @@ export default function MembersPage() {
                     <MoreHorizontal className="h-3.5 w-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
+                    {currentRole === "owner" && (
+                      <DropdownMenuItem
+                        onClick={() => handleChangeRole(member.id, "owner")}
+                      >
+                        <Crown className="mr-2 h-3.5 w-3.5" />
+                        Transfer Ownership
+                      </DropdownMenuItem>
+                    )}
                     {member.role === "member" && (
                       <DropdownMenuItem
                         onClick={() => handleChangeRole(member.id, "admin")}
@@ -379,7 +400,7 @@ export default function MembersPage() {
               )}
 
               {isOwner && (
-                <Crown className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <Crown className="h-3.5 w-3.5 shrink-0 text-warning" />
               )}
             </div>
           );

@@ -14,6 +14,21 @@ export interface SkillFile {
   sha256: string;
 }
 
+export type SecuritySeverity = "low" | "medium" | "high" | "critical";
+
+export interface SecurityFinding {
+  severity: SecuritySeverity;
+  code: string;
+  message: string;
+  path?: string;
+}
+
+export interface SecurityScanResult {
+  status: "passed" | "warning" | "blocked";
+  scanned_at: string;
+  findings: SecurityFinding[];
+}
+
 export interface Skill {
   slug: string;
   name: string;
@@ -29,12 +44,14 @@ export interface Skill {
   source_url?: string;
   source_format?: SourceFormat;
   transport?: McpTransport;
+  mcp_config?: Record<string, unknown>;
   files?: SkillFile[];
   status: SkillStatus;
   review_requested_by?: string;
   review_requested_at?: string;
   reviewed_by?: string;
   reviewed_at?: string;
+  security?: SecurityScanResult;
   version?: string;
   updated_at?: string;
   created_at: string;
@@ -61,6 +78,7 @@ export interface SearchFilters {
   query?: string;
   type?: SkillType;
   category?: string;
+  tag?: string;
   author?: string;
   sort?: "newest" | "name" | "relevance" | "downloads";
   page?: number;
