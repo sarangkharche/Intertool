@@ -33,6 +33,9 @@ GET /api/skills/:slug
 
 Returns full skill metadata including the readme/content.
 
+Only `published` skills are visible to regular registry members. Items in
+`review` or `archived` status can be read only by their author or an admin.
+
 ### Download raw skill
 
 ```
@@ -48,6 +51,9 @@ GET /api/skills/:slug/files/:path
 ```
 
 Downloads an attached package file. Package file metadata is returned in `GET /api/skills/:slug` under `files`.
+
+Raw and package-file downloads follow the same visibility rules as skill
+detail: non-published items are hidden from regular members.
 
 ### Search
 

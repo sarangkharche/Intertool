@@ -24,6 +24,7 @@ import { DeleteSkillButton } from "@/components/delete-skill-button";
 import { DownloadStats } from "@/components/download-stats";
 import { getOrgSlug } from "@/lib/org";
 import { getUserRole, hasPermission } from "@/lib/rbac";
+import { canViewRegistryItem } from "@/lib/registry-access";
 
 export default async function SkillDetailPage({
   params,
@@ -47,6 +48,14 @@ export default async function SkillDetailPage({
     username && skill.author.toLowerCase() === username.toLowerCase();
   const orgSlug = await getOrgSlug();
   const role = username ? await getUserRole(username, orgSlug) : null;
+  if (
+    !canViewRegistryItem(skill, {
+      username: username ?? "",
+      role,
+    })
+  ) {
+    notFound();
+  }
   const canEdit =
     isAuthor || (role ? hasPermission(role, "skill:edit_any") : false);
   const canDelete =
@@ -92,6 +101,11 @@ export default async function SkillDetailPage({
                 </span>
               )}
               <TypeBadge type={skill.type} />
+              {skill.status !== "published" && (
+                <Badge variant="outline" className="text-[10px] capitalize">
+                  {skill.status}
+                </Badge>
+              )}
               {skill.source_format && (
                 <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                   {skill.source_format.replace("-", " ")}
@@ -129,9 +143,15 @@ export default async function SkillDetailPage({
           </div>
 
           {/* Primary install command */}
-          <div className="mb-6">
-            <InstallCommand command={primaryInstallCmd} />
-          </div>
+          {skill.status === "published" ? (
+            <div className="mb-6">
+              <InstallCommand command={primaryInstallCmd} />
+            </div>
+          ) : (
+            <div className="mb-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              This item is pending review and is not installable yet.
+            </div>
+          )}
 
           <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
             {skill.description}

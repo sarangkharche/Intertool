@@ -8,6 +8,7 @@ import { getSettings } from "@/lib/settings";
 import { getOrgSlug } from "@/lib/org";
 import { hasPermission } from "@/lib/rbac";
 import { noStoreHeaders } from "@/lib/cache-control";
+import { canViewRegistryItem } from "@/lib/registry-access";
 import type { SkillStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,14 @@ export async function GET(
   const { slug } = await params;
   const skill = await getSkillBySlug(slug);
   if (!skill) {
+    return apiError("Skill not found", 404);
+  }
+  if (
+    !canViewRegistryItem(skill, {
+      username: authResult.username,
+      role: authResult.role,
+    })
+  ) {
     return apiError("Skill not found", 404);
   }
 

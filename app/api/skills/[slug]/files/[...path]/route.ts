@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSkillFile } from "@/lib/registry";
+import { getSkillBySlug, getSkillFile } from "@/lib/registry";
 import { authenticateApi, isAuthenticated } from "@/lib/api-auth";
 import { apiError } from "@/lib/api-utils";
 import { noStoreHeaders } from "@/lib/cache-control";
+import { canViewRegistryItem } from "@/lib/registry-access";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -20,6 +21,17 @@ export async function GET(
   if (!isAuthenticated(authResult)) return authResult;
 
   const { slug, path } = await params;
+  const skill = await getSkillBySlug(slug);
+  if (
+    !skill ||
+    !canViewRegistryItem(skill, {
+      username: authResult.username,
+      role: authResult.role,
+    })
+  ) {
+    return apiError("File not found", 404);
+  }
+
   const filePath = path.join("/");
   const result = await getSkillFile(slug, filePath);
   if (!result) {
