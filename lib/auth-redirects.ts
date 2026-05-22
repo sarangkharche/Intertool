@@ -87,8 +87,8 @@ export function normalizeAuthCallbackUrl(
   return DEFAULT_AUTH_REDIRECT_PATH;
 }
 
-function firstPathSegment(path: string): string | undefined {
-  return path.split("/").filter(Boolean)[0];
+function pathSegments(path: string): string[] {
+  return path.split("/").filter(Boolean);
 }
 
 export function orgAwareAuthRedirectPath(
@@ -98,12 +98,19 @@ export function orgAwareAuthRedirectPath(
   const url = asInternalUrl(callbackPath);
   if (!url) return `/${orgSlug}${DEFAULT_AUTH_REDIRECT_PATH}`;
 
-  const firstSegment = firstPathSegment(url.pathname);
+  const segments = pathSegments(url.pathname);
+  const firstSegment = segments[0];
   if (firstSegment === orgSlug) {
     return pathWithSearchAndHash(url);
   }
 
   if (!firstSegment) {
+    return pathWithSearchAndHash(url);
+  }
+
+  const secondSegment = segments[1];
+  if (secondSegment && ORG_AWARE_ROUTE_SEGMENTS.has(secondSegment)) {
+    url.pathname = `/${orgSlug}/${segments.slice(1).join("/")}`;
     return pathWithSearchAndHash(url);
   }
 

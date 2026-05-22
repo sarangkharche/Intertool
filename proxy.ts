@@ -249,8 +249,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const username = token.username as string | undefined;
-  const userOrg =
-    cookieOrgSlug || (username ? await getUserOrg(username, request) : null);
+  const userOrg = username ? await getUserOrg(username, request) : null;
   if (userOrg) {
     const orgUrl = request.nextUrl.clone();
     orgUrl.pathname = orgPath(userOrg, pathname);

@@ -208,6 +208,14 @@ test("makes authenticated SaaS redirects org-aware", () => {
     orgAwareAuthRedirectPath("/acme/dashboard", "acme"),
     "/acme/dashboard"
   );
+  assert.equal(
+    orgAwareAuthRedirectPath("/default/dashboard", "acme"),
+    "/acme/dashboard"
+  );
+  assert.equal(
+    orgAwareAuthRedirectPath("/default/settings/admin?tab=storage", "acme"),
+    "/acme/settings/admin?tab=storage"
+  );
   assert.equal(orgAwareAuthRedirectPath("/pricing", "acme"), "/pricing");
 });
 
