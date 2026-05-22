@@ -25,6 +25,11 @@ const agentRows = [
   ["Copilot", "release-agent", "approved"],
 ];
 
+const landingPlanDescriptions: Record<string, string> = {
+  Community: "Run it yourself.",
+  "Team Cloud": "Managed governance.",
+};
+
 export default async function HomePage() {
   const session = await auth();
   const orgSlug = await getOrgSlug();
@@ -174,12 +179,10 @@ export default async function HomePage() {
               Where it fits
             </p>
             <h2 className="text-display max-w-md text-2xl leading-tight sm:text-3xl">
-              Claude and Codex run capabilities. Intertool governs them.
+              One registry across agent surfaces.
             </h2>
             <p className="mt-5 max-w-md text-sm leading-7 text-muted-foreground">
-              Native skill stores are useful inside one platform. Engineering
-              teams still need a vendor-neutral source of truth for what is
-              safe, current, private, and approved across every agent surface.
+              Native stores stay siloed.
             </p>
           </div>
           <div className="grid gap-x-8 sm:grid-cols-2">
@@ -208,7 +211,7 @@ export default async function HomePage() {
               Product
             </p>
             <h2 className="text-display max-w-xl text-2xl leading-tight sm:text-3xl">
-              One approval workflow for the artifacts agents actually run.
+              Approve, version, distribute.
             </h2>
           </div>
           <Link
@@ -242,12 +245,10 @@ export default async function HomePage() {
               Before Intertool
             </p>
             <ul className="space-y-3 text-sm leading-6 text-background/80">
-              <li>Skills are approved separately in each AI platform.</li>
-              <li>MCP configs are copied into repos without a clear owner.</li>
-              <li>
-                Prompt templates drift across Slack, repos, and notebooks.
-              </li>
-              <li>Security cannot answer which capabilities are live.</li>
+              <li>Platform silos</li>
+              <li>Copied MCP configs</li>
+              <li>Prompt drift</li>
+              <li>No live inventory</li>
             </ul>
           </div>
           <div className="rounded-lg border border-border/70 bg-surface p-5">
@@ -255,19 +256,10 @@ export default async function HomePage() {
               With Intertool
             </p>
             <ul className="space-y-3 text-sm leading-6 text-muted-foreground">
-              <li>
-                Every capability has an owner, status, version, and risk signal.
-              </li>
-              <li>
-                Developers install approved artifacts instead of copied
-                snippets.
-              </li>
-              <li>
-                Reviewers can approve, archive, and audit the rollout path.
-              </li>
-              <li>
-                Platform teams keep private tools out of public marketplaces.
-              </li>
+              <li>Owners and status</li>
+              <li>Approved installs</li>
+              <li>Review history</li>
+              <li>Private by default</li>
             </ul>
           </div>
         </div>
@@ -280,8 +272,7 @@ export default async function HomePage() {
               Use cases
             </p>
             <h2 className="text-display text-2xl leading-tight sm:text-3xl">
-              Built for the gap between native agent stores and public
-              marketplaces.
+              Private capabilities, one catalog.
             </h2>
           </div>
           <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -311,15 +302,8 @@ export default async function HomePage() {
               Pricing
             </p>
             <h2 className="text-display text-2xl leading-tight sm:text-3xl">
-              Start open source. Pay when agent governance becomes
-              infrastructure.
+              Start self-hosted. Upgrade when needed.
             </h2>
-            <p className="mt-4 text-sm leading-7 text-muted-foreground">
-              Pricing is designed around the rollout path most teams follow:
-              prove value self-hosted, move to managed team workflows, then add
-              deployment and procurement support when the registry becomes
-              company infrastructure.
-            </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <PricingPreview plan={pricingPlans[0]} />
@@ -424,14 +408,14 @@ function PricingPreview({ plan }: { plan: (typeof pricingPlans)[number] }) {
         </p>
       </div>
       <p
-        className={`mt-4 text-sm leading-6 md:min-h-16 ${
+        className={`mt-4 text-sm leading-6 md:min-h-10 ${
           plan.featured ? "text-background/75" : "text-muted-foreground"
         }`}
       >
-        {plan.description}
+        {landingPlanDescriptions[plan.name] ?? plan.description}
       </p>
       <ul className="mt-5 space-y-2">
-        {plan.features.slice(0, 4).map((feature) => (
+        {plan.features.slice(0, 3).map((feature) => (
           <li key={feature} className="flex gap-2 text-xs">
             <Check
               className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${

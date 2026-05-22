@@ -36,10 +36,10 @@ export const marketSignals = [
 ];
 
 export const platformProof = [
-  "Claude and Codex validate skills as a real workflow primitive, but each manages its own surface.",
-  "Copilot and Cursor pull MCP configuration closer to the repository, where review matters.",
-  "The public MCP Registry is for public discovery; private servers need a private source of truth.",
-  "Engineering teams still need one approval path across every agent their developers use.",
+  "One approval path",
+  "Private by default",
+  "Owners and versions",
+  "Approved installs",
 ];
 
 export const capabilityPillars: Array<{
@@ -49,27 +49,23 @@ export const capabilityPillars: Array<{
 }> = [
   {
     icon: ClipboardCheck,
-    title: "Approve before agents run",
-    description:
-      "Route skills, prompts, MCP servers, and agent tools through review before they become installable.",
+    title: "Approve",
+    description: "Review first.",
   },
   {
     icon: FileCheck2,
-    title: "Version the artifact",
-    description:
-      "Keep changelogs, snapshots, source metadata, risk status, and package files attached to each capability.",
+    title: "Version",
+    description: "Track changes.",
   },
   {
     icon: Terminal,
-    title: "Distribute to every surface",
-    description:
-      "Give developers approved install paths for Claude Code, Codex, Cursor, Copilot, and MCP clients.",
+    title: "Distribute",
+    description: "Publish paths.",
   },
   {
     icon: Shield,
-    title: "Keep private tools private",
-    description:
-      "Run self-hosted or managed with private storage, OAuth, RBAC, audit history, and org-scoped access.",
+    title: "Keep private",
+    description: "Control access.",
   },
 ];
 
@@ -81,26 +77,22 @@ export const useCases: Array<{
   {
     icon: Server,
     title: "Private MCP catalog",
-    description:
-      "Publish internal server configs that should not live in a public marketplace.",
+    description: "Internal servers.",
   },
   {
     icon: Code2,
     title: "Cross-agent skills",
-    description:
-      "Keep reusable Claude, Codex, and project playbooks in one reviewed source of truth.",
+    description: "Shared playbooks.",
   },
   {
     icon: Layers3,
-    title: "Prompt playbook library",
-    description:
-      "Move repeatable prompts out of Slack, local files, and copied snippets into a searchable registry.",
+    title: "Prompt playbooks",
+    description: "Reviewed prompts.",
   },
   {
     icon: Workflow,
-    title: "Capability governance",
-    description:
-      "Give DevEx and security teams an audit trail for what agents can discover and run.",
+    title: "Governance",
+    description: "Live audit trail.",
   },
 ];
 
