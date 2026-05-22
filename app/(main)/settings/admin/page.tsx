@@ -13,10 +13,13 @@ import {
   KeyRound,
   Github,
   Webhook,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 interface SettingsData {
+  storage_driver?: "s3" | "vercel-blob";
   s3_bucket: string;
   s3_region: string;
   s3_access_key_id: string;
@@ -35,6 +38,11 @@ interface SettingsData {
   webhook_url?: string;
   webhook_events?: string[];
   publish_review_required?: boolean;
+  org_slug?: string;
+  org_name?: string;
+  subscription_status?: string;
+  blob_store_id?: string;
+  blob_access?: "private" | "public";
 }
 
 const REGIONS = [
@@ -62,6 +70,9 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [storageDriver, setStorageDriver] = useState<"s3" | "vercel-blob">(
+    "s3"
+  );
 
   const [bucket, setBucket] = useState("");
   const [region, setRegion] = useState("us-east-1");
@@ -93,6 +104,10 @@ export default function AdminSettingsPage() {
   const [savingWebhook, setSavingWebhook] = useState(false);
   const [publishReviewRequired, setPublishReviewRequired] = useState(false);
   const [savingGovernance, setSavingGovernance] = useState(false);
+  const [orgSlug, setOrgSlug] = useState("");
+  const [orgName, setOrgName] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingOrg, setDeletingOrg] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -110,6 +125,9 @@ export default function AdminSettingsPage() {
         setSettings(data.settings);
         setIsAdmin(data.is_admin);
         setNeedsSetup(data.needs_setup);
+        setOrgSlug(data.org_slug ?? data.settings?.org_slug ?? "");
+        setOrgName(data.settings?.org_name ?? data.org_slug ?? "");
+        setStorageDriver(data.settings?.storage_driver ?? "s3");
         if (data.settings) {
           setBucket(data.settings.s3_bucket || "");
           setRegion(data.settings.s3_region || "us-east-1");
@@ -162,6 +180,7 @@ export default function AdminSettingsPage() {
           s3_secret_access_key: secretAccessKey.trim(),
           s3_endpoint: endpoint.trim() || undefined,
           s3_session_token: sessionToken.trim() || undefined,
+          storage_driver: storageDriver,
         }),
       });
       if (!res.ok) {
@@ -190,11 +209,14 @@ export default function AdminSettingsPage() {
   };
 
   const handleSave = async () => {
-    if (!bucket.trim() || !accessKeyId.trim()) {
+    if (
+      storageDriver === "s3" &&
+      (!bucket.trim() || !accessKeyId.trim())
+    ) {
       toast.error("Bucket and access key are required");
       return;
     }
-    if (needsSetup && !secretAccessKey.trim()) {
+    if (storageDriver === "s3" && needsSetup && !secretAccessKey.trim()) {
       toast.error("Secret access key is required");
       return;
     }
@@ -210,6 +232,7 @@ export default function AdminSettingsPage() {
           s3_secret_access_key: secretAccessKey.trim() || undefined,
           s3_endpoint: endpoint.trim() || undefined,
           s3_session_token: sessionToken.trim() || undefined,
+          storage_driver: storageDriver,
         }),
       });
       if (!res.ok) {
@@ -224,6 +247,7 @@ export default function AdminSettingsPage() {
         s3_access_key_id: accessKeyId.trim(),
         s3_secret_access_key: "",
         s3_endpoint: endpoint.trim() || undefined,
+        storage_driver: storageDriver,
         admin_username:
           (session?.user as { username?: string })?.username ?? "",
         configured_at: new Date().toISOString(),
@@ -257,6 +281,7 @@ export default function AdminSettingsPage() {
           s3_region: region,
           s3_access_key_id: accessKeyId.trim(),
           s3_endpoint: endpoint.trim() || undefined,
+          storage_driver: storageDriver,
           webhook_url: webhookUrl.trim() || undefined,
           webhook_events: events,
         }),
@@ -296,6 +321,7 @@ export default function AdminSettingsPage() {
           s3_region: region,
           s3_access_key_id: accessKeyId.trim(),
           s3_endpoint: endpoint.trim() || undefined,
+          storage_driver: storageDriver,
           github_client_id: githubClientId.trim() || undefined,
           github_client_secret: githubClientSecret.trim() || undefined,
           google_client_id: googleClientId.trim() || undefined,
@@ -329,6 +355,7 @@ export default function AdminSettingsPage() {
           s3_region: region,
           s3_access_key_id: accessKeyId.trim(),
           s3_endpoint: endpoint.trim() || undefined,
+          storage_driver: storageDriver,
           publish_review_required: publishReviewRequired,
         }),
       });
@@ -341,6 +368,47 @@ export default function AdminSettingsPage() {
       toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSavingGovernance(false);
+    }
+  };
+
+  const handleDeleteOrg = async () => {
+    if (!orgSlug || deleteConfirmation.trim().toLowerCase() !== orgSlug) {
+      toast.error(`Type ${orgSlug} to confirm`);
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Delete ${orgName || orgSlug}? This removes the organization and cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingOrg(true);
+    try {
+      const res = await fetch("/api/orgs", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: orgSlug,
+          confirm: deleteConfirmation.trim().toLowerCase(),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete organization");
+      }
+
+      toast.success("Organization deleted");
+      window.location.href = data.path || "/create-org";
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete organization"
+      );
+    } finally {
+      setDeletingOrg(false);
     }
   };
 
@@ -378,7 +446,7 @@ export default function AdminSettingsPage() {
         </p>
       </div>
 
-      {/* S3 Storage */}
+      {/* Storage */}
       <div className="rounded-lg border border-border bg-card">
         <div className="border-b border-border-subtle px-4 py-3">
           <div className="flex items-center gap-2">
@@ -386,15 +454,32 @@ export default function AdminSettingsPage() {
               className="h-3.5 w-3.5 text-muted-foreground"
               aria-hidden="true"
             />
-            <p className="text-sm font-medium">S3 Storage</p>
+            <p className="text-sm font-medium">
+              {storageDriver === "vercel-blob"
+                ? "Vercel Blob Storage"
+                : "S3 Storage"}
+            </p>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Works with AWS S3, MinIO, Cloudflare R2, Wasabi, and any
-            S3-compatible service.
+            {storageDriver === "vercel-blob"
+              ? "Managed private object storage for this organization's registry files."
+              : "Works with AWS S3, MinIO, Cloudflare R2, Wasabi, and any S3-compatible service."}
           </p>
         </div>
 
         <div className="space-y-4 p-4">
+          {storageDriver === "vercel-blob" && (
+            <div className="rounded-md border border-border bg-muted/25 px-3 py-2.5">
+              <p className="text-xs font-medium">Managed storage active</p>
+              <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                New registry objects are stored in the connected private Vercel
+                Blob store under{" "}
+                <span className="font-mono">orgs/{orgSlug || "org"}</span>.
+                Bucket credentials are managed by Vercel environment variables.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label
@@ -408,6 +493,7 @@ export default function AdminSettingsPage() {
                 placeholder="my-skill-registry"
                 value={bucket}
                 onChange={(e) => setBucket(e.target.value)}
+                disabled={storageDriver === "vercel-blob"}
                 className="h-8 font-mono text-sm"
               />
             </div>
@@ -422,6 +508,7 @@ export default function AdminSettingsPage() {
                 id="s3-region"
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
+                disabled={storageDriver === "vercel-blob"}
                 className="h-8 w-full rounded-md border border-input bg-background text-foreground px-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none cursor-pointer transition-colors duration-100 hover:border-foreground/20"
               >
                 {REGIONS.map((r) => (
@@ -445,6 +532,7 @@ export default function AdminSettingsPage() {
               placeholder="AKIA…"
               value={accessKeyId}
               onChange={(e) => setAccessKeyId(e.target.value)}
+              disabled={storageDriver === "vercel-blob"}
               className="h-8 font-mono text-sm"
             />
           </div>
@@ -467,6 +555,7 @@ export default function AdminSettingsPage() {
               placeholder={needsSetup ? "wJalrXUtn…" : "********"}
               value={secretAccessKey}
               onChange={(e) => setSecretAccessKey(e.target.value)}
+              disabled={storageDriver === "vercel-blob"}
               className="h-8 font-mono text-sm"
             />
           </div>
@@ -490,6 +579,7 @@ export default function AdminSettingsPage() {
               placeholder="https://s3.us-east-1.amazonaws.com"
               value={endpoint}
               onChange={(e) => setEndpoint(e.target.value)}
+              disabled={storageDriver === "vercel-blob"}
               className="h-8 font-mono text-sm"
             />
             <p className="text-[11px] text-muted-foreground/60">
@@ -512,6 +602,7 @@ export default function AdminSettingsPage() {
               placeholder="IQoJb3…"
               value={sessionToken}
               onChange={(e) => setSessionToken(e.target.value)}
+              disabled={storageDriver === "vercel-blob"}
               className="h-8 font-mono text-sm"
             />
             <p className="text-[11px] text-muted-foreground/60">
@@ -526,7 +617,16 @@ export default function AdminSettingsPage() {
               Bucket structure
             </p>
             <pre className="font-mono text-xs text-muted-foreground leading-relaxed">
-              {`s3://${bucket || "bucket"}/
+              {storageDriver === "vercel-blob"
+                ? `vercel-blob://private/
+└── orgs/${orgSlug || "{org}"}/
+    ├── skills/{slug}/skill.json
+    ├── mcp-servers/{slug}/skill.json
+    ├── agent-tools/{slug}/skill.json
+    ├── prompt-templates/{slug}/skill.json
+    ├── _index.json
+    └── _categories.json`
+                : `s3://${bucket || "bucket"}/
 ├── skills/{slug}/skill.json
 ├── mcp-servers/{slug}/skill.json
 ├── agent-tools/{slug}/skill.json
@@ -545,7 +645,11 @@ export default function AdminSettingsPage() {
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={handleTest}
-                disabled={testing || !bucket.trim() || !accessKeyId.trim()}
+                disabled={
+                  testing ||
+                  (storageDriver === "s3" &&
+                    (!bucket.trim() || !accessKeyId.trim()))
+                }
                 className="btn-ghost"
               >
                 {testing ? (
@@ -557,7 +661,11 @@ export default function AdminSettingsPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || !bucket.trim() || !accessKeyId.trim()}
+                disabled={
+                  saving ||
+                  (storageDriver === "s3" &&
+                    (!bucket.trim() || !accessKeyId.trim()))
+                }
                 className="btn-pill"
               >
                 {saving ? (
@@ -954,6 +1062,62 @@ export default function AdminSettingsPage() {
           </div>
         </div>
       </div>
+      {orgSlug && isAdmin && (
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-card">
+          <div className="border-b border-destructive/20 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle
+                className="h-3.5 w-3.5 text-destructive"
+                aria-hidden="true"
+              />
+              <p className="text-sm font-medium text-destructive">
+                Danger Zone
+              </p>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Delete this organization and remove its SaaS control-plane data.
+            </p>
+          </div>
+
+          <div className="space-y-4 p-4">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+              <div>
+                <p className="text-xs font-medium">Delete organization</p>
+                <p className="mt-1 max-w-xl text-[11px] leading-5 text-muted-foreground">
+                  Members, invitations, API tokens, settings, and managed
+                  storage objects under{" "}
+                  <span className="font-mono">orgs/{orgSlug}</span> are
+                  removed. Custom external buckets are left untouched.
+                </p>
+              </div>
+              <div className="w-full shrink-0 space-y-2 sm:w-64">
+                <Input
+                  aria-label="Confirm organization slug"
+                  placeholder={orgSlug}
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  className="h-8 font-mono text-sm"
+                />
+                <button
+                  onClick={handleDeleteOrg}
+                  disabled={
+                    deletingOrg ||
+                    deleteConfirmation.trim().toLowerCase() !== orgSlug
+                  }
+                  className="btn-pill w-full justify-center !border-destructive/40 !bg-destructive/10 !text-destructive hover:!bg-destructive/20"
+                >
+                  {deletingOrg ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3 w-3" />
+                  )}
+                  Delete organization
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

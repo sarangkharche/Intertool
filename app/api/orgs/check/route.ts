@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isLocalSaasFallbackMode, isSaasMode } from "@/lib/org";
 import { orgExists } from "@/lib/settings";
+import { hasControlPlane } from "@/lib/control-plane";
+import { normalizeOrgSlug, validateOrgSlug } from "@/lib/org-slugs";
 
 function hasRedis(): boolean {
   return !!(
@@ -8,38 +10,18 @@ function hasRedis(): boolean {
   );
 }
 
-const RESERVED_SLUGS = [
-  "www",
-  "api",
-  "app",
-  "admin",
-  "auth",
-  "billing",
-  "brand",
-  "browse",
-  "create-org",
-  "dashboard",
-  "design-system",
-  "docs",
-  "help",
-  "invite",
-  "login",
-  "publish",
-  "review",
-  "search",
-  "settings",
-  "signup",
-  "sign-in",
-  "sign-up",
-  "skills",
-  "status",
-  "support",
-  "teams",
-];
-
-const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
-
 export const dynamic = "force-dynamic";
+
+function metadataUnavailableResponse() {
+  return NextResponse.json(
+    {
+      available: false,
+      reason:
+        "Registry metadata storage is unavailable. Configure DATABASE_URL or Upstash Redis.",
+    },
+    { status: 503 }
+  );
+}
 
 /** GET /api/orgs/check?slug=xxx — check slug availability (no auth required) */
 export async function GET(request: NextRequest) {
@@ -47,42 +29,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Not available" }, { status: 404 });
   }
 
-  const slug = request.nextUrl.searchParams.get("slug")?.toLowerCase().trim();
-  if (!slug) {
-    return NextResponse.json({ available: false, reason: "Slug is required" });
-  }
-
-  if (!SLUG_REGEX.test(slug)) {
+  const slug = normalizeOrgSlug(request.nextUrl.searchParams.get("slug"));
+  const validation = validateOrgSlug(slug);
+  if (!validation.ok) {
     return NextResponse.json({
       available: false,
-      reason: "Must be 3-40 lowercase letters, numbers, or hyphens",
+      reason: validation.reason,
     });
   }
 
-  if (RESERVED_SLUGS.includes(slug)) {
-    return NextResponse.json({
-      available: false,
-      reason: "This name is reserved",
-    });
-  }
-
-  if (!hasRedis() && !isLocalSaasFallbackMode()) {
-    // No Redis configured: skip existence check, validated format + reserved is enough
-    return NextResponse.json({ available: true });
+  if (!hasControlPlane() && !hasRedis() && !isLocalSaasFallbackMode()) {
+    return metadataUnavailableResponse();
   }
 
   let exists = false;
   try {
     exists = await orgExists(slug);
   } catch {
-    return NextResponse.json(
-      {
-        available: false,
-        reason:
-          "Registry storage is unavailable. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.",
-      },
-      { status: 503 }
-    );
+    return metadataUnavailableResponse();
   }
 
   if (exists) {

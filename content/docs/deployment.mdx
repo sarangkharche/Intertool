@@ -1,6 +1,6 @@
 ---
 title: Deployment
-description: Deploy Intertool to Vercel or any Node.js host with S3, Postgres, and Stripe.
+description: Deploy Intertool to Vercel or any Node.js host with object storage, Postgres, and Stripe.
 ---
 
 ## S3 setup
@@ -134,14 +134,17 @@ On Vercel, S3 credentials must be set via environment variables since the filesy
 | `DATABASE_URL` | SaaS production | -- | Preferred Postgres control-plane connection string |
 | `POSTGRES_URL` | SaaS production | -- | Alternate Postgres control-plane connection string |
 | `POSTGRES_PRISMA_URL` | SaaS production | -- | Alternate Postgres control-plane connection string |
-| `S3_BUCKET` | Vercel | -- | S3 bucket name |
-| `S3_REGION` | Vercel | `us-east-1` | S3 region |
-| `S3_ACCESS_KEY_ID` | Vercel | -- | S3 access key |
-| `S3_SECRET_ACCESS_KEY` | Vercel | -- | S3 secret key |
-| `S3_ENDPOINT` | No | -- | Custom endpoint for S3-compatible services |
-| `S3_SESSION_TOKEN` | No | -- | AWS session token (temporary credentials only) |
+| `INTERTOOL_STORAGE_DRIVER` | No | `s3` | Set to `vercel-blob` to store registry objects in Vercel Blob |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob | -- | Vercel Blob read/write token, injected when a Blob store is linked to the project |
+| `BLOB_STORE_ID` | Vercel Blob OIDC | -- | Optional Blob store id when using Vercel OIDC auth |
+| `S3_BUCKET` | S3 driver | -- | S3 bucket name |
+| `S3_REGION` | S3 driver | `us-east-1` | S3 region |
+| `S3_ACCESS_KEY_ID` | S3 driver | -- | S3 access key |
+| `S3_SECRET_ACCESS_KEY` | S3 driver | -- | S3 secret key |
+| `S3_ENDPOINT` | S3 driver | -- | Custom endpoint for S3-compatible services |
+| `S3_SESSION_TOKEN` | S3 driver | -- | AWS session token (temporary credentials only) |
 | `S3_PREFIX` | No | -- | Optional object prefix for single-tenant deployments |
-| `INTERTOOL_MANAGED_STORAGE` | SaaS | `false` | Set to `true` to provision new SaaS orgs into the shared `S3_BUCKET` under `orgs/{org}` |
+| `INTERTOOL_MANAGED_STORAGE` | SaaS | `false` | Set to `true` to provision new SaaS orgs into shared managed storage under `orgs/{org}` |
 | `INTERTOOL_LOCAL_SAAS_FALLBACK` | Local SaaS dev | `false` | Store SaaS org metadata in local JSON files when Postgres/Redis are not configured |
 | `INTERTOOL_ADMIN` | No | -- | GitHub username of admin user |
 | `INTERTOOL_API_KEY` | No | -- | API key for CLI/API publishing |
@@ -161,7 +164,7 @@ Production SaaS deployments should set `INTERTOOL_MODE=saas` and configure one P
 
 Redis is still supported for rate limits, analytics, distributed locks, and legacy SaaS fallback paths, but it should not be the primary source of truth for hosted SaaS tenant state.
 
-When `INTERTOOL_MANAGED_STORAGE=true`, each new organization is automatically assigned `s3_prefix=orgs/{orgSlug}` in the shared bucket. Keep the shared bucket credentials scoped to the production deployment and use object lifecycle policies or backups appropriate for customer data.
+When `INTERTOOL_MANAGED_STORAGE=true`, each new organization is automatically assigned `s3_prefix=orgs/{orgSlug}` in the shared managed store. For the lowest-ops Vercel deployment, create a private Vercel Blob store, link it to the project, set `INTERTOOL_STORAGE_DRIVER=vercel-blob`, and keep `BLOB_READ_WRITE_TOKEN` scoped to the deployment. The S3 driver remains available for AWS S3, Cloudflare R2, MinIO, and other S3-compatible storage.
 
 ## Stripe billing
 
@@ -197,4 +200,4 @@ In SaaS mode, organization creation uses the Postgres control plane when a Postg
 
 For local SaaS development only, set `INTERTOOL_LOCAL_SAAS_FALLBACK=true` to store org metadata, memberships, invitations, and API tokens in local files under `registry/` instead of Redis.
 
-For hosted SaaS deployments, set `INTERTOOL_MANAGED_STORAGE=true` with the shared S3/R2 environment variables. New organizations are automatically configured with `s3_prefix=orgs/{orgSlug}` so one bucket can safely hold multiple isolated tenant registries.
+For hosted SaaS deployments, set `INTERTOOL_MANAGED_STORAGE=true` with either Vercel Blob (`INTERTOOL_STORAGE_DRIVER=vercel-blob` plus `BLOB_READ_WRITE_TOKEN`) or shared S3/R2 credentials. New organizations are automatically configured with `s3_prefix=orgs/{orgSlug}` so one managed store can safely hold multiple isolated tenant registries.

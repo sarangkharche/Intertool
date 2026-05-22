@@ -17,6 +17,19 @@ Authenticated registry endpoints are served with `Cache-Control: private, no-sto
 
 ## Endpoints
 
+### Organizations
+
+```
+GET /api/orgs
+GET /api/orgs/check?slug=acme
+POST /api/orgs
+DELETE /api/orgs
+```
+
+In SaaS mode, `GET /api/orgs` returns the current user's active organization and memberships. `GET /api/orgs/check` validates a candidate slug against the same format and reserved-name rules used by creation, then checks the configured metadata store.
+
+`POST /api/orgs` creates a new organization for an authenticated user who does not already have one. `DELETE /api/orgs` deletes the current organization and requires an owner or admin. Deletion removes SaaS control-plane records, API tokens, invitations, members, settings, and managed storage objects under `orgs/{org}`; custom external buckets are left untouched.
+
 ### List skills
 
 ```

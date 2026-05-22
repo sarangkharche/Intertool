@@ -5,6 +5,7 @@ import { isLocalSaasFallbackMode, isSaasMode } from "./org";
 import { setUserRole, ensureUserRecord } from "./rbac";
 import {
   cpAddUserOrg,
+  cpDeleteOrg,
   cpGetOrgForUser,
   cpGetOrgMembers,
   cpGetOrgsForUser,
@@ -24,6 +25,8 @@ const LOCAL_SAAS_PATH = path.resolve(
 );
 
 export interface RegistrySettings {
+  /** Storage backend for registry objects */
+  storage_driver?: "s3" | "vercel-blob";
   /** Username of the admin who configured this */
   admin_username: string;
   /** Email of the admin (for Google-authed admins) */
@@ -44,6 +47,12 @@ export interface RegistrySettings {
   s3_session_token?: string;
   /** Optional object key prefix for shared-bucket SaaS tenant isolation */
   s3_prefix?: string;
+  /** Optional Vercel Blob store id for managed storage */
+  blob_store_id?: string;
+  /** Optional Vercel Blob read/write token; prefer environment variables */
+  blob_read_write_token?: string;
+  /** Blob access mode for registry objects */
+  blob_access?: "private" | "public";
   /** Org slug (SaaS mode only) */
   org_slug?: string;
   /** Org display name (SaaS mode only) */
@@ -122,6 +131,24 @@ function writeLocalSaasData(data: LocalSaasData): void {
 // ── Env var fallback (for Vercel deployments in self-hosted mode) ──
 
 function getSettingsFromEnv(): RegistrySettings | null {
+  if (process.env.INTERTOOL_STORAGE_DRIVER === "vercel-blob") {
+    if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+      return null;
+    }
+    return {
+      storage_driver: "vercel-blob",
+      admin_username: process.env.INTERTOOL_ADMIN ?? "",
+      configured_at: "",
+      s3_bucket: "vercel-blob",
+      s3_region: process.env.BLOB_REGION ?? "iad1",
+      s3_access_key_id: "managed",
+      s3_secret_access_key: "managed",
+      s3_prefix: process.env.S3_PREFIX || undefined,
+      blob_store_id: process.env.BLOB_STORE_ID || undefined,
+      blob_access: "private",
+    };
+  }
+
   const bucket = process.env.S3_BUCKET;
   const accessKeyId = process.env.S3_ACCESS_KEY_ID;
   const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
@@ -156,6 +183,28 @@ function hostedStorageSettings(
   adminUsername: string
 ): RegistrySettings | null {
   if (process.env.INTERTOOL_MANAGED_STORAGE !== "true") return null;
+
+  if (process.env.INTERTOOL_STORAGE_DRIVER === "vercel-blob") {
+    if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+      return null;
+    }
+    return {
+      storage_driver: "vercel-blob",
+      admin_username: adminUsername,
+      configured_at: new Date().toISOString(),
+      s3_bucket: "vercel-blob",
+      s3_region: process.env.BLOB_REGION ?? "iad1",
+      s3_access_key_id: "managed",
+      s3_secret_access_key: "managed",
+      s3_prefix: `orgs/${orgSlug}`,
+      blob_store_id: process.env.BLOB_STORE_ID || undefined,
+      blob_access: "private",
+      org_slug: orgSlug,
+      org_name: orgName,
+      plan: "free",
+      subscription_status: "trialing",
+    };
+  }
 
   const bucket = process.env.S3_BUCKET;
   const accessKeyId = process.env.S3_ACCESS_KEY_ID;
@@ -446,6 +495,119 @@ export async function createOrg(
     orgSlug
   );
   await setUserRole(adminUsername, "owner", orgSlug);
+}
+
+async function deleteRedisKeysByPattern(pattern: string): Promise<void> {
+  const r = getRedis();
+  let cursor = 0;
+  do {
+    const [nextCursor, keys] = await r.scan(cursor, {
+      match: pattern,
+      count: 100,
+    });
+    cursor = Number(nextCursor);
+    if (keys.length > 0) await r.del(...keys);
+  } while (cursor !== 0);
+}
+
+async function deleteRedisOrgInvitations(orgSlug: string): Promise<void> {
+  const r = getRedis();
+  let cursor = 0;
+  do {
+    const [nextCursor, keys] = await r.scan(cursor, {
+      match: `invite:email:${orgSlug}:*`,
+      count: 100,
+    });
+    cursor = Number(nextCursor);
+    for (const key of keys) {
+      const token = await r.get<string>(key);
+      if (token) await r.del(`invite:${token}`);
+    }
+    if (keys.length > 0) await r.del(...keys);
+  } while (cursor !== 0);
+}
+
+async function deleteRedisOrgRbac(orgSlug: string): Promise<void> {
+  const r = getRedis();
+  let cursor = 0;
+  do {
+    const [nextCursor, keys] = await r.scan(cursor, {
+      match: `user:${orgSlug}:*`,
+      count: 100,
+    });
+    cursor = Number(nextCursor);
+
+    for (const key of keys) {
+      if (!key.endsWith(":tokens")) continue;
+      const tokenHashes = await r.smembers(key);
+      if (tokenHashes.length > 0) {
+        await r.del(...tokenHashes.map((hash) => `token:${hash}`));
+      }
+    }
+    if (keys.length > 0) await r.del(...keys);
+  } while (cursor !== 0);
+}
+
+/** Delete an org and all control-plane metadata for it. */
+export async function deleteOrg(orgSlug: string): Promise<boolean> {
+  if (!isSaasMode()) return false;
+
+  if (hasControlPlane()) {
+    return cpDeleteOrg(orgSlug);
+  }
+
+  if (isLocalSaasFallbackMode()) {
+    const data = readLocalSaasData();
+    if (!data.orgs?.[orgSlug]) return false;
+
+    delete data.orgs[orgSlug];
+    if (data.members) delete data.members[orgSlug];
+
+    for (const [id, activeOrg] of Object.entries(data.user_orgs ?? {})) {
+      if (activeOrg === orgSlug) delete data.user_orgs?.[id];
+    }
+
+    for (const [id, memberships] of Object.entries(
+      data.user_org_memberships ?? {}
+    )) {
+      const remaining = memberships.filter((memberOrg) => memberOrg !== orgSlug);
+      if (remaining.length === 0) {
+        delete data.user_org_memberships?.[id];
+      } else {
+        data.user_org_memberships![id] = remaining;
+        data.user_orgs ??= {};
+        data.user_orgs[id] = data.user_orgs[id] ?? remaining[0];
+      }
+    }
+
+    writeLocalSaasData(data);
+    return true;
+  }
+
+  const r = getRedis();
+  const exists = await r.exists(kvKey(orgSlug));
+  if (exists !== 1) return false;
+
+  const members = await r.smembers(memberSetKey(orgSlug));
+  for (const member of members) {
+    await r.srem(`user:${member}:orgs`, orgSlug);
+    const currentOrg = await r.get<string>(`user:${member}:org`);
+    if (currentOrg === orgSlug) {
+      const remainingOrgs = await r.smembers(`user:${member}:orgs`);
+      if (remainingOrgs.length > 0) {
+        await r.set(`user:${member}:org`, remainingOrgs[0]);
+      } else {
+        await r.del(`user:${member}:org`);
+      }
+    }
+  }
+
+  await r.del(kvKey(orgSlug), memberSetKey(orgSlug), `audit:${orgSlug}`);
+  await deleteRedisOrgInvitations(orgSlug);
+  await deleteRedisOrgRbac(orgSlug);
+  await deleteRedisKeysByPattern(`rbac:migrated:${orgSlug}`);
+  await deleteRedisKeysByPattern(`rbac:migrating:${orgSlug}`);
+  return true;
 }
 
 /** Get the org slug for a user (SaaS mode) */

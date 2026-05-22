@@ -62,7 +62,6 @@ export default async function HomePage() {
   return (
     <div className="overflow-hidden">
       <section className="relative isolate border-b border-border-subtle">
-        <ControlPlaneBackdrop />
         <div className="mx-auto grid max-w-5xl gap-10 px-4 py-14 sm:py-20 lg:grid-cols-[1fr_360px] lg:items-end lg:py-24">
           <div className="relative z-10 max-w-3xl">
             <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/75 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
@@ -109,8 +108,9 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="relative z-10 overflow-hidden rounded-lg border border-border/70 bg-background/85 p-3 shadow-[0_18px_50px_rgb(0_0_0/0.08)] backdrop-blur">
-            <div className="mb-3 flex items-center justify-between px-1">
+          <div className="relative z-10 overflow-hidden rounded-xl border border-border/70 bg-surface/90 p-4 shadow-[0_24px_80px_rgb(0_0_0/0.18)]">
+            <RegistryPanelArt />
+            <div className="relative z-10 mb-4 flex items-center justify-between px-1">
               <div>
                 <p className="text-xs font-medium">Capability rollout</p>
                 <p className="text-[11px] text-muted-foreground">
@@ -121,11 +121,11 @@ export default async function HomePage() {
                 live
               </span>
             </div>
-            <div className="space-y-1.5">
+            <div className="relative z-10 space-y-1.5">
               {agentRows.map(([surface, item, status]) => (
                 <div
                   key={`${surface}-${item}`}
-                  className="grid grid-cols-[minmax(72px,96px)_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border-subtle bg-muted/25 px-2.5 py-2 text-[11px]"
+                  className="grid grid-cols-[minmax(72px,96px)_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border-subtle bg-background/55 px-2.5 py-2 text-[11px] backdrop-blur"
                 >
                   <span className="text-muted-foreground">{surface}</span>
                   <span className="truncate font-mono">{item}</span>
@@ -139,7 +139,7 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-            <div className="mt-3 overflow-x-auto rounded-md border border-border-subtle bg-foreground px-3 py-2 font-mono text-[11px] text-background">
+            <div className="relative z-10 mt-3 overflow-x-auto rounded-md border border-border-subtle bg-foreground px-3 py-2 font-mono text-[11px] text-background">
               intertool install @platform/internal-mcp
             </div>
           </div>
@@ -349,21 +349,70 @@ export default async function HomePage() {
   );
 }
 
-function ControlPlaneBackdrop() {
+function RegistryPanelArt() {
   return (
-    <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border-subtle)_1px,transparent_1px),linear-gradient(to_bottom,var(--border-subtle)_1px,transparent_1px)] bg-[size:56px_56px] opacity-70" />
-      <div className="absolute right-0 top-8 hidden w-[58rem] max-w-none opacity-45 lg:block">
-        <div className="grid grid-cols-5 gap-3">
-          {Array.from({ length: 25 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-14 rounded-md border border-border-subtle bg-background/70"
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+    <svg
+      aria-hidden="true"
+      className="pointer-events-none absolute -right-10 top-4 h-48 w-48 text-border"
+      viewBox="0 0 180 180"
+      fill="none"
+    >
+      <rect
+        x="34"
+        y="28"
+        width="112"
+        height="112"
+        rx="28"
+        className="stroke-border-subtle"
+      />
+      <rect
+        x="44"
+        y="38"
+        width="112"
+        height="112"
+        rx="28"
+        className="stroke-border-subtle/70"
+      />
+      <rect
+        x="54"
+        y="48"
+        width="112"
+        height="112"
+        rx="28"
+        className="stroke-border-subtle/40"
+      />
+      <path
+        d="M78 66 116 87.5v42L78 108V66Z"
+        className="stroke-muted-foreground/45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M78 66 116 44.5 154 66 116 87.5 78 66Z"
+        className="stroke-muted-foreground/45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M154 66v42l-38 21.5v-42L154 66Z"
+        className="stroke-muted-foreground/45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M96 76.5 134 55"
+        className="stroke-muted-foreground/30"
+        strokeLinecap="round"
+      />
+      <circle cx="58" cy="126" r="4" className="fill-success/80" />
+      <circle cx="138" cy="34" r="3" className="fill-success/60" />
+      <circle cx="158" cy="118" r="3" className="fill-primary/55" />
+      <path
+        d="M60 126c18-20 34-26 56-18 18 6 29 2 42-14"
+        className="stroke-success/25"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

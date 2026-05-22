@@ -11,7 +11,7 @@ Intertool is a private registry for AI agent skills, MCP servers, agent tools, a
 
 Core promises:
 
-- User data is stored in the team's S3-compatible bucket.
+- User data is stored in managed object storage: Vercel Blob for hosted SaaS, or S3-compatible storage for self-hosted/custom deployments.
 - The app can run self-hosted as a single tenant or in SaaS mode with path-based organizations.
 - Access is controlled by NextAuth, OAuth providers, API tokens, and RBAC.
 - Documentation is served through Fumadocs and exposed to LLMs at `/llms.txt` and `/llms-full.txt`.
@@ -22,9 +22,9 @@ Core promises:
 - `app/` contains Next.js App Router pages and route handlers.
 - `app/(main)/` contains the main registry UI: home, browse, dashboard, publish, review, settings, teams, skill detail, edit, versions, and diff pages.
 - `app/(auth)/` contains sign-in, invitation, and org creation pages.
-- `app/api/` contains JSON and file endpoints for auth, orgs, settings, members, invitations, tokens, import, publish, search, analytics, audit logs, Stripe billing, private distribution manifests, and skill files.
+- `app/api/` contains JSON and file endpoints for auth, org creation/deletion, settings, members, invitations, tokens, import, publish, search, analytics, audit logs, Stripe billing, private distribution manifests, and skill files.
 - `components/` contains shared React UI, including the publish wizard, command palette, skill cards, markdown rendering, filters, preferences, and shadcn-style primitives under `components/ui/`.
-- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, Postgres control plane, S3 access, registry reads/writes, validation, rate limits, analytics, audit logs, plan limits, Stripe billing, distribution exports, security scanning, webhooks, and email.
+- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, Postgres control plane, object storage access, registry reads/writes, validation, rate limits, analytics, audit logs, plan limits, Stripe billing, distribution exports, security scanning, webhooks, and email.
 - `cli/` contains the separate `intertool` npm CLI implemented with Commander.
 - `content/docs/` contains MDX docs. Update these when CLI, API, auth, publishing, install behavior, or other user-facing behavior changes.
 - `registry/` contains local category seed data and local development registry state.
@@ -105,7 +105,7 @@ Important storage limits:
 - Each package file must be 10MB or smaller.
 - Package files must be 50MB or smaller in total.
 - Paths are normalized by `sanitizeSkillFilePath`.
-- SaaS managed storage may set `s3_prefix=orgs/{orgSlug}`. All S3 helpers must preserve prefix isolation and return unprefixed keys to registry callers.
+- SaaS managed storage may set `s3_prefix=orgs/{orgSlug}` for either Vercel Blob or S3-compatible storage. Storage helpers must preserve prefix isolation and return unprefixed keys to registry callers.
 
 Self-hosted settings resolve in this order:
 
@@ -113,7 +113,7 @@ Self-hosted settings resolve in this order:
 2. Upstash Redis key `self-hosted:settings`
 3. S3 environment variables
 
-SaaS settings resolve by org slug from Postgres first, then local fallback JSON in development, then the legacy Upstash Redis metadata path. Hosted SaaS should use Postgres as the source of truth for org settings, memberships, invitations, API tokens, audit events, and Stripe identifiers.
+SaaS settings resolve by org slug from Postgres first, then local fallback JSON in development, then the legacy Upstash Redis metadata path. Hosted SaaS should use Postgres as the source of truth for org settings, memberships, invitations, API tokens, audit events, and Stripe identifiers. Org deletion must remove the current org's control-plane rows and only bulk-delete registry objects when the org uses managed storage under `s3_prefix=orgs/{orgSlug}`. `INTERTOOL_STORAGE_DRIVER=vercel-blob` uses Vercel Blob through `@vercel/blob`; the default `s3` driver uses the AWS SDK.
 
 ## Auth and permissions
 
@@ -196,7 +196,7 @@ npm run test:e2e:install
 - Auth callback behavior, cookies, org routing, and OAuth provider setup.
 - Postgres control-plane schema changes and migrations.
 - Stripe webhook signature verification and subscription state mapping.
-- S3 object keys, registry indexing, file downloads, and package file limits.
+- Object storage keys, registry indexing, file downloads, and package file limits.
 - RBAC permission gates for publish, edit, delete, members, tokens, and settings.
 - CLI install/update paths that write into user projects.
 - SaaS path rewriting in `proxy.ts` and org cookie fallback for API requests.

@@ -65,6 +65,12 @@ function getActiveHint(props: Props): Hint | null {
   return null;
 }
 
+function isSetupComplete(props: Props): boolean {
+  if (props.isAdmin && !props.s3Configured) return false;
+  if (props.isAdmin && props.memberCount <= 1) return false;
+  return props.skillCount > 0;
+}
+
 function isDismissed(id: string): boolean {
   try {
     return localStorage.getItem(`hint-dismissed:${id}`) === "true";
@@ -94,6 +100,7 @@ export function OnboardingHints(props: Props) {
   // Completion toast: all hints naturally resolved (none active, none dismissed)
   useEffect(() => {
     if (!mounted || toastFired.current) return;
+    if (!isSetupComplete(props)) return;
     const hint = getActiveHint(props);
     if (hint !== null) return;
 

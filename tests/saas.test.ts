@@ -4,6 +4,9 @@ import { getPlan, limitExceeded } from "../lib/plans";
 import { scanRegistryItem } from "../lib/security-scan";
 import { claudeMarketplace, mcpRegistryServer } from "../lib/distribution";
 import { stripePriceForPlan } from "../lib/stripe";
+import { validateOrgSlug } from "../lib/org-slugs";
+import { hasPermission } from "../lib/rbac";
+import { isStorageConfigured } from "../lib/s3";
 import type { Skill } from "../lib/types";
 
 const baseSkill: Skill = {
@@ -91,6 +94,40 @@ test("maps paid SaaS plans to configured Stripe prices", () => {
       process.env.STRIPE_BUSINESS_PRICE_ID = previousBusiness;
     }
   }
+});
+
+test("validates org slugs consistently for create and availability checks", () => {
+  assert.deepEqual(validateOrgSlug("acme-tools"), { ok: true });
+
+  const reserved = validateOrgSlug("api");
+  assert.equal(reserved.ok, false);
+  if (!reserved.ok) assert.equal(reserved.status, 409);
+
+  const invalid = validateOrgSlug("Acme");
+  assert.equal(invalid.ok, false);
+  if (!invalid.ok) assert.equal(invalid.status, 400);
+});
+
+test("admins can delete organizations", () => {
+  assert.equal(hasPermission("owner", "org:delete"), true);
+  assert.equal(hasPermission("admin", "org:delete"), true);
+  assert.equal(hasPermission("member", "org:delete"), false);
+});
+
+test("treats Vercel Blob as configured managed storage", () => {
+  assert.equal(
+    isStorageConfigured({
+      ...emptySettings(),
+      storage_driver: "vercel-blob",
+      s3_bucket: "vercel-blob",
+      s3_access_key_id: "managed",
+      s3_secret_access_key: "managed",
+      s3_prefix: "orgs/acme",
+      blob_read_write_token: "test-token",
+      blob_access: "private",
+    }),
+    true
+  );
 });
 
 function emptySettings() {

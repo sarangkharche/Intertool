@@ -3,9 +3,17 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   ListObjectsV2Command,
   HeadBucketCommand,
 } from "@aws-sdk/client-s3";
+import {
+  del as blobDel,
+  get as blobGet,
+  list as blobList,
+  put as blobPut,
+} from "@vercel/blob";
+import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import type { RegistrySettings } from "./settings";
 
@@ -17,6 +25,7 @@ export function storageCacheScope(s: RegistrySettings): string {
   return createHash("sha256")
     .update(
       JSON.stringify({
+        driver: storageDriver(s),
         bucket: s.s3_bucket,
         region: s.s3_region || "us-east-1",
         endpoint: s.s3_endpoint ?? "",
@@ -24,6 +33,9 @@ export function storageCacheScope(s: RegistrySettings): string {
         accessKeyId: s.s3_access_key_id,
         secretAccessKey: s.s3_secret_access_key,
         sessionToken: s.s3_session_token ?? "",
+        blobStoreId: s.blob_store_id ?? process.env.BLOB_STORE_ID ?? "",
+        blobToken:
+          s.blob_read_write_token ?? process.env.BLOB_READ_WRITE_TOKEN ?? "",
       })
     )
     .digest("hex");
@@ -61,14 +73,57 @@ function buildClient(settings: RegistrySettings): S3Client {
   return client;
 }
 
-// ── Check if settings have S3 configured ──
+// ── Check if settings have storage configured ──
+
+function storageDriver(settings: RegistrySettings): "s3" | "vercel-blob" {
+  return settings.storage_driver === "vercel-blob" ? "vercel-blob" : "s3";
+}
+
+function blobAccess(settings: RegistrySettings): "private" | "public" {
+  return settings.blob_access === "public" ? "public" : "private";
+}
+
+function blobAuthOptions(settings: RegistrySettings): {
+  token?: string;
+  storeId?: string;
+} {
+  return {
+    token: settings.blob_read_write_token ?? process.env.BLOB_READ_WRITE_TOKEN,
+    storeId: settings.blob_store_id ?? process.env.BLOB_STORE_ID,
+  };
+}
+
+async function readBlobStream(stream: ReadableStream<Uint8Array>) {
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function blobBody(body: string | Uint8Array): string | Buffer {
+  return typeof body === "string" ? body : Buffer.from(body);
+}
+
+function hasBlobAuth(settings: RegistrySettings): boolean {
+  return !!(
+    settings.blob_read_write_token ||
+    settings.blob_store_id ||
+    process.env.BLOB_READ_WRITE_TOKEN ||
+    process.env.BLOB_STORE_ID
+  );
+}
+
+export function isStorageConfigured(
+  settings: RegistrySettings | null
+): boolean {
+  if (!settings) return false;
+  if (storageDriver(settings) === "vercel-blob") return hasBlobAuth(settings);
+  return !!(
+    settings.s3_bucket &&
+    settings.s3_access_key_id &&
+    settings.s3_secret_access_key
+  );
+}
 
 export function isS3Configured(settings: RegistrySettings | null): boolean {
-  return !!(
-    settings?.s3_bucket &&
-    settings?.s3_access_key_id &&
-    settings?.s3_secret_access_key
-  );
+  return isStorageConfigured(settings);
 }
 
 // ── ETag cache with LRU eviction ──
@@ -138,6 +193,23 @@ export async function getObject(
   settings: RegistrySettings,
   key: string
 ): Promise<string | null> {
+  if (storageDriver(settings) === "vercel-blob") {
+    try {
+      const res = await blobGet(objectKey(settings, key), {
+        access: blobAccess(settings),
+        useCache: false,
+        ...blobAuthOptions(settings),
+      });
+      if (!res || res.statusCode === 304 || !res.stream) return null;
+      const body = await new Response(res.stream).text();
+      setCacheEntry(cacheKey(settings, key), res.blob.etag, body);
+      return body;
+    } catch (err: unknown) {
+      if (isNotFound(err)) return null;
+      throw err;
+    }
+  }
+
   try {
     return await withRetry(async () => {
       const res = await buildClient(settings).send(
@@ -192,6 +264,32 @@ async function _getObjectIfChanged(
 ): Promise<string | null> {
   const cached = getCacheEntry(ck);
 
+  if (storageDriver(settings) === "vercel-blob") {
+    try {
+      const res = await blobGet(objectKey(settings, key), {
+        access: blobAccess(settings),
+        useCache: false,
+        ...(cached ? { ifNoneMatch: cached.etag } : {}),
+        ...blobAuthOptions(settings),
+      });
+      if (!res) {
+        etagCache.delete(ck);
+        return null;
+      }
+      if (res.statusCode === 304) return cached?.body ?? null;
+      const body = await new Response(res.stream).text();
+      setCacheEntry(ck, res.blob.etag, body);
+      return body;
+    } catch (err: unknown) {
+      if (isNotFound(err)) {
+        etagCache.delete(ck);
+        return null;
+      }
+      if (cached && isTransientError(err)) return cached.body;
+      throw err;
+    }
+  }
+
   try {
     const cmd = new GetObjectCommand({
       Bucket: settings.s3_bucket,
@@ -230,6 +328,21 @@ export async function putObject(
   body: string | Uint8Array,
   contentType = "application/json"
 ): Promise<void> {
+  if (storageDriver(settings) === "vercel-blob") {
+    await withRetry(() =>
+      blobPut(objectKey(settings, key), blobBody(body), {
+        access: blobAccess(settings),
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType,
+        cacheControlMaxAge: 60,
+        ...blobAuthOptions(settings),
+      })
+    );
+    etagCache.delete(cacheKey(settings, key));
+    return;
+  }
+
   await withRetry(() =>
     buildClient(settings).send(
       new PutObjectCommand({
@@ -248,6 +361,24 @@ export async function getObjectBytes(
   settings: RegistrySettings,
   key: string
 ): Promise<{ body: Uint8Array; contentType: string } | null> {
+  if (storageDriver(settings) === "vercel-blob") {
+    try {
+      const res = await blobGet(objectKey(settings, key), {
+        access: blobAccess(settings),
+        useCache: false,
+        ...blobAuthOptions(settings),
+      });
+      if (!res || res.statusCode === 304 || !res.stream) return null;
+      return {
+        body: await readBlobStream(res.stream),
+        contentType: res.blob.contentType || "application/octet-stream",
+      };
+    } catch (err: unknown) {
+      if (isNotFound(err)) return null;
+      throw err;
+    }
+  }
+
   try {
     return await withRetry(async () => {
       const res = await buildClient(settings).send(
@@ -273,6 +404,14 @@ export async function deleteObject(
   settings: RegistrySettings,
   key: string
 ): Promise<void> {
+  if (storageDriver(settings) === "vercel-blob") {
+    await withRetry(() =>
+      blobDel(objectKey(settings, key), blobAuthOptions(settings))
+    );
+    etagCache.delete(cacheKey(settings, key));
+    return;
+  }
+
   await withRetry(() =>
     buildClient(settings).send(
       new DeleteObjectCommand({
@@ -284,11 +423,74 @@ export async function deleteObject(
   etagCache.delete(cacheKey(settings, key));
 }
 
+export async function deleteObjects(
+  settings: RegistrySettings,
+  keys: string[]
+): Promise<void> {
+  if (storageDriver(settings) === "vercel-blob") {
+    for (let i = 0; i < keys.length; i += 1000) {
+      const batch = keys.slice(i, i + 1000);
+      if (batch.length === 0) continue;
+      await withRetry(() =>
+        blobDel(
+          batch.map((key) => objectKey(settings, key)),
+          blobAuthOptions(settings)
+        )
+      );
+      for (const key of batch) {
+        etagCache.delete(cacheKey(settings, key));
+      }
+    }
+    return;
+  }
+
+  for (let i = 0; i < keys.length; i += 1000) {
+    const batch = keys.slice(i, i + 1000);
+    if (batch.length === 0) continue;
+    await withRetry(() =>
+      buildClient(settings).send(
+        new DeleteObjectsCommand({
+          Bucket: settings.s3_bucket,
+          Delete: {
+            Objects: batch.map((key) => ({
+              Key: objectKey(settings, key),
+            })),
+            Quiet: true,
+          },
+        })
+      )
+    );
+    for (const key of batch) {
+      etagCache.delete(cacheKey(settings, key));
+    }
+  }
+}
+
 export async function listObjects(
   settings: RegistrySettings,
   prefix: string
 ): Promise<string[]> {
   const keys: string[] = [];
+
+  if (storageDriver(settings) === "vercel-blob") {
+    let cursor: string | undefined;
+    do {
+      const res = await withRetry(() =>
+        blobList({
+          prefix: objectKey(settings, prefix),
+          cursor,
+          limit: 1000,
+          ...blobAuthOptions(settings),
+        })
+      );
+      keys.push(
+        ...res.blobs.map((blob) => stripObjectKey(settings, blob.pathname))
+      );
+      cursor = res.cursor;
+    } while (cursor);
+    return keys;
+  }
+
   let continuationToken: string | undefined;
 
   do {
@@ -314,6 +516,26 @@ export async function listObjects(
 export async function testConnection(
   settings: RegistrySettings
 ): Promise<{ ok: boolean; error?: string }> {
+  if (storageDriver(settings) === "vercel-blob") {
+    const probeKey = `.intertool-connection-check-${Date.now()}.txt`;
+    try {
+      await blobPut(objectKey(settings, probeKey), "ok", {
+        access: blobAccess(settings),
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType: "text/plain",
+        cacheControlMaxAge: 60,
+        ...blobAuthOptions(settings),
+      });
+      await blobDel(objectKey(settings, probeKey), blobAuthOptions(settings));
+      return { ok: true };
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Vercel Blob connection failed";
+      return { ok: false, error: message };
+    }
+  }
+
   try {
     await buildClient(settings).send(
       new HeadBucketCommand({ Bucket: settings.s3_bucket })
@@ -352,7 +574,11 @@ export async function testConnection(
 function isNotFound(err: unknown): boolean {
   if (err && typeof err === "object" && "name" in err) {
     const name = (err as { name: string }).name;
-    return name === "NoSuchKey" || name === "NotFound";
+    return (
+      name === "NoSuchKey" ||
+      name === "NotFound" ||
+      name === "BlobNotFoundError"
+    );
   }
   return false;
 }
@@ -399,6 +625,10 @@ const NON_RETRYABLE = new Set([
   "SignatureDoesNotMatch",
   "ExpiredToken",
   "NoSuchBucket",
+  "BlobAccessError",
+  "BlobNotFoundError",
+  "BlobStoreNotFoundError",
+  "BlobStoreSuspendedError",
 ]);
 
 function isNonRetryable(err: unknown): boolean {

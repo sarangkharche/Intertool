@@ -118,20 +118,21 @@ async function getUserOrg(
   username: string,
   request: NextRequest
 ): Promise<string | null> {
-  if (isLocalSaasFallback()) {
-    try {
-      const res = await fetch(new URL("/api/orgs", request.url), {
-        headers: {
-          cookie: request.headers.get("cookie") ?? "",
-        },
-      });
-      if (!res.ok) return null;
+  try {
+    const res = await fetch(new URL("/api/orgs", request.url), {
+      headers: {
+        cookie: request.headers.get("cookie") ?? "",
+      },
+    });
+    if (res.ok) {
       const data = (await res.json()) as { org?: string | null };
       return data.org ?? null;
-    } catch {
-      return null;
     }
+  } catch {
+    // Fall back to the legacy Redis lookup below.
   }
+
+  if (isLocalSaasFallback()) return null;
 
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;

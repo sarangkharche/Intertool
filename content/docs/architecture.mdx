@@ -13,6 +13,7 @@ description: Project structure, tech stack, data model, and SaaS mode.
 - **UI**: [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS 4](https://tailwindcss.com) + [Lucide](https://lucide.dev) icons
 - **Docs**: [Fumadocs](https://fumadocs.vercel.app) with MDX
 - **Fonts**: Geist Sans + Geist Mono via the `geist` package
+- **Theme**: OKLCH design tokens with a warm dark surface ladder, high-contrast muted text, and limited light accents for readable dark-mode sessions
 - **Editor**: [@uiw/react-md-editor](https://github.com/uiwjs/react-md-editor) for markdown with preview
 - **CLI**: TypeScript with Commander.js, published as `intertool` on npm
 
@@ -117,7 +118,7 @@ s3://your-bucket/
 
 MCP server records can include `mcp_config`, the original `server.json` object. Raw downloads and CLI installs use this stored config so command, args, URL, and other server fields round-trip from publish to install.
 
-SaaS deployments can also use a shared managed bucket. When `INTERTOOL_MANAGED_STORAGE=true`, new orgs are automatically configured with `s3_prefix=orgs/{orgSlug}` so all registry object operations are isolated under that prefix.
+SaaS deployments can also use shared managed object storage. When `INTERTOOL_MANAGED_STORAGE=true`, new orgs are automatically configured with `s3_prefix=orgs/{orgSlug}` so all registry object operations are isolated under that prefix. Set `INTERTOOL_STORAGE_DRIVER=vercel-blob` to use a linked private Vercel Blob store, or leave the default `s3` driver for AWS S3, Cloudflare R2, MinIO, and other S3-compatible services.
 
 The SaaS control plane lives in Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured. `lib/control-plane.ts` creates and uses these tables:
 
@@ -157,7 +158,7 @@ Registry items have a status lifecycle: `review`, `published`, or `archived` for
 
 Admins can enable `publish_review_required` in settings. When enabled, new member submissions are stored with `review` status and appear in `/review`. Owners and admins approve or archive them through `PATCH /api/skills/:slug`.
 
-Audit events are written through `lib/audit-log.ts` for org creation, settings changes, member changes, submissions, status transitions, and deletions. Redis-backed deployments store events under `audit:{org}`, while local/self-hosted fallback stores best-effort events in `registry/audit-log.json`.
+Audit events are written through `lib/audit-log.ts` for org creation, org deletion, settings changes, member changes, submissions, status transitions, and deletions. Redis-backed deployments store events under `audit:{org}`, while local/self-hosted fallback stores best-effort events in `registry/audit-log.json`.
 
 Baseline security scanning runs during publish and stores a `security` result on each registry item. Critical findings block the publish before package files are written.
 
@@ -177,3 +178,5 @@ Both surfaces require normal Intertool session or bearer-token authentication.
 Intertool supports multi-tenant SaaS mode with path-based organization routing. Each organization gets its own path (for example, `intertool.sh/acme`) with isolated settings and data stored in Postgres plus isolated registry objects in S3-compatible storage.
 
 SaaS mode is activated by setting `INTERTOOL_MODE=saas` and configuring a Postgres connection string. Redis credentials are still useful for rate limits, analytics, locks, and legacy fallback mode.
+
+Owners and admins can delete an organization from the admin settings danger zone. Deletion removes the organization's Postgres control-plane records and, when the org uses managed storage with `s3_prefix=orgs/{org}`, removes objects under that managed prefix from either Vercel Blob or S3-compatible storage. Custom org-owned buckets are not bulk-deleted.

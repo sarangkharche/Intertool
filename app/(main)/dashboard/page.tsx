@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { getSkills, getCategories, getSkillCounts } from "@/lib/registry";
 import { SearchFilters, SkillType } from "@/lib/types";
 import { PER_PAGE } from "@/lib/constants";
-import { Upload, ArrowRight } from "lucide-react";
+import { ArrowRight, Github, PenLine, Upload } from "lucide-react";
 import Link from "next/link";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { DashboardPreferenceApplier } from "@/components/dashboard-preference-applier";
@@ -55,6 +55,134 @@ function isActiveTab(
   if (tab.mine) return params.mine === "true";
   if (tab.type) return params.type === tab.type && params.mine !== "true";
   return !params.type && params.mine !== "true";
+}
+
+function EmptyDashboard({
+  storageConfigured,
+  memberCount,
+  isAdmin,
+}: {
+  storageConfigured: boolean;
+  memberCount: number;
+  isAdmin: boolean;
+}) {
+  const statusItems = [
+    {
+      label: "Storage",
+      value: storageConfigured ? "File uploads ready" : "Metadata only",
+      href: isAdmin ? "/settings/admin" : undefined,
+      action: storageConfigured ? "Settings" : "Configure",
+    },
+    {
+      label: "Team",
+      value: `${memberCount} member${memberCount === 1 ? "" : "s"}`,
+      href: isAdmin ? "/settings/members" : undefined,
+      action: "Invite",
+    },
+    {
+      label: "Items",
+      value: "0 published",
+      href: "/publish",
+      action: "Publish",
+    },
+  ];
+  const quickActions = [
+    {
+      label: "Import GitHub",
+      href: "/publish?mode=quick",
+      icon: Github,
+    },
+    {
+      label: "Manual item",
+      href: "/publish?mode=manual",
+      icon: PenLine,
+    },
+  ];
+
+  return (
+    <section>
+      <div className="mb-4 grid rounded-lg border border-border/70 bg-surface sm:grid-cols-3 sm:divide-x sm:divide-border/70">
+        {statusItems.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3 last:border-b-0 sm:border-b-0"
+          >
+            <div>
+              <p className="text-[11px] uppercase text-muted-foreground">
+                {item.label}
+              </p>
+              <p className="mt-1 text-sm font-medium">{item.value}</p>
+            </div>
+            {item.href && (
+              <Link
+                href={item.href}
+                className="inline-flex min-h-11 min-w-11 items-center justify-end rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus-ring"
+              >
+                {item.action}
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border/70 bg-surface">
+        <div className="flex flex-col justify-between gap-3 border-b border-border-subtle px-4 py-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-sm font-medium">Registry items</h2>
+            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+              0 results
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="btn-ghost min-h-11"
+              >
+                <action.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="hidden grid-cols-[1fr_120px_140px_100px] border-b border-border-subtle px-4 py-2 font-mono text-[11px] uppercase text-muted-foreground md:grid">
+          <span>Name</span>
+          <span>Type</span>
+          <span>Owner</span>
+          <span className="text-right">Updated</span>
+        </div>
+        <div className="flex min-h-64 flex-col items-center justify-center px-4 py-12 text-center">
+          <Upload className="mb-3 h-5 w-5 text-muted-foreground/50" />
+          <p className="text-sm font-medium">No items yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Import a repo or create one manually.
+          </p>
+          <div className="mt-5 grid w-full max-w-sm overflow-hidden rounded-md border border-border/70 text-left">
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="flex min-h-12 items-center justify-between gap-3 border-b border-border/70 px-3 text-sm transition-colors last:border-b-0 hover:bg-muted/30 focus-ring"
+              >
+                <span className="flex items-center gap-2">
+                  <action.icon
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  {action.label}
+                </span>
+                <ArrowRight
+                  className="h-3.5 w-3.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default async function DashboardPage({
@@ -113,6 +241,8 @@ export default async function DashboardPage({
   const totalPages = Math.ceil(total / limit);
 
   const hasAnySkills = counts.total > 0;
+  const storageConfigured = isS3Configured(settings);
+  const isAdmin = userRole === "admin" || userRole === "owner";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
@@ -126,25 +256,19 @@ export default async function DashboardPage({
 
       {/* Onboarding hints */}
       <OnboardingHints
-        s3Configured={isS3Configured(settings)}
+        s3Configured={storageConfigured}
         memberCount={members.length}
         skillCount={counts.total}
-        isAdmin={userRole === "admin" || userRole === "owner"}
+        isAdmin={isAdmin}
       />
 
       {/* Empty state — registry has no skills */}
       {!hasAnySkills && (
-        <div className="rounded-lg border border-dashed border-border py-20 text-center">
-          <Upload className="mx-auto mb-4 h-6 w-6 text-muted-foreground/40" />
-          <p className="mb-1 text-sm font-medium">Your registry is empty</p>
-          <p className="mb-5 text-xs text-muted-foreground">
-            Publish your first skill, MCP server, agent, or prompt template.
-          </p>
-          <Link href="/publish" className="btn-pill-lg">
-            Publish to registry
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        <EmptyDashboard
+          storageConfigured={storageConfigured}
+          memberCount={members.length}
+          isAdmin={isAdmin}
+        />
       )}
 
       {/* Populated state */}

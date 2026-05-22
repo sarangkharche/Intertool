@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getSettings, saveSettings, isAdmin } from "@/lib/settings";
+import {
+  getSettings,
+  saveSettings,
+  isAdmin,
+  type RegistrySettings,
+} from "@/lib/settings";
 import { getOrgSlug } from "@/lib/org";
 import { testConnection } from "@/lib/s3";
 import { isS3Configured } from "@/lib/s3";
@@ -29,6 +34,9 @@ export async function GET() {
           ? "********"
           : undefined,
         google_client_secret: settings.google_client_secret
+          ? "********"
+          : undefined,
+        blob_read_write_token: settings.blob_read_write_token
           ? "********"
           : undefined,
       }
@@ -85,15 +93,29 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   const {
+    storage_driver,
     s3_bucket,
     s3_region,
     s3_access_key_id,
     s3_secret_access_key,
     s3_endpoint,
     s3_session_token,
+    blob_store_id,
+    blob_read_write_token,
+    blob_access,
   } = body;
 
-  if (!s3_bucket || !s3_access_key_id || !s3_secret_access_key) {
+  const existing = await getSettings(orgSlug);
+  const storageDriver =
+    storage_driver === "vercel-blob" ||
+    existing?.storage_driver === "vercel-blob"
+      ? "vercel-blob"
+      : "s3";
+
+  if (
+    storageDriver === "s3" &&
+    (!s3_bucket || !s3_access_key_id || !s3_secret_access_key)
+  ) {
     return NextResponse.json(
       { error: "Bucket, access key, and secret key are required" },
       { status: 400 }
@@ -101,16 +123,33 @@ export async function PUT(request: NextRequest) {
   }
 
   // Build temporary settings for testing
-  const testSettings = {
+  const testSettings: RegistrySettings = {
+    storage_driver: storageDriver,
     admin_username: username,
     configured_at: new Date().toISOString(),
-    s3_bucket,
+    s3_bucket: storageDriver === "vercel-blob" ? "vercel-blob" : s3_bucket,
     s3_region: s3_region || "us-east-1",
-    s3_access_key_id,
-    s3_secret_access_key,
+    s3_access_key_id:
+      storageDriver === "vercel-blob" ? "managed" : s3_access_key_id,
+    s3_secret_access_key:
+      storageDriver === "vercel-blob" ? "managed" : s3_secret_access_key,
     s3_endpoint: s3_endpoint || undefined,
     s3_session_token: s3_session_token || undefined,
     org_slug: orgSlug,
+    s3_prefix: existing?.s3_prefix,
+    blob_store_id: blob_store_id || existing?.blob_store_id || undefined,
+    blob_read_write_token:
+      blob_read_write_token && blob_read_write_token !== "********"
+        ? blob_read_write_token
+        : existing?.blob_read_write_token,
+    blob_access:
+      blob_access !== undefined
+        ? blob_access === "public"
+          ? "public"
+          : "private"
+        : existing?.blob_access === "public"
+          ? "public"
+          : "private",
   };
 
   const result = await testConnection(testSettings);
@@ -146,6 +185,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   const {
+    storage_driver,
     s3_bucket,
     s3_region,
     s3_access_key_id,
@@ -153,6 +193,9 @@ export async function POST(request: NextRequest) {
     s3_endpoint,
     s3_session_token,
     s3_prefix,
+    blob_store_id,
+    blob_read_write_token,
+    blob_access,
     github_client_id,
     github_client_secret,
     google_client_id,
@@ -166,7 +209,14 @@ export async function POST(request: NextRequest) {
     publish_review_required,
   } = body;
 
-  if (!s3_bucket || !s3_access_key_id) {
+  const existing = await getSettings(orgSlug);
+  const storageDriver =
+    storage_driver === "vercel-blob" ||
+    existing?.storage_driver === "vercel-blob"
+      ? "vercel-blob"
+      : "s3";
+
+  if (storageDriver === "s3" && (!s3_bucket || !s3_access_key_id)) {
     return NextResponse.json(
       { error: "Bucket and access key are required" },
       { status: 400 }
@@ -189,11 +239,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const existing = await getSettings(orgSlug);
-
   // If no secret provided on update, keep existing
-  const secret = s3_secret_access_key || existing?.s3_secret_access_key;
-  if (!secret) {
+  const secret =
+    storageDriver === "vercel-blob"
+      ? "managed"
+      : s3_secret_access_key || existing?.s3_secret_access_key;
+  if (storageDriver === "s3" && !secret) {
     return NextResponse.json(
       { error: "Secret access key is required" },
       { status: 400 }
@@ -212,20 +263,49 @@ export async function POST(request: NextRequest) {
       ? google_client_secret
       : existing?.google_client_secret;
 
-  const newSettings = {
+  const resolvedBlobToken =
+    blob_read_write_token && blob_read_write_token !== "********"
+      ? blob_read_write_token
+      : existing?.blob_read_write_token;
+
+  const newSettings: RegistrySettings = {
+    storage_driver: storageDriver,
     admin_username: existing?.admin_username || username,
     admin_email:
       provider === "google" ? username : existing?.admin_email || undefined,
     configured_at: new Date().toISOString(),
-    s3_bucket,
-    s3_region: s3_region || "us-east-1",
-    s3_access_key_id,
+    s3_bucket:
+      storageDriver === "vercel-blob"
+        ? existing?.s3_bucket || "vercel-blob"
+        : s3_bucket,
+    s3_region:
+      storageDriver === "vercel-blob"
+        ? existing?.s3_region || process.env.BLOB_REGION || "iad1"
+        : s3_region || "us-east-1",
+    s3_access_key_id:
+      storageDriver === "vercel-blob" ? "managed" : s3_access_key_id,
     s3_secret_access_key: secret,
-    s3_endpoint: s3_endpoint || undefined,
+    s3_endpoint:
+      storageDriver === "vercel-blob" ? undefined : s3_endpoint || undefined,
     s3_session_token:
-      s3_session_token || existing?.s3_session_token || undefined,
+      storageDriver === "vercel-blob"
+        ? undefined
+        : s3_session_token || existing?.s3_session_token || undefined,
     s3_prefix:
       s3_prefix !== undefined ? s3_prefix || undefined : existing?.s3_prefix,
+    blob_store_id:
+      blob_store_id !== undefined
+        ? blob_store_id || undefined
+        : existing?.blob_store_id,
+    blob_read_write_token: resolvedBlobToken || undefined,
+    blob_access:
+      blob_access !== undefined
+        ? blob_access === "public"
+          ? "public"
+          : "private"
+        : storageDriver === "vercel-blob"
+          ? existing?.blob_access ?? "private"
+          : existing?.blob_access,
     org_slug: orgSlug,
     org_name: existing?.org_name,
     plan: existing?.plan,
@@ -270,7 +350,7 @@ export async function POST(request: NextRequest) {
   const connTest = await testConnection(newSettings);
   if (!connTest.ok) {
     return NextResponse.json(
-      { error: `S3 connection failed: ${connTest.error}` },
+      { error: `Storage connection failed: ${connTest.error}` },
       { status: 422 }
     );
   }

@@ -14,6 +14,7 @@ const VALID_TYPES: SkillType[] = [
   "agent-tool",
   "prompt-template",
 ];
+const VALID_MODES = ["choose", "quick", "manual"] as const;
 
 export default async function PublishPage({
   searchParams,
@@ -27,6 +28,11 @@ export default async function PublishPage({
   const preselectedType = VALID_TYPES.includes(params.type as SkillType)
     ? (params.type as SkillType)
     : undefined;
+  const initialMode = VALID_MODES.includes(
+    params.mode as (typeof VALID_MODES)[number]
+  )
+    ? (params.mode as (typeof VALID_MODES)[number])
+    : "choose";
 
   const categories = await getCategories();
 
@@ -39,6 +45,7 @@ export default async function PublishPage({
       <PublishWizard
         categories={categories}
         preselectedType={preselectedType}
+        initialMode={initialMode}
       />
     </div>
   );

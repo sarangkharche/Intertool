@@ -167,7 +167,8 @@ export default function BrandPage() {
         <h2 className="mb-1 text-lg font-medium tracking-tight">Colors</h2>
         <p className="mb-6 text-sm text-muted-foreground">
           The palette uses oklch for perceptual uniformity. Dark mode applies a
-          subtle warm tint (hue 75) to prevent a clinical feel.
+          warm slate surface ladder with high-contrast muted text for long
+          reading sessions.
         </p>
 
         {/* Core colors */}
@@ -176,22 +177,22 @@ export default function BrandPage() {
           <ColorSwatch
             name="Background"
             variable="--background"
-            value="oklch(0.115 0.005 75)"
+            value="oklch(0.19 0.009 78)"
           />
           <ColorSwatch
             name="Foreground"
             variable="--foreground"
-            value="oklch(0.93 0.005 75)"
+            value="oklch(0.94 0.006 78)"
           />
           <ColorSwatch
             name="Primary"
             variable="--primary"
-            value="oklch(0.62 0.2 262)"
+            value="oklch(0.74 0.13 252)"
           />
           <ColorSwatch
             name="Muted"
             variable="--muted"
-            value="oklch(0.195 0.005 75)"
+            value="oklch(0.3 0.011 78)"
           />
         </div>
 
@@ -203,22 +204,22 @@ export default function BrandPage() {
           <ColorSwatch
             name="Card"
             variable="--card"
-            value="oklch(0.155 0.005 75)"
+            value="oklch(0.235 0.01 78)"
           />
           <ColorSwatch
             name="Border"
             variable="--border"
-            value="oklch(1 0.005 75 / 8%)"
+            value="oklch(0.39 0.01 78)"
           />
           <ColorSwatch
             name="Input"
             variable="--input"
-            value="oklch(1 0.005 75 / 10%)"
+            value="oklch(0.345 0.011 78)"
           />
           <ColorSwatch
             name="Accent"
             variable="--accent"
-            value="oklch(0.195 0.005 75)"
+            value="oklch(0.32 0.012 78)"
           />
         </div>
 
@@ -230,22 +231,22 @@ export default function BrandPage() {
           <ColorSwatch
             name="Success"
             variable="--success"
-            value="oklch(0.72 0.14 173)"
+            value="oklch(0.74 0.12 164)"
           />
           <ColorSwatch
             name="Destructive"
             variable="--destructive"
-            value="oklch(0.65 0.25 25)"
+            value="oklch(0.72 0.16 28)"
           />
           <ColorSwatch
             name="Muted Foreground"
             variable="--muted-foreground"
-            value="oklch(0.55 0.01 75)"
+            value="oklch(0.76 0.012 78)"
           />
           <ColorSwatch
             name="Ring / Focus"
             variable="--ring"
-            value="oklch(0.62 0.2 262)"
+            value="oklch(0.74 0.13 252)"
           />
         </div>
 
@@ -292,8 +293,9 @@ export default function BrandPage() {
       <section className="mb-16">
         <h2 className="mb-1 text-lg font-medium tracking-tight">Typography</h2>
         <p className="mb-6 text-sm text-muted-foreground">
-          Geist Sans for interface text. Geist Mono for code, commands,
-          versions, and identifiers.
+          Geist Sans for interface text with zero negative tracking and looser
+          dark-mode reading rhythm. Geist Mono for code, commands, versions,
+          and identifiers.
         </p>
 
         <div className="mb-6 rounded-lg border border-border">
@@ -317,9 +319,9 @@ export default function BrandPage() {
           />
           <TypographySample
             label="Body text"
-            className="text-sm leading-relaxed text-muted-foreground"
+            className="text-base leading-7 text-muted-foreground"
             text="A private registry for your organization. Share skills, MCP servers, agents, and prompt templates."
-            spec="text-sm / leading-relaxed / text-muted-foreground"
+            spec="text-base / leading-7 / text-muted-foreground"
           />
           <TypographySample
             label="Label"

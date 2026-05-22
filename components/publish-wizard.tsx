@@ -51,11 +51,13 @@ type WizardMode = "choose" | "quick" | "manual";
 export function PublishWizard({
   categories,
   preselectedType,
+  initialMode = "choose",
 }: {
   categories: Category[];
   preselectedType?: SkillType;
+  initialMode?: WizardMode;
 }) {
-  const [mode, setMode] = useState<WizardMode>("choose");
+  const [mode, setMode] = useState<WizardMode>(initialMode);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);

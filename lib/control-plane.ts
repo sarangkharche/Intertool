@@ -205,6 +205,63 @@ export async function cpSaveSettings(
   `;
 }
 
+export async function cpDeleteOrg(orgSlug: string): Promise<boolean> {
+  await ensureSchema();
+  const deleted = await sql().begin(async (tx) => {
+    const activeUsers = await tx`
+      SELECT user_id
+      FROM intertool_user_orgs
+      WHERE org_slug = ${orgSlug}
+        AND is_active = TRUE
+    `;
+
+    await tx`
+      DELETE FROM intertool_api_tokens
+      WHERE org_slug = ${orgSlug}
+    `;
+    await tx`
+      DELETE FROM intertool_invitations
+      WHERE org_slug = ${orgSlug}
+    `;
+    await tx`
+      DELETE FROM intertool_audit_events
+      WHERE org_slug = ${orgSlug}
+    `;
+    await tx`
+      DELETE FROM intertool_org_members
+      WHERE org_slug = ${orgSlug}
+    `;
+    await tx`
+      DELETE FROM intertool_user_orgs
+      WHERE org_slug = ${orgSlug}
+    `;
+
+    for (const row of activeUsers) {
+      const userId = String(row.user_id);
+      await tx`
+        UPDATE intertool_user_orgs
+        SET is_active = TRUE
+        WHERE user_id = ${userId}
+          AND org_slug = (
+            SELECT org_slug
+            FROM intertool_user_orgs
+            WHERE user_id = ${userId}
+            ORDER BY created_at ASC
+            LIMIT 1
+          )
+      `;
+    }
+
+    const rows = await tx`
+      DELETE FROM intertool_orgs
+      WHERE slug = ${orgSlug}
+      RETURNING slug
+    `;
+    return rows.length > 0;
+  });
+  return deleted;
+}
+
 export async function cpAddUserOrg(
   userId: string,
   orgSlug: string,

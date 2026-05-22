@@ -117,6 +117,7 @@ export type Permission =
   | "members:remove"
   | "members:change_role"
   | "settings:manage"
+  | "org:delete"
   | "org:transfer_ownership"
   | "tokens:manage_own"
   | "tokens:manage_any";
@@ -137,6 +138,7 @@ export interface Invitation {
 
 export type AuditAction =
   | "org.created"
+  | "org.deleted"
   | "org.settings.updated"
   | "member.invited"
   | "member.added"
