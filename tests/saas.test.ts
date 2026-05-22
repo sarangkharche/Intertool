@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
+import { encode } from "next-auth/jwt";
 import { getPlan, limitExceeded } from "../lib/plans";
 import { scanRegistryItem } from "../lib/security-scan";
 import { claudeMarketplace, mcpRegistryServer } from "../lib/distribution";
@@ -149,6 +150,58 @@ test("does not assign org context for public route aliases", async () => {
       delete process.env.INTERTOOL_MODE;
     } else {
       process.env.INTERTOOL_MODE = previousMode;
+    }
+  }
+});
+
+test("authenticated root private routes continue with resolved org context", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  const previousSecret = process.env.AUTH_SECRET;
+  const previousUrl = process.env.NEXTAUTH_URL;
+  const originalFetch = globalThis.fetch;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+    process.env.AUTH_SECRET = "test-secret";
+    process.env.NEXTAUTH_URL = "https://intertool.sh";
+
+    const jwt = await encode({
+      token: { username: "alice" },
+      secret: "test-secret",
+      salt: "__Secure-authjs.session-token",
+    });
+
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ org: "acme" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    const response = await proxy(
+      new NextRequest("https://intertool.sh/dashboard", {
+        headers: {
+          cookie: `__Secure-authjs.session-token=${jwt}; intertool.org=default`,
+        },
+      })
+    );
+
+    assert.equal(response.headers.get("location"), null);
+    assert.equal(response.cookies.get("intertool.org")?.value, "acme");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+    if (previousSecret === undefined) {
+      delete process.env.AUTH_SECRET;
+    } else {
+      process.env.AUTH_SECRET = previousSecret;
+    }
+    if (previousUrl === undefined) {
+      delete process.env.NEXTAUTH_URL;
+    } else {
+      process.env.NEXTAUTH_URL = previousUrl;
     }
   }
 });

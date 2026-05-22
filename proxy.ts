@@ -6,6 +6,10 @@ import {
 } from "./lib/public-route-aliases";
 
 const ORG_COOKIE = "intertool.org";
+const AUTH_SESSION_COOKIE =
+  process.env.NODE_ENV === "development"
+    ? "authjs.session-token"
+    : "__Secure-authjs.session-token";
 const isSaas = () => process.env.INTERTOOL_MODE === "saas";
 const isLocalSaasFallback = () =>
   process.env.NODE_ENV !== "production" &&
@@ -70,6 +74,19 @@ const RESERVED_SEGMENTS = new Set([
   "support",
   "teams",
   "www",
+]);
+
+const ROOT_ORG_ROUTE_SEGMENTS = new Set([
+  "admin",
+  "browse",
+  "dashboard",
+  "design-system",
+  "publish",
+  "review",
+  "search",
+  "settings",
+  "skills",
+  "teams",
 ]);
 
 function isPublicPath(pathname: string): boolean {
@@ -154,6 +171,14 @@ async function getUserOrg(
   }
 }
 
+function getAuthToken(request: NextRequest) {
+  return getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
+    cookieName: AUTH_SESSION_COOKIE,
+  });
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -180,10 +205,7 @@ export async function proxy(request: NextRequest) {
     const requestHeaders = withOrgHeader(request, pathOrgSlug);
 
     if (!isPublicPath(internalPath) && !internalPath.startsWith("/api/")) {
-      const token = await getToken({
-        req: request,
-        secret: process.env.AUTH_SECRET,
-      });
+      const token = await getAuthToken(request);
       if (!token) {
         const signInUrl = request.nextUrl.clone();
         signInUrl.pathname = `/${pathOrgSlug}/sign-in`;
@@ -225,10 +247,7 @@ export async function proxy(request: NextRequest) {
 
   // GitHub org enforcement — only when GITHUB_ORG is configured
   const githubOrg = process.env.GITHUB_ORG;
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-  });
+  const token = await getAuthToken(request);
 
   if (!token) {
     if (pathname === "/") return NextResponse.next();
@@ -251,6 +270,16 @@ export async function proxy(request: NextRequest) {
   const username = token.username as string | undefined;
   const userOrg = username ? await getUserOrg(username, request) : null;
   if (userOrg) {
+    if (firstSegment && ROOT_ORG_ROUTE_SEGMENTS.has(firstSegment)) {
+      return setOrgCookie(
+        NextResponse.next({
+          request: { headers: withOrgHeader(request, userOrg) },
+        }),
+        request,
+        userOrg
+      );
+    }
+
     const orgUrl = request.nextUrl.clone();
     orgUrl.pathname = orgPath(userOrg, pathname);
     return setOrgCookie(NextResponse.redirect(orgUrl), request, userOrg);

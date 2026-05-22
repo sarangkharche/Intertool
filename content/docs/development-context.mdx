@@ -64,6 +64,10 @@ Public route aliases for deployment or landing experiments, currently `/landing-
 
 Auth redirect normalization lives in `lib/auth-redirects.ts`. The sign-in page sanitizes `callbackUrl`, unwraps nested sign-in callbacks, and redirects authenticated SaaS users to their current or primary org path so root callbacks like `/dashboard` become `/{org}/dashboard`. If a callback contains a stale org prefix, such as `/default/dashboard`, the redirect helper replaces it with the user's resolved org.
 
+For authenticated root private routes such as `/dashboard`, `proxy.ts` sets `x-org-slug` from the user's resolved org and lets the request continue instead of issuing another browser redirect. This avoids root/org redirect loops when a browser has stale org cookies.
+
+`proxy.ts` must pass the same Auth.js session cookie name configured in `lib/auth.ts` when calling `getToken`; production uses `__Secure-authjs.session-token`.
+
 SaaS control-plane reads and writes prefer Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured:
 
 ```text
