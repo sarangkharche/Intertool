@@ -68,6 +68,8 @@ For authenticated root private routes such as `/dashboard`, `proxy.ts` sets `x-o
 
 `proxy.ts` must pass the same Auth.js session cookie name configured in `lib/auth.ts` when calling `getToken`; production uses `__Secure-authjs.session-token`.
 
+Proxy responses that redirect for auth, set `intertool.org`, or clear `intertool.org` must use no-store cache headers. `default` is an internal fallback namespace and is reserved in both `proxy.ts` and `lib/org-slugs.ts` so it cannot become an org cookie value.
+
 SaaS control-plane reads and writes prefer Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured:
 
 ```text

@@ -115,6 +115,10 @@ test("validates org slugs consistently for create and availability checks", () =
   assert.equal(publicAlias.ok, false);
   if (!publicAlias.ok) assert.equal(publicAlias.status, 409);
 
+  const internalDefault = validateOrgSlug("default");
+  assert.equal(internalDefault.ok, false);
+  if (!internalDefault.ok) assert.equal(internalDefault.status, 409);
+
   const invalid = validateOrgSlug("Acme");
   assert.equal(invalid.ok, false);
   if (!invalid.ok) assert.equal(invalid.status, 400);
@@ -186,6 +190,86 @@ test("authenticated root private routes continue with resolved org context", asy
 
     assert.equal(response.headers.get("location"), null);
     assert.equal(response.cookies.get("intertool.org")?.value, "acme");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+    if (previousSecret === undefined) {
+      delete process.env.AUTH_SECRET;
+    } else {
+      process.env.AUTH_SECRET = previousSecret;
+    }
+    if (previousUrl === undefined) {
+      delete process.env.NEXTAUTH_URL;
+    } else {
+      process.env.NEXTAUTH_URL = previousUrl;
+    }
+  }
+});
+
+test("stale default org paths do not set a default org cookie", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+
+    const response = await proxy(
+      new NextRequest("https://intertool.sh/default/dashboard")
+    );
+
+    assert.equal(
+      response.headers.get("location"),
+      "https://intertool.sh/sign-in?callbackUrl=%2Fdefault%2Fdashboard"
+    );
+    assert.equal(response.cookies.get("intertool.org")?.value, "");
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+  }
+});
+
+test("authenticated stale org-prefixed paths redirect to the resolved org", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  const previousSecret = process.env.AUTH_SECRET;
+  const previousUrl = process.env.NEXTAUTH_URL;
+  const originalFetch = globalThis.fetch;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+    process.env.AUTH_SECRET = "test-secret";
+    process.env.NEXTAUTH_URL = "https://intertool.sh";
+
+    const jwt = await encode({
+      token: { username: "alice" },
+      secret: "test-secret",
+      salt: "__Secure-authjs.session-token",
+    });
+
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ org: "acme" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    const response = await proxy(
+      new NextRequest("https://intertool.sh/default/dashboard", {
+        headers: {
+          cookie: `__Secure-authjs.session-token=${jwt}; intertool.org=default`,
+        },
+      })
+    );
+
+    assert.equal(
+      response.headers.get("location"),
+      "https://intertool.sh/acme/dashboard"
+    );
+    assert.equal(response.cookies.get("intertool.org")?.value, "acme");
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
   } finally {
     globalThis.fetch = originalFetch;
     if (previousMode === undefined) {

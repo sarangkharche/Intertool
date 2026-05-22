@@ -13,6 +13,7 @@ export const RESERVED_ORG_SLUGS = new Set([
   "browse",
   "create-org",
   "dashboard",
+  "default",
   "design-system",
   "docs",
   "favicon.ico",

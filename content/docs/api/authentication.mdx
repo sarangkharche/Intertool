@@ -50,6 +50,8 @@ When an authenticated SaaS user lands on `/sign-in`, Intertool resolves their cu
 
 Root private routes such as `/dashboard` and `/settings` also resolve the user's active organization server-side. This keeps stale browser cookies from bouncing between root and org-prefixed URLs.
 
+Auth redirects, org-cookie updates, and org-cookie clears are sent with no-store cache headers. The internal `default` namespace is reserved and cannot become an organization slug or persistent `intertool.org` cookie value.
+
 ## Member invitations
 
 Admins can invite new members by email. The invited person receives an email with a link to accept or decline the invitation.

@@ -15,6 +15,7 @@ const isLocalSaasFallback = () =>
   process.env.NODE_ENV !== "production" &&
   process.env.INTERTOOL_LOCAL_SAAS_FALLBACK === "true";
 const ORG_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
+const NO_STORE_VALUE = "private, no-store, max-age=0, must-revalidate";
 
 /** Internal paths that bypass SaaS org checks. */
 const PUBLIC_PREFIXES = [
@@ -47,6 +48,7 @@ const RESERVED_SEGMENTS = new Set([
   "browse",
   "create-org",
   "dashboard",
+  "default",
   "design-system",
   "docs",
   "favicon.ico",
@@ -116,6 +118,13 @@ function withOrgHeader(request: NextRequest, orgSlug: string): Headers {
   return requestHeaders;
 }
 
+function noStore(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", NO_STORE_VALUE);
+  response.headers.set("CDN-Cache-Control", "no-store");
+  response.headers.set("Vercel-CDN-Cache-Control", "no-store");
+  return response;
+}
+
 function setOrgCookie(
   response: NextResponse,
   request: NextRequest,
@@ -127,12 +136,35 @@ function setOrgCookie(
     path: "/",
     secure: request.nextUrl.protocol === "https:",
   });
-  return response;
+  return noStore(response);
+}
+
+function clearOrgCookie(
+  response: NextResponse,
+  request: NextRequest
+): NextResponse {
+  response.cookies.set(ORG_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: request.nextUrl.protocol === "https:",
+    maxAge: 0,
+  });
+  return noStore(response);
 }
 
 function orgPath(orgSlug: string, pathname: string): string {
   if (pathname === "/") return `/${orgSlug}`;
   return `/${orgSlug}${pathname}`;
+}
+
+function pathSegments(pathname: string): string[] {
+  return pathname.split("/").filter(Boolean);
+}
+
+function orgPathForInternalPath(orgSlug: string, internalPath: string): string {
+  if (internalPath === "/") return `/${orgSlug}`;
+  return `/${orgSlug}${internalPath}`;
 }
 
 /** Check if a user has an org without loading Node-only app modules in proxy. */
@@ -220,6 +252,21 @@ export async function proxy(request: NextRequest) {
           pathOrgSlug
         );
       }
+
+      const username = token.username as string | undefined;
+      const userOrg = username ? await getUserOrg(username, request) : null;
+      if (!userOrg) {
+        return clearOrgCookie(
+          NextResponse.redirect(new URL("/create-org", request.url)),
+          request
+        );
+      }
+
+      if (userOrg !== pathOrgSlug) {
+        const orgUrl = request.nextUrl.clone();
+        orgUrl.pathname = orgPathForInternalPath(userOrg, internalPath);
+        return setOrgCookie(NextResponse.redirect(orgUrl), request, userOrg);
+      }
     }
 
     const rewriteUrl = request.nextUrl.clone();
@@ -242,7 +289,11 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (pathname.startsWith("/sign-in") && cookieOrgSlug) {
+      return clearOrgCookie(response, request);
+    }
+    return response;
   }
 
   // GitHub org enforcement — only when GITHUB_ORG is configured
@@ -256,20 +307,28 @@ export async function proxy(request: NextRequest) {
       "callbackUrl",
       `${pathname}${request.nextUrl.search}`
     );
-    return NextResponse.redirect(signInUrl);
+    return clearOrgCookie(NextResponse.redirect(signInUrl), request);
   }
 
   if (githubOrg) {
     const userOrgs = (token.githubOrgs as string[]) ?? [];
     if (!userOrgs.includes(githubOrg.toLowerCase())) {
       const signInUrl = new URL("/sign-in?error=github_org", request.url);
-      return NextResponse.redirect(signInUrl);
+      return noStore(NextResponse.redirect(signInUrl));
     }
   }
 
   const username = token.username as string | undefined;
   const userOrg = username ? await getUserOrg(username, request) : null;
   if (userOrg) {
+    const segments = pathSegments(pathname);
+    const secondSegment = segments[1];
+    if (secondSegment && ROOT_ORG_ROUTE_SEGMENTS.has(secondSegment)) {
+      const orgUrl = request.nextUrl.clone();
+      orgUrl.pathname = `/${userOrg}/${segments.slice(1).join("/")}`;
+      return setOrgCookie(NextResponse.redirect(orgUrl), request, userOrg);
+    }
+
     if (firstSegment && ROOT_ORG_ROUTE_SEGMENTS.has(firstSegment)) {
       return setOrgCookie(
         NextResponse.next({
@@ -285,7 +344,10 @@ export async function proxy(request: NextRequest) {
     return setOrgCookie(NextResponse.redirect(orgUrl), request, userOrg);
   }
 
-  return NextResponse.redirect(new URL("/create-org", request.url));
+  return clearOrgCookie(
+    NextResponse.redirect(new URL("/create-org", request.url)),
+    request
+  );
 }
 
 export const config = {
