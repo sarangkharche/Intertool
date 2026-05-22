@@ -7,50 +7,40 @@ import { ArrowRight, Check, HelpCircle } from "lucide-react";
 export const metadata: Metadata = getPublicPageMetadata({
   title: "Pricing",
   description:
-    "Intertool pricing for private agent capability approval, hosted team registries, self-hosted support, and enterprise AI governance.",
+    "Intertool pricing for self-hosted, managed, and enterprise agent registries.",
   path: "/pricing",
 });
 
 const valueProps = [
   {
-    title: "Not another native skill store",
-    body: "Claude, Codex, Cursor, and Copilot each expose their own surfaces. Intertool gives your team one approval record across them.",
+    title: "One registry",
+    body: "Approve once. Install from every agent surface.",
   },
   {
-    title: "Govern what gets installed",
-    body: "Review skills, prompts, MCP servers, and internal tools before they become searchable or installable by the team.",
+    title: "Review first",
+    body: "Publish only after checks and team approval.",
   },
   {
-    title: "Keep private capability history",
-    body: "Track ownership, versions, source metadata, package files, audit events, and risk signals outside public marketplaces.",
+    title: "Stay private",
+    body: "Keep packages, owners, versions, and audit logs under your control.",
   },
 ];
 
 const faqs = [
   {
-    question: "Can we start self-hosted and move to paid later?",
+    question: "Can we start free?",
     answer:
-      "Yes. Community is the recommended starting point for proving the approval workflow. Paid plans add managed hosting, governance support, deployment help, and enterprise rollout assistance.",
-  },
-  {
-    question: "Why not just use Claude or Codex skills?",
-    answer:
-      "Use their native skill systems for execution. Use Intertool when you need one reviewed, versioned, auditable source of truth across Claude, Codex, Cursor, Copilot, MCP clients, and custom agents.",
-  },
-  {
-    question: "Does Intertool replace public MCP registries?",
-    answer:
-      "No. Public registries are useful for public discovery. Intertool is for private team-owned MCP servers, skills, prompts, and agent tools that need review, versioning, and access control.",
+      "Yes. Start with Community, then move to Cloud, Pro, or Enterprise when rollout needs support.",
   },
   {
     question: "Is Team Cloud available today?",
     answer:
-      "Team Cloud is early access pricing. The self-hosted app is the stable path today; managed hosting is for teams that want the approval workflow without operating storage and deployment.",
+      "Team Cloud is in early access. Self-hosting is the stable path today.",
   },
   {
-    question: "What counts as an Intertool seat?",
+    question: "What counts as a seat?",
     answer:
-      "A seat is a person who signs in to browse, publish, review, or administer the registry. CLI-only automation can use API tokens without being modeled as a separate person.",
+      "Anyone who signs in. API tokens for automation do not count.",
   },
 ];
 
@@ -65,20 +55,19 @@ export default function PricingPage() {
           <div className="grid gap-8 lg:grid-cols-[1fr_340px] lg:items-end">
             <div>
               <h1 className="text-display max-w-3xl text-3xl leading-[1.05] sm:text-5xl">
-                Start with private approval. Scale into agent governance.
+                Choose how Intertool runs.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-                Intertool is open source for teams that want to self-host. Paid
-                plans are for hosted approval workflows, private deployment
-                support, and company-wide AI agent capability governance.
+                Self-host for free, use managed cloud for teams, or add support
+                when the registry becomes infrastructure.
               </p>
             </div>
             <div className="rounded-lg border border-border/70 bg-muted/25 p-4">
-              <p className="text-sm font-medium">Recommended path</p>
-              <ol className="mt-3 space-y-2 text-xs leading-6 text-muted-foreground">
-                <li>1. Prove the workflow on Community.</li>
-                <li>2. Add hosted review and audit with Team Cloud.</li>
-                <li>3. Move to Pro or Enterprise when procurement matters.</li>
+              <p className="text-sm font-medium">Common path</p>
+              <ol className="mt-3 list-decimal space-y-2 pl-4 text-xs leading-6 text-muted-foreground">
+                <li>Start with Community.</li>
+                <li>Go managed with Team Cloud.</li>
+                <li>Add rollout support when needed.</li>
               </ol>
             </div>
           </div>
@@ -105,8 +94,8 @@ export default function PricingPage() {
               key={plan.name}
               className={`flex flex-col rounded-lg border p-4 sm:p-5 ${
                 plan.featured
-                  ? "border-foreground bg-foreground text-background lg:-mt-4 lg:min-h-[35rem]"
-                  : "border-border/70 bg-surface lg:min-h-[32rem]"
+                  ? "border-foreground bg-foreground text-background lg:-mt-4 lg:min-h-[29rem]"
+                  : "border-border/70 bg-surface lg:min-h-[27rem]"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -146,7 +135,7 @@ export default function PricingPage() {
               </div>
 
               <p
-                className={`mt-5 text-sm leading-6 md:min-h-24 ${
+                className={`mt-5 text-sm leading-6 md:min-h-12 ${
                   plan.featured ? "text-background/75" : "text-muted-foreground"
                 }`}
               >
@@ -190,7 +179,7 @@ export default function PricingPage() {
               Questions
             </p>
             <h2 className="text-display text-2xl leading-tight">
-              Built for teams still deciding how agent governance should work.
+              Questions before rollout?
             </h2>
           </div>
           <div className="space-y-3">

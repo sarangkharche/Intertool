@@ -521,6 +521,20 @@
     text-wrap: balance;
   }
 
+  .landing-display {
+    font-family:
+      var(--font-landing-display, var(--font-geist-sans)), ui-serif, Georgia,
+      serif;
+    font-optical-sizing: auto;
+    font-variation-settings:
+      "SOFT" 24,
+      "WONK" 0,
+      "opsz" 72;
+    font-weight: 630;
+    letter-spacing: 0;
+    text-wrap: balance;
+  }
+
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background;
   }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fraunces } from "next/font/google";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isSaasMode, getOrgSlug } from "@/lib/org";
@@ -26,9 +27,16 @@ const agentRows = [
 ];
 
 const landingPlanDescriptions: Record<string, string> = {
-  Community: "Run it yourself.",
-  "Team Cloud": "Managed governance.",
+  Community: "Self-host the registry.",
+  "Team Cloud": "Managed review workflow.",
 };
+
+const landingDisplay = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-landing-display",
+  axes: ["SOFT", "WONK", "opsz"],
+});
 
 export default async function HomePage() {
   const session = await auth();
@@ -64,7 +72,7 @@ export default async function HomePage() {
   const featuredPlan = pricingPlans.find((plan) => plan.featured);
 
   return (
-    <div className="overflow-hidden">
+    <div className={`${landingDisplay.variable} overflow-hidden`}>
       <section className="relative isolate border-b border-border-subtle">
         <div className="mx-auto grid min-h-[620px] max-w-6xl gap-12 px-4 py-16 sm:py-20 lg:min-h-[660px] lg:grid-cols-[minmax(0,0.9fr)_420px] lg:items-center lg:gap-20 lg:py-12">
           <div className="relative z-10 max-w-xl">
@@ -72,12 +80,12 @@ export default async function HomePage() {
               <Package className="h-3 w-3" aria-hidden="true" />
               Private agent registry
             </div>
-            <h1 className="text-display text-4xl leading-[1.02] text-foreground sm:text-5xl lg:text-6xl">
-              Govern agent capabilities.
+            <h1 className="landing-display text-4xl leading-[1.02] text-foreground sm:text-5xl lg:text-6xl">
+              Private registry for agent capabilities.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Approve skills, MCP servers, and tools before they reach your
-              teams.
+              Approve skills, MCP servers, prompts, and tools before they reach
+              your agents.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -106,7 +114,7 @@ export default async function HomePage() {
                 <div>
                   <p className="text-xs font-medium">Capability rollout</p>
                   <p className="text-[11px] text-muted-foreground">
-                    Agent access
+                    Approved access
                   </p>
                 </div>
                 <span className="rounded-full border border-success/35 bg-success/10 px-2 py-0.5 text-[10px] text-success">
@@ -173,45 +181,44 @@ export default async function HomePage() {
         id="where-it-fits"
         className="scroll-mt-16 border-y border-border-subtle bg-muted/20"
       >
-        <div className="mx-auto grid max-w-5xl gap-10 px-4 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <div>
             <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
               Where it fits
             </p>
-            <h2 className="text-display max-w-md text-2xl leading-tight sm:text-3xl">
-              One registry across agent surfaces.
+            <h2 className="landing-display max-w-md text-2xl leading-tight sm:text-3xl">
+              One approval record.
             </h2>
             <p className="mt-5 max-w-md text-sm leading-7 text-muted-foreground">
-              Native stores stay siloed.
+              Native stores stay siloed. Intertool gives every agent the same
+              source of truth.
             </p>
           </div>
-          <div className="grid gap-x-8 sm:grid-cols-2">
+          <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
             {platformProof.map((item) => (
               <div
                 key={item}
-                className="flex gap-3 border-t border-border-subtle py-4"
+                className="flex min-h-14 items-center gap-3 border-t border-border-subtle py-4"
               >
                 <ShieldCheck
                   className="mt-0.5 h-4 w-4 shrink-0 text-success"
                   aria-hidden="true"
                 />
-                <p className="text-sm leading-6 text-muted-foreground">
-                  {item}
-                </p>
+                <p className="text-sm font-medium text-foreground">{item}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 py-16">
+      <section className="mx-auto max-w-6xl px-4 py-20">
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
               Product
             </p>
-            <h2 className="text-display max-w-xl text-2xl leading-tight sm:text-3xl">
-              Approve, version, distribute.
+            <h2 className="landing-display max-w-xl text-2xl leading-tight sm:text-3xl">
+              Review, package, install.
             </h2>
           </div>
           <Link
@@ -224,9 +231,12 @@ export default async function HomePage() {
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           {capabilityPillars.map((pillar) => (
-            <div key={pillar.title} className="border-t border-border pt-4">
+            <div
+              key={pillar.title}
+              className="group rounded-lg border border-border-subtle bg-surface/55 p-4 transition-colors hover:border-success/30 hover:bg-surface"
+            >
               <pillar.icon
-                className="mb-4 h-5 w-5 text-muted-foreground"
+                className="mb-5 h-5 w-5 text-muted-foreground transition-colors group-hover:text-success"
                 aria-hidden="true"
               />
               <h3 className="text-sm font-semibold">{pillar.title}</h3>
@@ -238,48 +248,67 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 pb-16">
-        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-lg border border-border/70 bg-foreground p-5 text-background">
-            <p className="mb-3 text-xs font-medium text-background/60">
+      <section className="mx-auto max-w-6xl px-4 pb-20">
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <div className="rounded-lg border border-border-subtle bg-surface/55 p-5">
+            <p className="mb-4 text-xs font-medium text-muted-foreground">
               Before Intertool
             </p>
-            <ul className="space-y-3 text-sm leading-6 text-background/80">
-              <li>Platform silos</li>
-              <li>Copied MCP configs</li>
-              <li>Prompt drift</li>
-              <li>No live inventory</li>
+            <ul className="divide-y divide-border-subtle text-sm text-muted-foreground">
+              {[
+                "Platform silos",
+                "Copied configs",
+                "Prompt sprawl",
+                "No audit trail",
+              ].map((item) => (
+                <li key={item} className="py-3 first:pt-0 last:pb-0">
+                  {item}
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="rounded-lg border border-border/70 bg-surface p-5">
-            <p className="mb-3 text-xs font-medium text-muted-foreground">
+          <div className="rounded-lg border border-success/25 bg-success/5 p-5">
+            <p className="mb-4 text-xs font-medium text-success">
               With Intertool
             </p>
-            <ul className="space-y-3 text-sm leading-6 text-muted-foreground">
-              <li>Owners and status</li>
-              <li>Approved installs</li>
-              <li>Review history</li>
-              <li>Private by default</li>
+            <ul className="divide-y divide-success/15 text-sm text-foreground">
+              {[
+                "Owners and status",
+                "Versioned releases",
+                "Review history",
+                "Approved install paths",
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="flex items-center gap-2 py-3 first:pt-0 last:pb-0"
+                >
+                  <Check
+                    className="h-3.5 w-3.5 shrink-0 text-success"
+                    aria-hidden="true"
+                  />
+                  {item}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
       </section>
 
       <section className="border-y border-border-subtle bg-muted/20">
-        <div className="mx-auto max-w-5xl px-4 py-16">
+        <div className="mx-auto max-w-6xl px-4 py-20">
           <div className="mb-8 max-w-2xl">
             <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
               Use cases
             </p>
-            <h2 className="text-display text-2xl leading-tight sm:text-3xl">
-              Private capabilities, one catalog.
+            <h2 className="landing-display text-2xl leading-tight sm:text-3xl">
+              What belongs in the registry.
             </h2>
           </div>
           <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
             {useCases.map((useCase) => (
               <div
                 key={useCase.title}
-                className="border-t border-border-subtle py-5"
+                className="border-t border-border-subtle py-5 transition-colors hover:border-success/30"
               >
                 <useCase.icon
                   className="mb-4 h-5 w-5 text-muted-foreground"
@@ -295,14 +324,14 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 py-16">
+      <section className="mx-auto max-w-6xl px-4 py-20">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div>
             <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
               Pricing
             </p>
-            <h2 className="text-display text-2xl leading-tight sm:text-3xl">
-              Start self-hosted. Upgrade when needed.
+            <h2 className="landing-display text-2xl leading-tight sm:text-3xl">
+              Self-host now. Managed when ready.
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -375,15 +404,15 @@ function PricingPreview({ plan }: { plan: (typeof pricingPlans)[number] }) {
     <div
       className={`rounded-lg border p-5 ${
         plan.featured
-          ? "border-foreground bg-foreground text-background"
-          : "border-border/70 bg-surface"
+          ? "border-success/30 bg-success/5 text-foreground"
+          : "border-border-subtle bg-surface/55"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p
             className={`text-[11px] font-medium uppercase ${
-              plan.featured ? "text-background/55" : "text-muted-foreground"
+              plan.featured ? "text-success" : "text-muted-foreground"
             }`}
           >
             {plan.eyebrow}
@@ -392,7 +421,7 @@ function PricingPreview({ plan }: { plan: (typeof pricingPlans)[number] }) {
         </div>
         <plan.icon
           className={`h-5 w-5 ${
-            plan.featured ? "text-background/55" : "text-muted-foreground"
+            plan.featured ? "text-success" : "text-muted-foreground"
           }`}
           aria-hidden="true"
         />
@@ -401,7 +430,7 @@ function PricingPreview({ plan }: { plan: (typeof pricingPlans)[number] }) {
         <span className="text-3xl font-semibold">{plan.price}</span>
         <p
           className={`mt-1 text-xs ${
-            plan.featured ? "text-background/60" : "text-muted-foreground"
+            plan.featured ? "text-success/80" : "text-muted-foreground"
           }`}
         >
           {plan.cadence}
@@ -409,7 +438,7 @@ function PricingPreview({ plan }: { plan: (typeof pricingPlans)[number] }) {
       </div>
       <p
         className={`mt-4 text-sm leading-6 md:min-h-10 ${
-          plan.featured ? "text-background/75" : "text-muted-foreground"
+          plan.featured ? "text-foreground/80" : "text-muted-foreground"
         }`}
       >
         {landingPlanDescriptions[plan.name] ?? plan.description}
@@ -418,9 +447,7 @@ function PricingPreview({ plan }: { plan: (typeof pricingPlans)[number] }) {
         {plan.features.slice(0, 3).map((feature) => (
           <li key={feature} className="flex gap-2 text-xs">
             <Check
-              className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                plan.featured ? "text-background/70" : "text-success"
-              }`}
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success"
               aria-hidden="true"
             />
             <span>{feature}</span>

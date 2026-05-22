@@ -6,7 +6,7 @@ test.describe("public registry surface", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Govern agent capabilities.",
+        name: "Private registry for agent capabilities.",
       })
     ).toBeVisible();
     await expect(
@@ -23,11 +23,11 @@ test.describe("public registry surface", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Start with private approval. Scale into agent governance.",
+        name: "Choose how Intertool runs.",
       })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Not another native skill store" })
+      page.getByRole("heading", { name: "One registry" })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Community" })

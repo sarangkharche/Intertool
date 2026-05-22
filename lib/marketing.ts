@@ -36,10 +36,10 @@ export const marketSignals = [
 ];
 
 export const platformProof = [
-  "One approval path",
+  "Review before install",
   "Private by default",
   "Owners and versions",
-  "Approved installs",
+  "Audit trail",
 ];
 
 export const capabilityPillars: Array<{
@@ -50,12 +50,12 @@ export const capabilityPillars: Array<{
   {
     icon: ClipboardCheck,
     title: "Approve",
-    description: "Review first.",
+    description: "Block risky tools.",
   },
   {
     icon: FileCheck2,
     title: "Version",
-    description: "Track changes.",
+    description: "Track every change.",
   },
   {
     icon: Terminal,
@@ -65,7 +65,7 @@ export const capabilityPillars: Array<{
   {
     icon: Shield,
     title: "Keep private",
-    description: "Control access.",
+    description: "Limit access.",
   },
 ];
 
@@ -82,17 +82,17 @@ export const useCases: Array<{
   {
     icon: Code2,
     title: "Cross-agent skills",
-    description: "Shared playbooks.",
+    description: "Reusable tasks.",
   },
   {
     icon: Layers3,
     title: "Prompt playbooks",
-    description: "Reviewed prompts.",
+    description: "Approved templates.",
   },
   {
     icon: Workflow,
     title: "Governance",
-    description: "Live audit trail.",
+    description: "Audit trail.",
   },
 ];
 
@@ -102,18 +102,15 @@ export const pricingPlans = [
     eyebrow: "Open source",
     price: "$0",
     cadence: "self-hosted",
-    description:
-      "For teams proving a private approval workflow in their own infrastructure.",
+    description: "Self-host the approval workflow.",
     cta: "Start self-hosted",
     href: "/docs/getting-started",
     featured: false,
     icon: Database,
     features: [
-      "Single private registry",
+      "Private registry",
       "S3-compatible storage",
-      "CLI publish, install, and update",
-      "Skills, MCP servers, prompts, and tools",
-      "GitHub OAuth",
+      "CLI publish and install",
       "Review queue and audit log",
     ],
   },
@@ -122,18 +119,16 @@ export const pricingPlans = [
     eyebrow: "Early access",
     price: "$199",
     cadence: "per month base, then $20 per seat",
-    description:
-      "For engineering teams that want managed cross-agent governance without running infrastructure.",
+    description: "Managed review without infrastructure.",
     cta: "Join early access",
     href: "/sign-in",
     featured: true,
     icon: GitPullRequestDraft,
     features: [
       "Managed hosting",
-      "Org paths and member management",
-      "Review queue and audit history",
-      "Claude, Codex, Cursor, and MCP install paths",
-      "Version history",
+      "Members and org paths",
+      "Review and audit history",
+      "Cross-agent install paths",
       "Priority onboarding",
     ],
   },
@@ -142,18 +137,15 @@ export const pricingPlans = [
     eyebrow: "Annual",
     price: "$3k+",
     cadence: "per year",
-    description:
-      "For DevEx and AI platform teams that need private deployment guidance and support.",
+    description: "Deployment help for platform teams.",
     cta: "Talk through deployment",
     href: "https://github.com/sarangkharche/intertool/issues",
     featured: false,
     icon: LockKeyhole,
     features: [
-      "Private deployment support",
-      "Governance workflow design",
+      "Deployment support",
+      "Workflow design",
       "Audit retention guidance",
-      "Upgrade assistance",
-      "Security review materials",
       "Priority fixes",
     ],
   },
@@ -162,19 +154,16 @@ export const pricingPlans = [
     eyebrow: "Custom",
     price: "Custom",
     cadence: "for regulated teams",
-    description:
-      "For companies standardizing approved agent capabilities across many teams and environments.",
+    description: "Rollout support for regulated orgs.",
     cta: "Request enterprise plan",
     href: "https://github.com/sarangkharche/intertool/issues",
     featured: false,
     icon: Scale,
     features: [
-      "SSO and advanced RBAC roadmap",
+      "SSO and RBAC roadmap",
       "Policy pack design",
       "Procurement support",
-      "Dedicated deployment review",
-      "Custom retention requirements",
-      "Company rollout planning",
+      "Custom retention",
     ],
   },
 ];
