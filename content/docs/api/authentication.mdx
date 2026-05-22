@@ -42,6 +42,10 @@ Roles are assigned in **Settings > Members**. Admins can promote and demote memb
 
 Admins can restrict access to members of a specific GitHub organization. When enabled, only users who belong to the configured org can sign in.
 
+## SaaS org routing
+
+Hosted SaaS deployments use path-based org routing: `/{org}/...` sets the active organization for auth, registry reads, API requests, and RBAC checks. Reserved app routes and public route aliases such as `/landing-exp` are never treated as org slugs, and OAuth callbacks from those aliases are normalized back to the canonical app path before sign-in completes.
+
 ## Member invitations
 
 Admins can invite new members by email. The invited person receives an email with a link to accept or decline the invitation.

@@ -1,3 +1,5 @@
+import { PUBLIC_ROUTE_ALIASES } from "./public-route-aliases";
+
 export const ORG_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
 export const RESERVED_ORG_SLUGS = new Set([
@@ -17,6 +19,7 @@ export const RESERVED_ORG_SLUGS = new Set([
   "help",
   "icon.svg",
   "invite",
+  ...PUBLIC_ROUTE_ALIASES,
   "llms",
   "llms-full.txt",
   "llms.txt",

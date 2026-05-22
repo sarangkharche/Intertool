@@ -17,20 +17,20 @@ import {
 export const marketSignals = [
   {
     value: "80%",
-    label: "of developers use AI tools in their workflow",
-    source: "Stack Overflow 2025 Developer Survey",
+    label: "developer AI adoption",
+    source: "Stack Overflow 2025",
     href: "https://stackoverflow.blog/2025/12/29/developers-remain-willing-but-reluctant-to-use-ai-the-2025-developer-survey-results-are-here/",
   },
   {
     value: "29%",
-    label: "trust AI output accuracy",
-    source: "Stack Overflow 2025 Developer Survey",
+    label: "trust AI accuracy",
+    source: "Stack Overflow 2025",
     href: "https://stackoverflow.blog/2025/12/29/developers-remain-willing-but-reluctant-to-use-ai-the-2025-developer-survey-results-are-here/",
   },
   {
     value: "Public",
-    label: "official MCP discovery is built around public servers",
-    source: "Model Context Protocol Registry",
+    label: "public MCP discovery",
+    source: "MCP Registry",
     href: "https://modelcontextprotocol.io/registry/about",
   },
 ];

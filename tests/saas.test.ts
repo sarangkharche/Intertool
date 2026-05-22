@@ -1,12 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { NextRequest } from "next/server";
 import { getPlan, limitExceeded } from "../lib/plans";
 import { scanRegistryItem } from "../lib/security-scan";
 import { claudeMarketplace, mcpRegistryServer } from "../lib/distribution";
 import { stripePriceForPlan } from "../lib/stripe";
 import { validateOrgSlug } from "../lib/org-slugs";
+import { normalizePublicRouteAliasCallbackUrl } from "../lib/public-route-aliases";
 import { hasPermission } from "../lib/rbac";
 import { isStorageConfigured } from "../lib/s3";
+import { proxy } from "../proxy";
 import type { Skill } from "../lib/types";
 
 const baseSkill: Skill = {
@@ -103,9 +106,59 @@ test("validates org slugs consistently for create and availability checks", () =
   assert.equal(reserved.ok, false);
   if (!reserved.ok) assert.equal(reserved.status, 409);
 
+  const publicAlias = validateOrgSlug("landing-exp");
+  assert.equal(publicAlias.ok, false);
+  if (!publicAlias.ok) assert.equal(publicAlias.status, 409);
+
   const invalid = validateOrgSlug("Acme");
   assert.equal(invalid.ok, false);
   if (!invalid.ok) assert.equal(invalid.status, 400);
+});
+
+test("does not assign org context for public route aliases", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+
+    const signInResponse = await proxy(
+      new NextRequest(
+        "https://intertool.sh/landing-exp/sign-in?callbackUrl=%2Flanding-exp%2Fdashboard"
+      )
+    );
+    assert.equal(signInResponse.cookies.get("intertool.org"), undefined);
+    assert.equal(signInResponse.headers.get("location"), null);
+    assert.match(
+      signInResponse.headers.get("x-middleware-rewrite") ?? "",
+      /^https:\/\/intertool\.sh\/sign-in\?/
+    );
+
+    const dashboardResponse = await proxy(
+      new NextRequest("https://intertool.sh/landing-exp/dashboard")
+    );
+    assert.equal(dashboardResponse.cookies.get("intertool.org"), undefined);
+    assert.equal(
+      dashboardResponse.headers.get("location"),
+      "https://intertool.sh/dashboard"
+    );
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+  }
+});
+
+test("normalizes OAuth callbacks from public route aliases", () => {
+  assert.equal(
+    normalizePublicRouteAliasCallbackUrl("/landing-exp/dashboard"),
+    "/dashboard"
+  );
+  assert.equal(normalizePublicRouteAliasCallbackUrl("/landing-exp"), "/");
+  assert.equal(
+    normalizePublicRouteAliasCallbackUrl("/dashboard"),
+    "/dashboard"
+  );
 });
 
 test("admins can delete organizations", () => {

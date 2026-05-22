@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import {
+  isPublicRouteAliasSegment,
+  PUBLIC_ROUTE_ALIASES,
+} from "./lib/public-route-aliases";
 
 const ORG_COOKIE = "intertool.org";
 const isSaas = () => process.env.INTERTOOL_MODE === "saas";
@@ -45,6 +49,7 @@ const RESERVED_SEGMENTS = new Set([
   "help",
   "icon.svg",
   "invite",
+  ...PUBLIC_ROUTE_ALIASES,
   "llms",
   "llms.txt",
   "llms-full.txt",
@@ -83,8 +88,8 @@ function getPathOrgSlug(pathname: string): string | undefined {
   return segment;
 }
 
-function stripOrgPrefix(pathname: string, orgSlug: string): string {
-  const rest = pathname.slice(orgSlug.length + 1);
+function stripPathPrefix(pathname: string, prefix: string): string {
+  const rest = pathname.slice(prefix.length + 1);
   return rest || "/";
 }
 
@@ -156,9 +161,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const firstSegment = getFirstSegment(pathname);
+  if (firstSegment && isPublicRouteAliasSegment(firstSegment)) {
+    const internalPath = stripPathPrefix(pathname, firstSegment);
+    const targetUrl = request.nextUrl.clone();
+    targetUrl.pathname = internalPath;
+
+    if (isPublicPath(internalPath) || internalPath.startsWith("/api/")) {
+      return NextResponse.rewrite(targetUrl);
+    }
+
+    return NextResponse.redirect(targetUrl);
+  }
+
   const pathOrgSlug = getPathOrgSlug(pathname);
   if (pathOrgSlug) {
-    const internalPath = stripOrgPrefix(pathname, pathOrgSlug);
+    const internalPath = stripPathPrefix(pathname, pathOrgSlug);
     const requestHeaders = withOrgHeader(request, pathOrgSlug);
 
     if (!isPublicPath(internalPath) && !internalPath.startsWith("/api/")) {

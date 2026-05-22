@@ -6,17 +6,15 @@ test.describe("public registry surface", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Own the agent capabilities your teams are allowed to use.",
+        name: "Govern agent capabilities.",
       })
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: /deploy self-hosted/i })
     ).toHaveAttribute("href", "/docs/getting-started");
+    await expect(page.getByText("Private agent registry")).toBeVisible();
     await expect(
-      page.getByText("Approval layer for Claude, Codex, Cursor, and MCP")
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /see where it fits/i })
+      page.getByRole("link", { name: /where it fits/i })
     ).toHaveAttribute("href", "#where-it-fits");
   });
 

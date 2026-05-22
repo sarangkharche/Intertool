@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Package } from "lucide-react";
+import { normalizePublicRouteAliasCallbackUrl } from "@/lib/public-route-aliases";
 
 interface AuthConfig {
   github: boolean;
@@ -24,6 +25,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 function SignInForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const callbackUrl = normalizePublicRouteAliasCallbackUrl(
+    searchParams.get("callbackUrl")
+  );
   const [config, setConfig] = useState<AuthConfig | null>(null);
 
   useEffect(() => {
@@ -60,7 +64,7 @@ function SignInForm() {
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-ring"
           onClick={() =>
             signIn("github", {
-              callbackUrl: searchParams.get("callbackUrl") || "/",
+              callbackUrl,
             })
           }
         >
@@ -86,7 +90,7 @@ function SignInForm() {
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium transition-all duration-100 hover:bg-muted focus-ring"
               onClick={() =>
                 signIn("google", {
-                  callbackUrl: searchParams.get("callbackUrl") || "/",
+                  callbackUrl,
                 })
               }
             >

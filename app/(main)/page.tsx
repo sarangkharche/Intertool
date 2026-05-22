@@ -13,7 +13,6 @@ import {
 import {
   ArrowRight,
   Check,
-  CheckCircle2,
   ExternalLink,
   Package,
   ShieldCheck,
@@ -62,24 +61,23 @@ export default async function HomePage() {
   return (
     <div className="overflow-hidden">
       <section className="relative isolate border-b border-border-subtle">
-        <div className="mx-auto grid max-w-5xl gap-10 px-4 py-14 sm:py-20 lg:grid-cols-[1fr_360px] lg:items-end lg:py-24">
-          <div className="relative z-10 max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/75 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+        <div className="mx-auto grid min-h-[620px] max-w-6xl gap-12 px-4 py-16 sm:py-20 lg:min-h-[660px] lg:grid-cols-[minmax(0,0.9fr)_420px] lg:items-center lg:gap-20 lg:py-12">
+          <div className="relative z-10 max-w-xl">
+            <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-3 py-1 text-xs text-success shadow-sm backdrop-blur">
               <Package className="h-3 w-3" aria-hidden="true" />
-              Approval layer for Claude, Codex, Cursor, and MCP
+              Private agent registry
             </div>
-            <h1 className="text-display max-w-3xl text-4xl leading-[1.02] text-foreground sm:text-5xl lg:text-6xl">
-              Own the agent capabilities your teams are allowed to use.
+            <h1 className="text-display text-4xl leading-[1.02] text-foreground sm:text-5xl lg:text-6xl">
+              Govern agent capabilities.
             </h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Claude and Codex can run skills. Cursor and Copilot can use MCP.
-              Intertool is the private registry that decides what is approved,
-              versioned, and installable across all of them.
+            <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+              Approve skills, MCP servers, and tools before they reach your
+              teams.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/docs/getting-started"
-                className="btn-pill-lg min-h-11 w-full justify-center sm:w-auto"
+                className="btn-pill-lg min-h-11 w-full justify-center border-success/35 bg-success/10 text-success hover:border-success/45 hover:bg-success/15 sm:w-auto"
               >
                 Deploy self-hosted
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -88,65 +86,55 @@ export default async function HomePage() {
                 href="#where-it-fits"
                 className="btn-pill-lg min-h-11 w-full justify-center bg-background/70 sm:w-auto"
               >
-                See where it fits
+                Where it fits
               </Link>
-            </div>
-            <div className="mt-7 grid max-w-2xl gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-              {[
-                "Cross-agent registry",
-                "Review and audit trail",
-                "Self-hosted or managed",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <CheckCircle2
-                    className="h-3.5 w-3.5 text-success"
-                    aria-hidden="true"
-                  />
-                  <span>{item}</span>
-                </div>
-              ))}
             </div>
           </div>
 
-          <div className="relative z-10 overflow-hidden rounded-xl border border-border/70 bg-surface/90 p-4 shadow-[0_24px_80px_rgb(0_0_0/0.18)]">
-            <RegistryPanelArt />
-            <div className="relative z-10 mb-4 flex items-center justify-between px-1">
-              <div>
-                <p className="text-xs font-medium">Capability rollout</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Approved by agent surface
-                </p>
-              </div>
-              <span className="rounded-full border border-success/35 bg-success/10 px-2 py-0.5 text-[10px] text-success">
-                live
-              </span>
+          <div className="relative z-10 flex flex-col items-center gap-6 lg:items-end">
+            <div className="lg:mr-8">
+              <HeroLogoMark />
             </div>
-            <div className="relative z-10 space-y-1.5">
-              {agentRows.map(([surface, item, status]) => (
-                <div
-                  key={`${surface}-${item}`}
-                  className="grid grid-cols-[minmax(72px,96px)_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border-subtle bg-background/55 px-2.5 py-2 text-[11px] backdrop-blur"
-                >
-                  <span className="text-muted-foreground">{surface}</span>
-                  <span className="truncate font-mono">{item}</span>
-                  <span
-                    className={
-                      status === "approved" ? "text-success" : "text-warning"
-                    }
-                  >
-                    {status}
-                  </span>
+
+            <div className="w-full max-w-[420px] overflow-hidden rounded-lg border border-border-subtle border-t-success/35 bg-surface/80 p-5">
+              <div className="mb-5 flex items-center justify-between px-1">
+                <div>
+                  <p className="text-xs font-medium">Capability rollout</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Agent access
+                  </p>
                 </div>
-              ))}
-            </div>
-            <div className="relative z-10 mt-3 overflow-x-auto rounded-md border border-border-subtle bg-foreground px-3 py-2 font-mono text-[11px] text-background">
-              intertool install @platform/internal-mcp
+                <span className="rounded-full border border-success/35 bg-success/10 px-2 py-0.5 text-[10px] text-success">
+                  live
+                </span>
+              </div>
+              <div className="space-y-2">
+                {agentRows.map(([surface, item, status]) => (
+                  <div
+                    key={`${surface}-${item}`}
+                    className="grid grid-cols-[minmax(72px,96px)_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border-subtle bg-background/45 px-3 py-2.5 text-[11px]"
+                  >
+                    <span className="text-muted-foreground">{surface}</span>
+                    <span className="truncate font-mono">{item}</span>
+                    <span
+                      className={
+                        status === "approved" ? "text-success" : "text-warning"
+                      }
+                    >
+                      {status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 overflow-x-auto rounded-md border border-border-subtle bg-foreground px-3 py-2.5 font-mono text-[11px] text-background">
+                intertool install @platform/internal-mcp
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 py-12">
+      <section className="mx-auto max-w-6xl px-4 py-14">
         <div className="grid border-y border-border-subtle md:grid-cols-3 md:divide-x md:divide-border-subtle">
           {marketSignals.map((signal) => (
             <a
@@ -154,14 +142,14 @@ export default async function HomePage() {
               href={signal.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="group py-5 transition-colors hover:bg-muted/20 focus-ring md:px-5 md:first:pl-0 md:last:pr-0"
+              className="group py-6 transition-colors hover:bg-muted/20 focus-ring md:px-6 md:first:pl-0 md:last:pr-0"
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-2xl font-semibold tabular-nums">
                   {signal.value}
                 </p>
                 <ExternalLink
-                  className="mt-1 h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground"
+                  className="mt-1 h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-success"
                   aria-hidden="true"
                 />
               </div>
@@ -201,7 +189,7 @@ export default async function HomePage() {
                 className="flex gap-3 border-t border-border-subtle py-4"
               >
                 <ShieldCheck
-                  className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-success"
                   aria-hidden="true"
                 />
                 <p className="text-sm leading-6 text-muted-foreground">
@@ -349,69 +337,51 @@ export default async function HomePage() {
   );
 }
 
-function RegistryPanelArt() {
+function HeroLogoMark() {
   return (
     <svg
       aria-hidden="true"
-      className="pointer-events-none absolute -right-10 top-4 h-48 w-48 text-border"
-      viewBox="0 0 180 180"
+      data-hero-logo-mark
+      className="pointer-events-none h-24 w-24 overflow-visible sm:h-28 sm:w-28 lg:h-32 lg:w-32"
+      viewBox="0 0 120 120"
       fill="none"
     >
       <rect
-        x="34"
-        y="28"
-        width="112"
-        height="112"
-        rx="28"
-        className="stroke-border-subtle"
-      />
-      <rect
-        x="44"
-        y="38"
-        width="112"
-        height="112"
-        rx="28"
-        className="stroke-border-subtle/70"
-      />
-      <rect
-        x="54"
-        y="48"
-        width="112"
-        height="112"
-        rx="28"
-        className="stroke-border-subtle/40"
-      />
-      <path
-        d="M78 66 116 87.5v42L78 108V66Z"
-        className="stroke-muted-foreground/45"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M78 66 116 44.5 154 66 116 87.5 78 66Z"
-        className="stroke-muted-foreground/45"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M154 66v42l-38 21.5v-42L154 66Z"
-        className="stroke-muted-foreground/45"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M96 76.5 134 55"
-        className="stroke-muted-foreground/30"
-        strokeLinecap="round"
-      />
-      <circle cx="58" cy="126" r="4" className="fill-success/80" />
-      <circle cx="138" cy="34" r="3" className="fill-success/60" />
-      <circle cx="158" cy="118" r="3" className="fill-primary/55" />
-      <path
-        d="M60 126c18-20 34-26 56-18 18 6 29 2 42-14"
+        x="22"
+        y="18"
+        width="76"
+        height="76"
+        rx="19"
         className="stroke-success/25"
+      />
+      <path
+        d="M40 40 60 29l20 11-20 11-20-11Z"
+        className="stroke-foreground/55"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M40 40v24l20 11V51L40 40Z"
+        className="stroke-foreground/55"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M80 40v24L60 75V51l20-11Z"
+        className="stroke-foreground/55"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M49 45 69 34"
+        className="stroke-foreground/20"
+        strokeWidth="1.2"
         strokeLinecap="round"
       />
+      <circle cx="91" cy="21" r="2.2" className="fill-success" />
     </svg>
   );
 }
