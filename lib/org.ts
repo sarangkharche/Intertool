@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { isUsableOrgSlug } from "./org-slugs";
 
 const ORG_COOKIE = "intertool.org";
 
@@ -47,7 +48,11 @@ export async function getOrgSlug(): Promise<string | undefined> {
 
   try {
     const h = await headers();
-    return h.get("x-org-slug") || readCookie(h.get("cookie"), ORG_COOKIE);
+    const headerOrgSlug = h.get("x-org-slug");
+    if (isUsableOrgSlug(headerOrgSlug)) return headerOrgSlug;
+
+    const cookieOrgSlug = readCookie(h.get("cookie"), ORG_COOKIE);
+    return isUsableOrgSlug(cookieOrgSlug) ? cookieOrgSlug : undefined;
   } catch {
     // Not in a request context (build time, etc.)
     return undefined;

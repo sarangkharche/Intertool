@@ -17,6 +17,8 @@ const ORG_AWARE_ROUTE_SEGMENTS = new Set([
   "teams",
 ]);
 
+const STALE_ORG_PREFIX_SEGMENTS = new Set(["default"]);
+
 function asInternalUrl(
   value: string,
   allowedOrigin?: string
@@ -43,6 +45,24 @@ function asInternalUrl(
 
 function pathWithSearchAndHash(url: URL): string {
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function stripStaleOrgPrefixes(url: URL): URL {
+  const segments = pathSegments(url.pathname);
+  let stalePrefixCount = 0;
+
+  while (STALE_ORG_PREFIX_SEGMENTS.has(segments[stalePrefixCount])) {
+    stalePrefixCount += 1;
+  }
+
+  if (stalePrefixCount === 0) return url;
+
+  const remainingSegments = segments.slice(stalePrefixCount);
+  url.pathname =
+    remainingSegments.length > 0
+      ? `/${remainingSegments.join("/")}`
+      : DEFAULT_AUTH_REDIRECT_PATH;
+  return url;
 }
 
 function isSignInPath(pathname: string): boolean {
@@ -81,6 +101,12 @@ export function normalizeAuthCallbackUrl(
       return DEFAULT_AUTH_REDIRECT_PATH;
     }
 
+    stripStaleOrgPrefixes(url);
+
+    if (url.pathname.startsWith("/api/auth/")) {
+      return DEFAULT_AUTH_REDIRECT_PATH;
+    }
+
     return pathWithSearchAndHash(url);
   }
 
@@ -98,6 +124,8 @@ export function orgAwareAuthRedirectPath(
   const url = asInternalUrl(callbackPath);
   if (!url) return `/${orgSlug}${DEFAULT_AUTH_REDIRECT_PATH}`;
 
+  stripStaleOrgPrefixes(url);
+
   const segments = pathSegments(url.pathname);
   const firstSegment = segments[0];
   if (firstSegment === orgSlug) {
@@ -108,16 +136,16 @@ export function orgAwareAuthRedirectPath(
     return pathWithSearchAndHash(url);
   }
 
+  if (ORG_AWARE_ROUTE_SEGMENTS.has(firstSegment)) {
+    url.pathname = `/${orgSlug}${url.pathname}`;
+    return pathWithSearchAndHash(url);
+  }
+
   const secondSegment = segments[1];
   if (secondSegment && ORG_AWARE_ROUTE_SEGMENTS.has(secondSegment)) {
     url.pathname = `/${orgSlug}/${segments.slice(1).join("/")}`;
     return pathWithSearchAndHash(url);
   }
 
-  if (!ORG_AWARE_ROUTE_SEGMENTS.has(firstSegment)) {
-    return pathWithSearchAndHash(url);
-  }
-
-  url.pathname = `/${orgSlug}${url.pathname}`;
   return pathWithSearchAndHash(url);
 }

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Redis } from "@upstash/redis";
 import { isLocalSaasFallbackMode, isSaasMode } from "./org";
+import { isUsableOrgSlug } from "./org-slugs";
 import { setUserRole, ensureUserRecord } from "./rbac";
 import {
   cpAddUserOrg,
@@ -614,18 +615,25 @@ export async function deleteOrg(orgSlug: string): Promise<boolean> {
 export async function getOrgForUser(username: string): Promise<string | null> {
   if (!isSaasMode()) return null;
   const id = username.toLowerCase();
+  let orgSlug: string | null;
   if (hasControlPlane()) {
-    return cpGetOrgForUser(id);
-  }
-  if (isLocalSaasFallbackMode()) {
+    orgSlug = await cpGetOrgForUser(id);
+  } else if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
-    return (
+    orgSlug =
       data.user_orgs?.[id] ?? data.user_org_memberships?.[id]?.[0] ?? null
-    );
+  } else {
+    const activeOrg = await getRedis().get<string>(`user:${id}:org`);
+    if (activeOrg) orgSlug = activeOrg;
+    else {
+      const orgs = await getRedis().smembers(`user:${id}:orgs`);
+      orgSlug = orgs.find(isUsableOrgSlug) ?? null;
+    }
   }
-  const activeOrg = await getRedis().get<string>(`user:${id}:org`);
-  if (activeOrg) return activeOrg;
-  const orgs = await getRedis().smembers(`user:${id}:orgs`);
+
+  if (isUsableOrgSlug(orgSlug)) return orgSlug;
+
+  const orgs = await getOrgsForUser(username);
   return orgs[0] ?? null;
 }
 
@@ -634,7 +642,7 @@ export async function getOrgsForUser(username: string): Promise<string[]> {
   if (!isSaasMode()) return [];
   const id = username.toLowerCase();
   if (hasControlPlane()) {
-    return cpGetOrgsForUser(id);
+    return (await cpGetOrgsForUser(id)).filter(isUsableOrgSlug);
   }
   if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
@@ -643,9 +651,11 @@ export async function getOrgsForUser(username: string): Promise<string[]> {
         ...(data.user_org_memberships?.[id] ?? []),
         ...(data.user_orgs?.[id] ? [data.user_orgs[id]] : []),
       ])
-    );
+    ).filter(isUsableOrgSlug);
   }
-  return await getRedis().smembers(`user:${id}:orgs`);
+  return (await getRedis().smembers(`user:${id}:orgs`)).filter(
+    isUsableOrgSlug
+  );
 }
 
 // ── Org membership helpers (SaaS mode) ──

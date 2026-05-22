@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import {
+  normalizeAuthCallbackUrl,
+  orgAwareAuthRedirectPath,
+} from "./lib/auth-redirects";
+import { isUsableOrgSlug } from "./lib/org-slugs";
+import {
   isPublicRouteAliasSegment,
-  PUBLIC_ROUTE_ALIASES,
 } from "./lib/public-route-aliases";
 
 const ORG_COOKIE = "intertool.org";
@@ -14,7 +18,6 @@ const isSaas = () => process.env.INTERTOOL_MODE === "saas";
 const isLocalSaasFallback = () =>
   process.env.NODE_ENV !== "production" &&
   process.env.INTERTOOL_LOCAL_SAAS_FALLBACK === "true";
-const ORG_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 const NO_STORE_VALUE = "private, no-store, max-age=0, must-revalidate";
 
 /** Internal paths that bypass SaaS org checks. */
@@ -35,48 +38,6 @@ const PUBLIC_PREFIXES = [
   "/llms.txt",
   "/llms-full.txt",
 ];
-
-/** Top-level app routes that are not org slugs. */
-const RESERVED_SEGMENTS = new Set([
-  "api",
-  "_next",
-  "admin",
-  "app",
-  "auth",
-  "billing",
-  "brand",
-  "browse",
-  "create-org",
-  "dashboard",
-  "default",
-  "design-system",
-  "docs",
-  "favicon.ico",
-  "help",
-  "icon.svg",
-  "invite",
-  ...PUBLIC_ROUTE_ALIASES,
-  "llms",
-  "llms.txt",
-  "llms-full.txt",
-  "login",
-  "opengraph-image",
-  "pricing",
-  "publish",
-  "review",
-  "robots.txt",
-  "search",
-  "settings",
-  "sign-in",
-  "sign-up",
-  "signup",
-  "sitemap.xml",
-  "skills",
-  "status",
-  "support",
-  "teams",
-  "www",
-]);
 
 const ROOT_ORG_ROUTE_SEGMENTS = new Set([
   "admin",
@@ -102,9 +63,7 @@ function getFirstSegment(pathname: string): string | undefined {
 function getPathOrgSlug(pathname: string): string | undefined {
   const segment = getFirstSegment(pathname);
   if (!segment) return undefined;
-  if (RESERVED_SEGMENTS.has(segment)) return undefined;
-  if (!ORG_SLUG_RE.test(segment)) return undefined;
-  return segment;
+  return isUsableOrgSlug(segment) ? segment : undefined;
 }
 
 function stripPathPrefix(pathname: string, prefix: string): string {
@@ -167,6 +126,31 @@ function orgPathForInternalPath(orgSlug: string, internalPath: string): string {
   return `/${orgSlug}${internalPath}`;
 }
 
+function requestCallbackPath(request: NextRequest): string {
+  return normalizeAuthCallbackUrl(
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    request.nextUrl.origin
+  );
+}
+
+function callbackParam(
+  request: NextRequest,
+  value: string | null | undefined
+): string {
+  return normalizeAuthCallbackUrl(value, request.nextUrl.origin);
+}
+
+function safeUserOrg(
+  data: { org?: unknown; orgs?: unknown } | null | undefined
+): string | null {
+  if (!data) return null;
+  if (isUsableOrgSlug(data.org)) return data.org;
+  if (Array.isArray(data.orgs)) {
+    return data.orgs.find(isUsableOrgSlug) ?? null;
+  }
+  return null;
+}
+
 /** Check if a user has an org without loading Node-only app modules in proxy. */
 async function getUserOrg(
   username: string,
@@ -179,8 +163,11 @@ async function getUserOrg(
       },
     });
     if (res.ok) {
-      const data = (await res.json()) as { org?: string | null };
-      return data.org ?? null;
+      const data = (await res.json()) as {
+        org?: string | null;
+        orgs?: string[];
+      };
+      return safeUserOrg(data);
     }
   } catch {
     // Fall back to the legacy Redis lookup below.
@@ -197,7 +184,7 @@ async function getUserOrg(
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    return data.result ?? null;
+    return isUsableOrgSlug(data.result) ? data.result : null;
   } catch {
     return null;
   }
@@ -235,10 +222,10 @@ export async function proxy(request: NextRequest) {
     const segments = pathSegments(pathname);
     if (segments[1] === "sign-in") {
       const signInUrl = new URL("/sign-in", request.url);
-      const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
-      if (callbackUrl) {
-        signInUrl.searchParams.set("callbackUrl", callbackUrl);
-      }
+      signInUrl.searchParams.set(
+        "callbackUrl",
+        callbackParam(request, request.nextUrl.searchParams.get("callbackUrl"))
+      );
       return clearOrgCookie(NextResponse.redirect(signInUrl), request);
     }
   }
@@ -254,10 +241,7 @@ export async function proxy(request: NextRequest) {
         const signInUrl = request.nextUrl.clone();
         signInUrl.pathname = `/${pathOrgSlug}/sign-in`;
         signInUrl.search = "";
-        signInUrl.searchParams.set(
-          "callbackUrl",
-          `${pathname}${request.nextUrl.search}`
-        );
+        signInUrl.searchParams.set("callbackUrl", requestCallbackPath(request));
         return setOrgCookie(
           NextResponse.redirect(signInUrl),
           request,
@@ -315,10 +299,7 @@ export async function proxy(request: NextRequest) {
   if (!token) {
     if (pathname === "/") return NextResponse.next();
     const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set(
-      "callbackUrl",
-      `${pathname}${request.nextUrl.search}`
-    );
+    signInUrl.searchParams.set("callbackUrl", requestCallbackPath(request));
     return clearOrgCookie(NextResponse.redirect(signInUrl), request);
   }
 
@@ -333,14 +314,16 @@ export async function proxy(request: NextRequest) {
   const username = token.username as string | undefined;
   const userOrg = username ? await getUserOrg(username, request) : null;
   if (userOrg) {
-    const segments = pathSegments(pathname);
-    const secondSegment = segments[1];
-    if (secondSegment && ROOT_ORG_ROUTE_SEGMENTS.has(secondSegment)) {
-      const orgUrl = request.nextUrl.clone();
-      orgUrl.pathname = `/${userOrg}/${segments.slice(1).join("/")}`;
+    const normalizedCallbackPath = requestCallbackPath(request);
+    if (normalizedCallbackPath !== `${pathname}${request.nextUrl.search}`) {
+      const orgUrl = new URL(
+        orgAwareAuthRedirectPath(normalizedCallbackPath, userOrg),
+        request.url
+      );
       return setOrgCookie(NextResponse.redirect(orgUrl), request, userOrg);
     }
 
+    const segments = pathSegments(pathname);
     if (firstSegment && ROOT_ORG_ROUTE_SEGMENTS.has(firstSegment)) {
       return setOrgCookie(
         NextResponse.next({
@@ -349,6 +332,13 @@ export async function proxy(request: NextRequest) {
         request,
         userOrg
       );
+    }
+
+    const secondSegment = segments[1];
+    if (secondSegment && ROOT_ORG_ROUTE_SEGMENTS.has(secondSegment)) {
+      const orgUrl = request.nextUrl.clone();
+      orgUrl.pathname = `/${userOrg}/${segments.slice(1).join("/")}`;
+      return setOrgCookie(NextResponse.redirect(orgUrl), request, userOrg);
     }
 
     const orgUrl = request.nextUrl.clone();

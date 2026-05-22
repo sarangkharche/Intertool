@@ -51,6 +51,7 @@ When an authenticated SaaS user lands on `/sign-in`, Intertool resolves their cu
 Root private routes such as `/dashboard` and `/settings` also resolve the user's active organization server-side. This keeps stale browser cookies from bouncing between root and org-prefixed URLs.
 
 Auth redirects, org-cookie updates, and org-cookie clears are sent with no-store cache headers. The internal `default` namespace is reserved and cannot become an organization slug or persistent `intertool.org` cookie value.
+If an older session, cookie, or control-plane record still references `default`, Intertool ignores it as an active organization, clears the stale org cookie, and collapses repeated `/default/default/...` callback paths back to the canonical app route before continuing authentication.
 
 ## Member invitations
 

@@ -221,7 +221,7 @@ test("stale default org paths do not set a default org cookie", async () => {
 
     assert.equal(
       response.headers.get("location"),
-      "https://intertool.sh/sign-in?callbackUrl=%2Fdefault%2Fdashboard"
+      "https://intertool.sh/sign-in?callbackUrl=%2Fdashboard"
     );
     assert.equal(response.cookies.get("intertool.org")?.value, "");
     assert.match(response.headers.get("cache-control") ?? "", /no-store/);
@@ -247,7 +247,31 @@ test("stale default sign-in paths preserve their original callback", async () =>
 
     assert.equal(
       response.headers.get("location"),
-      "https://intertool.sh/sign-in?callbackUrl=%2Fdefault%2Fdashboard"
+      "https://intertool.sh/sign-in?callbackUrl=%2Fdashboard"
+    );
+    assert.equal(response.cookies.get("intertool.org")?.value, "");
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+  }
+});
+
+test("repeated stale default paths collapse before sign-in", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+
+    const response = await proxy(
+      new NextRequest("https://intertool.sh/default/default/dashboard")
+    );
+
+    assert.equal(
+      response.headers.get("location"),
+      "https://intertool.sh/sign-in?callbackUrl=%2Fdashboard"
     );
     assert.equal(response.cookies.get("intertool.org")?.value, "");
     assert.match(response.headers.get("cache-control") ?? "", /no-store/);
@@ -316,6 +340,115 @@ test("authenticated stale org-prefixed paths redirect to the resolved org", asyn
   }
 });
 
+test("authenticated repeated stale default paths redirect to the resolved org", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  const previousSecret = process.env.AUTH_SECRET;
+  const previousUrl = process.env.NEXTAUTH_URL;
+  const originalFetch = globalThis.fetch;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+    process.env.AUTH_SECRET = "test-secret";
+    process.env.NEXTAUTH_URL = "https://intertool.sh";
+
+    const jwt = await encode({
+      token: { username: "alice" },
+      secret: "test-secret",
+      salt: "__Secure-authjs.session-token",
+    });
+
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ org: "acme" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    const response = await proxy(
+      new NextRequest("https://intertool.sh/default/default/dashboard", {
+        headers: {
+          cookie: `__Secure-authjs.session-token=${jwt}; intertool.org=default`,
+        },
+      })
+    );
+
+    assert.equal(
+      response.headers.get("location"),
+      "https://intertool.sh/acme/dashboard"
+    );
+    assert.equal(response.cookies.get("intertool.org")?.value, "acme");
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+    if (previousSecret === undefined) {
+      delete process.env.AUTH_SECRET;
+    } else {
+      process.env.AUTH_SECRET = previousSecret;
+    }
+    if (previousUrl === undefined) {
+      delete process.env.NEXTAUTH_URL;
+    } else {
+      process.env.NEXTAUTH_URL = previousUrl;
+    }
+  }
+});
+
+test("reserved user orgs are ignored when resolving proxy org context", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  const previousSecret = process.env.AUTH_SECRET;
+  const previousUrl = process.env.NEXTAUTH_URL;
+  const originalFetch = globalThis.fetch;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+    process.env.AUTH_SECRET = "test-secret";
+    process.env.NEXTAUTH_URL = "https://intertool.sh";
+
+    const jwt = await encode({
+      token: { username: "alice" },
+      secret: "test-secret",
+      salt: "__Secure-authjs.session-token",
+    });
+
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ org: "default", orgs: ["default"] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    const response = await proxy(
+      new NextRequest("https://intertool.sh/dashboard", {
+        headers: {
+          cookie: `__Secure-authjs.session-token=${jwt}; intertool.org=default`,
+        },
+      })
+    );
+
+    assert.equal(response.headers.get("location"), "https://intertool.sh/create-org");
+    assert.equal(response.cookies.get("intertool.org")?.value, "");
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+    if (previousSecret === undefined) {
+      delete process.env.AUTH_SECRET;
+    } else {
+      process.env.AUTH_SECRET = previousSecret;
+    }
+    if (previousUrl === undefined) {
+      delete process.env.NEXTAUTH_URL;
+    } else {
+      process.env.NEXTAUTH_URL = previousUrl;
+    }
+  }
+});
+
 test("normalizes OAuth callbacks from public route aliases", () => {
   assert.equal(
     normalizePublicRouteAliasCallbackUrl("/landing-exp/dashboard"),
@@ -344,6 +477,11 @@ test("normalizes auth callback redirects safely", () => {
     ),
     "/acme/dashboard?tab=mine"
   );
+  assert.equal(
+    normalizeAuthCallbackUrl("/default/default/dashboard?tab=mine"),
+    "/dashboard?tab=mine"
+  );
+  assert.equal(normalizeAuthCallbackUrl("/default/default"), "/dashboard");
   assert.equal(
     normalizeAuthCallbackUrl(
       "https://intertool.sh/dashboard",
@@ -378,6 +516,10 @@ test("makes authenticated SaaS redirects org-aware", () => {
   assert.equal(
     orgAwareAuthRedirectPath("/default/settings/admin?tab=storage", "acme"),
     "/acme/settings/admin?tab=storage"
+  );
+  assert.equal(
+    orgAwareAuthRedirectPath("/default/default/dashboard", "acme"),
+    "/acme/dashboard"
   );
   assert.equal(orgAwareAuthRedirectPath("/pricing", "acme"), "/pricing");
 });

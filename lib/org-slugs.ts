@@ -47,6 +47,18 @@ export function normalizeOrgSlug(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase().trim() : "";
 }
 
+export function isReservedOrgSlug(value: unknown): boolean {
+  return typeof value === "string" && RESERVED_ORG_SLUGS.has(value);
+}
+
+export function isUsableOrgSlug(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    ORG_SLUG_REGEX.test(value) &&
+    !RESERVED_ORG_SLUGS.has(value)
+  );
+}
+
 export function validateOrgSlug(slug: string):
   | { ok: true }
   | {
