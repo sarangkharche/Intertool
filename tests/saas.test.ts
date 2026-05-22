@@ -234,6 +234,32 @@ test("stale default org paths do not set a default org cookie", async () => {
   }
 });
 
+test("stale default sign-in paths preserve their original callback", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+
+    const response = await proxy(
+      new NextRequest(
+        "https://intertool.sh/default/sign-in?callbackUrl=%2Fdefault%2Fdashboard"
+      )
+    );
+
+    assert.equal(
+      response.headers.get("location"),
+      "https://intertool.sh/sign-in?callbackUrl=%2Fdefault%2Fdashboard"
+    );
+    assert.equal(response.cookies.get("intertool.org")?.value, "");
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+  }
+});
+
 test("authenticated stale org-prefixed paths redirect to the resolved org", async () => {
   const previousMode = process.env.INTERTOOL_MODE;
   const previousSecret = process.env.AUTH_SECRET;

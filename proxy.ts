@@ -231,6 +231,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(targetUrl);
   }
 
+  if (firstSegment === "default") {
+    const segments = pathSegments(pathname);
+    if (segments[1] === "sign-in") {
+      const signInUrl = new URL("/sign-in", request.url);
+      const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
+      if (callbackUrl) {
+        signInUrl.searchParams.set("callbackUrl", callbackUrl);
+      }
+      return clearOrgCookie(NextResponse.redirect(signInUrl), request);
+    }
+  }
+
   const pathOrgSlug = getPathOrgSlug(pathname);
   if (pathOrgSlug) {
     const internalPath = stripPathPrefix(pathname, pathOrgSlug);
