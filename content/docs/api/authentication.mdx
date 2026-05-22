@@ -53,6 +53,8 @@ Root private routes such as `/dashboard` and `/settings` also resolve the user's
 Auth redirects, org-cookie updates, and org-cookie clears are sent with no-store cache headers. The internal `default` namespace is reserved and cannot become an organization slug or persistent `intertool.org` cookie value.
 If an older session, cookie, or control-plane record still references `default`, Intertool ignores it as an active organization, clears the stale org cookie, and collapses repeated `/default/default/...` callback paths back to the canonical app route before continuing authentication.
 
+Signing out uses `/logout`, which clears Auth.js cookies and the `intertool.org` cookie in a single no-store redirect. This route accepts same-origin or relative `callbackUrl` values only.
+
 ## Member invitations
 
 Admins can invite new members by email. The invited person receives an email with a link to accept or decline the invitation.

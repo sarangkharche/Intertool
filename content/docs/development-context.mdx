@@ -70,6 +70,7 @@ For authenticated root private routes such as `/dashboard`, `proxy.ts` sets `x-o
 
 Proxy responses that redirect for auth, set `intertool.org`, or clear `intertool.org` must use no-store cache headers. `default` is an internal fallback namespace and is reserved in both `proxy.ts` and `lib/org-slugs.ts` so it cannot become an org cookie value.
 Org resolution helpers must also treat reserved slugs as unusable even if they exist in old cookies or legacy control-plane rows. Auth callback normalization strips repeated stale `/default` prefixes so paths such as `/default/default/dashboard` resolve to `/dashboard` before org-aware redirect logic runs.
+Logout is handled by `/logout`, not the Auth.js client sign-out flow, so Intertool can clear Auth.js cookies and the SaaS `intertool.org` cookie together. Keep `/logout` public in `proxy.ts` and reserved in `lib/org-slugs.ts`.
 
 SaaS control-plane reads and writes prefer Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured:
 

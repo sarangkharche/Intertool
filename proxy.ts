@@ -37,6 +37,7 @@ const PUBLIC_PREFIXES = [
   "/llms",
   "/llms.txt",
   "/llms-full.txt",
+  "/logout",
 ];
 
 const ROOT_ORG_ROUTE_SEGMENTS = new Set([

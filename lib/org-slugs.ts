@@ -25,6 +25,7 @@ export const RESERVED_ORG_SLUGS = new Set([
   "llms-full.txt",
   "llms.txt",
   "login",
+  "logout",
   "opengraph-image",
   "pricing",
   "publish",

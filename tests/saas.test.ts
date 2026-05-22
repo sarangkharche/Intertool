@@ -12,6 +12,7 @@ import {
   normalizeAuthCallbackUrl,
   orgAwareAuthRedirectPath,
 } from "../lib/auth-redirects";
+import { GET as logoutGET } from "../app/(auth)/logout/route";
 import { hasPermission } from "../lib/rbac";
 import { isStorageConfigured } from "../lib/s3";
 import { proxy } from "../proxy";
@@ -156,6 +157,58 @@ test("does not assign org context for public route aliases", async () => {
       process.env.INTERTOOL_MODE = previousMode;
     }
   }
+});
+
+test("logout route is public in SaaS proxy", async () => {
+  const previousMode = process.env.INTERTOOL_MODE;
+  try {
+    process.env.INTERTOOL_MODE = "saas";
+
+    const response = await proxy(new NextRequest("https://intertool.sh/logout"));
+
+    assert.equal(response.headers.get("location"), null);
+    assert.equal(response.cookies.get("intertool.org"), undefined);
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.INTERTOOL_MODE;
+    } else {
+      process.env.INTERTOOL_MODE = previousMode;
+    }
+  }
+});
+
+test("logout clears auth and org cookies with no-store redirect", () => {
+  const response = logoutGET(
+    new NextRequest("https://intertool.sh/logout?callbackUrl=%2Fpricing", {
+      headers: {
+        cookie:
+          "__Secure-authjs.session-token=abc; __Secure-authjs.session-token.0=chunk; __Host-authjs.csrf-token=csrf; authjs.session-token=dev; intertool.org=acme",
+      },
+    })
+  );
+
+  assert.equal(response.headers.get("location"), "https://intertool.sh/pricing");
+  assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  assert.equal(response.cookies.get("intertool.org")?.value, "");
+  assert.equal(
+    response.cookies.get("__Secure-authjs.session-token")?.value,
+    ""
+  );
+  assert.equal(
+    response.cookies.get("__Secure-authjs.session-token.0")?.value,
+    ""
+  );
+  assert.equal(response.cookies.get("__Host-authjs.csrf-token")?.value, "");
+  assert.equal(response.cookies.get("authjs.session-token")?.value, "");
+});
+
+test("logout rejects external callback URLs", () => {
+  const response = logoutGET(
+    new NextRequest("https://intertool.sh/logout?callbackUrl=https%3A%2F%2Fevil.example%2F")
+  );
+
+  assert.equal(response.headers.get("location"), "https://intertool.sh/");
+  assert.match(response.headers.get("cache-control") ?? "", /no-store/);
 });
 
 test("authenticated root private routes continue with resolved org context", async () => {
