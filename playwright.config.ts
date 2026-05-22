@@ -24,7 +24,7 @@ export default defineConfig({
     : {
         command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "true",
         timeout: 120_000,
         env: {
           AUTH_SECRET: "playwright-local-dev-secret",

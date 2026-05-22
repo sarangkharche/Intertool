@@ -25,7 +25,7 @@ Run against an existing app instead of letting Playwright start `npm run dev`:
 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
 ```
 
-The managed Playwright dev server uses `127.0.0.1:3000` by default and reuses an existing server there. Override it with `PLAYWRIGHT_PORT` only when no other Next dev server is running for this repository.
+The managed Playwright dev server uses `127.0.0.1:3000` by default and starts a fresh server so stale local processes cannot mask routing changes. If port 3000 is already occupied, set `PLAYWRIGHT_PORT` to a free port. To intentionally test an already-running local server, set `PLAYWRIGHT_REUSE_SERVER=true`; to test production or another deployed app, set `PLAYWRIGHT_BASE_URL`.
 
 Debug locally:
 
