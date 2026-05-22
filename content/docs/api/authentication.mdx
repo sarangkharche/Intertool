@@ -46,6 +46,8 @@ Admins can restrict access to members of a specific GitHub organization. When en
 
 Hosted SaaS deployments use path-based org routing: `/{org}/...` sets the active organization for auth, registry reads, API requests, and RBAC checks. Reserved app routes and public route aliases such as `/landing-exp` are never treated as org slugs, and OAuth callbacks from those aliases are normalized back to the canonical app path before sign-in completes.
 
+When an authenticated SaaS user lands on `/sign-in`, Intertool resolves their current or primary organization and redirects them to the org-aware callback path. For example, `/sign-in?callbackUrl=/dashboard` becomes `/{org}/dashboard` for users who already belong to an organization. Nested sign-in callbacks are unwrapped so repeated auth redirects do not leave users on technical callback URLs.
+
 ## Member invitations
 
 Admins can invite new members by email. The invited person receives an email with a link to accept or decline the invitation.

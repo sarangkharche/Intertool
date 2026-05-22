@@ -62,6 +62,8 @@ SaaS routing follows this path:
 
 Public route aliases for deployment or landing experiments, currently `/landing-exp`, are stripped before routing and must not set the `intertool.org` cookie. Keep `lib/public-route-aliases.ts`, `proxy.ts`, and `lib/org-slugs.ts` aligned when adding another alias.
 
+Auth redirect normalization lives in `lib/auth-redirects.ts`. The sign-in page sanitizes `callbackUrl`, unwraps nested sign-in callbacks, and redirects authenticated SaaS users to their current or primary org path so root callbacks like `/dashboard` become `/{org}/dashboard`.
+
 SaaS control-plane reads and writes prefer Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured:
 
 ```text

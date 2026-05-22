@@ -7,6 +7,10 @@ import { claudeMarketplace, mcpRegistryServer } from "../lib/distribution";
 import { stripePriceForPlan } from "../lib/stripe";
 import { validateOrgSlug } from "../lib/org-slugs";
 import { normalizePublicRouteAliasCallbackUrl } from "../lib/public-route-aliases";
+import {
+  normalizeAuthCallbackUrl,
+  orgAwareAuthRedirectPath,
+} from "../lib/auth-redirects";
 import { hasPermission } from "../lib/rbac";
 import { isStorageConfigured } from "../lib/s3";
 import { proxy } from "../proxy";
@@ -159,6 +163,52 @@ test("normalizes OAuth callbacks from public route aliases", () => {
     normalizePublicRouteAliasCallbackUrl("/dashboard"),
     "/dashboard"
   );
+});
+
+test("normalizes auth callback redirects safely", () => {
+  assert.equal(normalizeAuthCallbackUrl("/dashboard"), "/dashboard");
+  assert.equal(
+    normalizeAuthCallbackUrl("/landing-exp/dashboard?tab=mine"),
+    "/dashboard?tab=mine"
+  );
+  assert.equal(
+    normalizeAuthCallbackUrl("/sign-in?callbackUrl=%2Fdashboard"),
+    "/dashboard"
+  );
+  assert.equal(
+    normalizeAuthCallbackUrl(
+      "/acme/sign-in?callbackUrl=%2Facme%2Fdashboard%3Ftab%3Dmine"
+    ),
+    "/acme/dashboard?tab=mine"
+  );
+  assert.equal(
+    normalizeAuthCallbackUrl(
+      "https://intertool.sh/dashboard",
+      "https://intertool.sh"
+    ),
+    "/dashboard"
+  );
+  assert.equal(
+    normalizeAuthCallbackUrl("https://evil.example/dashboard"),
+    "/dashboard"
+  );
+  assert.equal(normalizeAuthCallbackUrl("/api/auth/signin/github"), "/dashboard");
+});
+
+test("makes authenticated SaaS redirects org-aware", () => {
+  assert.equal(
+    orgAwareAuthRedirectPath("/dashboard", "acme"),
+    "/acme/dashboard"
+  );
+  assert.equal(
+    orgAwareAuthRedirectPath("/dashboard?tab=mine", "acme"),
+    "/acme/dashboard?tab=mine"
+  );
+  assert.equal(
+    orgAwareAuthRedirectPath("/acme/dashboard", "acme"),
+    "/acme/dashboard"
+  );
+  assert.equal(orgAwareAuthRedirectPath("/pricing", "acme"), "/pricing");
 });
 
 test("admins can delete organizations", () => {
