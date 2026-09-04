@@ -1,203 +1,29 @@
 ---
 title: Deployment
-description: Deploy Intertool to Vercel or any Node.js host with object storage, Postgres, and Stripe.
+description: Configuration boundaries for deploying the Intertool MVP.
 ---
 
-## S3 setup
+The Next.js web application is deployed through the linked Vercel project. Vercel packages the web output automatically; `output: "standalone"` is reserved for self-hosted builds. The Fastify API remains a separate service and must be deployed with its own runtime and database connectivity.
 
-Intertool stores all skill data in an S3-compatible bucket. Create a bucket in any of these services:
+Run the Next.js web process on port 3000 and the Fastify service on port 3001 (or set `PORT`). Both need `DATABASE_URL`; both must share `AUTH_SECRET` and `WEB_INTERNAL_SECRET`. The web process also needs `SERVER_URL` for private service calls.
 
-| Service | Endpoint URL | Notes |
-|---|---|---|
-| **AWS S3** | *(leave blank)* | Default, no endpoint needed |
-| **MinIO** | `http://localhost:9000` | Local dev, self-hosted |
-| **Cloudflare R2** | `https://<account>.r2.cloudflarestorage.com` | No egress fees |
-| **Wasabi** | `https://s3.wasabisys.com` | Cheap storage |
-| **DigitalOcean Spaces** | `https://<region>.digitaloceanspaces.com` | Simple setup |
-| **Backblaze B2** | `https://s3.<region>.backblazeb2.com` | Very cheap |
+If a production web deployment does not define `SERVER_URL`, Intertool runs as a public marketing site and redirects protected product routes to the landing page. This prevents stale browser sessions from reaching product pages that cannot contact the API.
 
-For S3-compatible services, set `S3_ENDPOINT` in your env or enter the endpoint URL in the admin UI.
+Required production values:
 
-### Create an IAM user (AWS)
-
-1. Go to **IAM > Users > Create user** (e.g. `intertool-s3`)
-2. Attach a policy with `s3:*` on your bucket ARN:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": "s3:*",
-    "Resource": [
-      "arn:aws:s3:::your-bucket-name",
-      "arn:aws:s3:::your-bucket-name/*"
-    ]
-  }]
-}
+```dotenv
+NODE_ENV=production
+DATABASE_URL=
+AUTH_URL=https://intertool.example
+SERVER_URL=https://api.intertool.example
+AUTH_SECRET=
+WEB_INTERNAL_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+DEV_AUTH_BYPASS=false
+LOG_LEVEL=info
 ```
 
-3. Create an access key under **Security credentials > Create access key > Application running outside AWS**
-4. Save the Access Key ID and Secret Access Key
+Use TLS for both origins and ensure the service is not reachable with the signed internal headers except through the web tier. Rotate `WEB_INTERNAL_SECRET` separately from personal MCP tokens.
 
-### Configure in Intertool
-
-**Option A: Admin UI** (local dev, Docker)
-
-Go to Settings, enter your bucket name, region, access key, and secret key. Click **Test Connection** to verify, then **Save & activate**.
-
-**Option B: Environment variables** (Vercel, read-only filesystem)
-
-```bash
-S3_BUCKET=your-bucket-name
-S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=AKIA...
-S3_SECRET_ACCESS_KEY=your-secret-key
-S3_ENDPOINT=  # only for non-AWS services
-```
-
-## Using MinIO (fully local, no AWS)
-
-```bash
-docker run -p 9000:9000 -p 9001:9001 \
-  -e MINIO_ROOT_USER=minioadmin \
-  -e MINIO_ROOT_PASSWORD=minioadmin \
-  minio/minio server /data --console-address ":9001"
-```
-
-Create a bucket at `localhost:9001`, then configure in Settings:
-
-| Field | Value |
-|---|---|
-| Bucket | `intertool` |
-| Region | `us-east-1` |
-| Access Key ID | `minioadmin` |
-| Secret Access Key | `minioadmin` |
-| Endpoint URL | `http://localhost:9000` |
-
-## Deploy to Vercel
-
-### 1. Deploy
-
-```bash
-npx vercel link
-npx vercel deploy
-```
-
-### 2. Set environment variables
-
-```bash
-vercel env add AUTH_SECRET              # openssl rand -base64 32
-vercel env add AUTH_URL                 # https://your-app.vercel.app
-vercel env add NEXT_PUBLIC_SITE_URL     # https://your-app.vercel.app
-vercel env add GITHUB_ID               # from GitHub OAuth app
-vercel env add GITHUB_SECRET           # from GitHub OAuth app
-vercel env add INTERTOOL_MODE          # saas for hosted multi-tenant mode
-vercel env add DATABASE_URL            # Postgres control-plane URL
-vercel env add S3_BUCKET               # your-bucket-name
-vercel env add S3_REGION               # us-east-1
-vercel env add S3_ACCESS_KEY_ID        # AKIA...
-vercel env add S3_SECRET_ACCESS_KEY    # your secret key
-vercel env add STRIPE_SECRET_KEY       # sk_live_...
-vercel env add STRIPE_WEBHOOK_SECRET   # whsec_...
-vercel env add STRIPE_TEAM_PRICE_ID    # price_...
-vercel env add STRIPE_BUSINESS_PRICE_ID # price_...
-```
-
-### 3. Update GitHub OAuth callback
-
-Change the callback URL in your GitHub OAuth app to:
-
-```
-https://your-app.vercel.app/api/auth/callback/github
-```
-
-### 4. Deploy to production
-
-```bash
-npx vercel --prod
-```
-
-On Vercel, S3 credentials must be set via environment variables since the filesystem is read-only. The Settings UI still works for testing connections.
-
-## Environment variables
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `AUTH_SECRET` | Yes | -- | NextAuth secret (`openssl rand -base64 32`) |
-| `AUTH_TRUST_HOST` | Yes | -- | Set to `true` |
-| `AUTH_URL` | Production | -- | Public app URL used for auth redirects and emails |
-| `NEXT_PUBLIC_SITE_URL` | Production | `AUTH_URL`, Vercel URL, `INTERTOOL_DOMAIN`, or `localhost:3000` | Public canonical origin used for SEO metadata, Open Graph URLs, `robots.txt`, `sitemap.xml`, and LLM documentation links |
-| `GITHUB_ID` | Yes | -- | GitHub OAuth client ID |
-| `GITHUB_SECRET` | Yes | -- | GitHub OAuth client secret |
-| `INTERTOOL_MODE` | SaaS | `self-hosted` | Set to `saas` for path-based organizations |
-| `DATABASE_URL` | SaaS production | -- | Preferred Postgres control-plane connection string |
-| `POSTGRES_URL` | SaaS production | -- | Alternate Postgres control-plane connection string |
-| `POSTGRES_PRISMA_URL` | SaaS production | -- | Alternate Postgres control-plane connection string |
-| `INTERTOOL_STORAGE_DRIVER` | No | `s3` | Set to `vercel-blob` to store registry objects in Vercel Blob |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob | -- | Vercel Blob read/write token, injected when a Blob store is linked to the project |
-| `BLOB_STORE_ID` | Vercel Blob OIDC | -- | Optional Blob store id when using Vercel OIDC auth |
-| `S3_BUCKET` | S3 driver | -- | S3 bucket name |
-| `S3_REGION` | S3 driver | `us-east-1` | S3 region |
-| `S3_ACCESS_KEY_ID` | S3 driver | -- | S3 access key |
-| `S3_SECRET_ACCESS_KEY` | S3 driver | -- | S3 secret key |
-| `S3_ENDPOINT` | S3 driver | -- | Custom endpoint for S3-compatible services |
-| `S3_SESSION_TOKEN` | S3 driver | -- | AWS session token (temporary credentials only) |
-| `S3_PREFIX` | No | -- | Optional object prefix for single-tenant deployments |
-| `INTERTOOL_MANAGED_STORAGE` | SaaS | `false` | Set to `true` to provision new SaaS orgs into shared managed storage under `orgs/{org}` |
-| `INTERTOOL_LOCAL_SAAS_FALLBACK` | Local SaaS dev | `false` | Store SaaS org metadata in local JSON files when Postgres/Redis are not configured |
-| `INTERTOOL_ADMIN` | No | -- | GitHub username of admin user |
-| `INTERTOOL_API_KEY` | No | -- | API key for CLI/API publishing |
-| `CRON_SECRET` | Production | -- | Bearer token required for scheduled `/api/analytics` calls |
-| `RESEND_API_KEY` | Invitations | -- | Recommended email transport for member invitations |
-| `EMAIL_FROM` | No | `noreply@{AUTH_URL host}` | Sender address for invitation emails |
-| `STRIPE_SECRET_KEY` | Billing | -- | Stripe secret key used by `/api/billing/checkout` and webhook verification |
-| `STRIPE_WEBHOOK_SECRET` | Billing | -- | Stripe webhook signing secret for `/api/webhooks/stripe` |
-| `STRIPE_TEAM_PRICE_ID` | Billing | -- | Stripe recurring Price ID for the Team plan |
-| `STRIPE_BUSINESS_PRICE_ID` | Billing | -- | Stripe recurring Price ID for the Business plan |
-| `UPSTASH_REDIS_REST_URL` | Scale/SaaS | -- | Redis URL for SaaS mode, distributed locks, rate limits, and analytics |
-| `UPSTASH_REDIS_REST_TOKEN` | Scale/SaaS | -- | Redis REST token |
-
-## SaaS control plane
-
-Production SaaS deployments should set `INTERTOOL_MODE=saas` and configure one Postgres URL through `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL`. The Postgres control plane stores organizations, settings, memberships, API tokens, invitations, audit events, and Stripe customer/subscription identifiers.
-
-Redis is still supported for rate limits, analytics, distributed locks, and legacy SaaS fallback paths, but it should not be the primary source of truth for hosted SaaS tenant state.
-
-When `INTERTOOL_MANAGED_STORAGE=true`, each new organization is automatically assigned `s3_prefix=orgs/{orgSlug}` in the shared managed store. For the lowest-ops Vercel deployment, create a private Vercel Blob store, link it to the project, set `INTERTOOL_STORAGE_DRIVER=vercel-blob`, and keep `BLOB_READ_WRITE_TOKEN` scoped to the deployment. The S3 driver remains available for AWS S3, Cloudflare R2, MinIO, and other S3-compatible storage.
-
-## Stripe billing
-
-Intertool creates hosted subscription Checkout Sessions from `POST /api/billing/checkout`. The route is owner-only and accepts `team` or `business`; those plans must map to `STRIPE_TEAM_PRICE_ID` and `STRIPE_BUSINESS_PRICE_ID`.
-
-Create a Stripe webhook endpoint for:
-
-```text
-https://your-app.example.com/api/webhooks/stripe
-```
-
-Subscribe it to these events:
-
-- `checkout.session.completed`
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-
-The webhook verifies the `stripe-signature` header with `STRIPE_WEBHOOK_SECRET`, then updates the organization's `plan`, `subscription_status`, `stripe_customer_id`, and `stripe_subscription_id`.
-
-## Search and answer-engine discovery
-
-Intertool exposes a small public discovery surface for the product and documentation:
-
-- `/robots.txt` allows the homepage, brand kit, docs, and LLM documentation endpoints while disallowing private registry, settings, API, and auth routes.
-- `/sitemap.xml` lists the homepage, brand kit, and all Fumadocs pages with canonical absolute URLs.
-- `/llms.txt` and `/llms-full.txt` expose documentation links and the full docs corpus for LLM and agent consumption.
-- The homepage and docs emit JSON-LD structured data for the application, organization, documentation pages, and breadcrumbs.
-
-Set `NEXT_PUBLIC_SITE_URL` to the production origin before launch so these URLs do not resolve to preview or localhost origins.
-
-In SaaS mode, organization creation uses the Postgres control plane when a Postgres URL is configured. If Postgres is not configured, Intertool falls back to the legacy Redis-backed SaaS metadata path when Redis is available.
-
-For local SaaS development only, set `INTERTOOL_LOCAL_SAAS_FALLBACK=true` to store org metadata, memberships, invitations, and API tokens in local files under `registry/` instead of Redis.
-
-For hosted SaaS deployments, set `INTERTOOL_MANAGED_STORAGE=true` with either Vercel Blob (`INTERTOOL_STORAGE_DRIVER=vercel-blob` plus `BLOB_READ_WRITE_TOKEN`) or shared S3/R2 credentials. New organizations are automatically configured with `s3_prefix=orgs/{orgSlug}` so one managed store can safely hold multiple isolated tenant registries.
+The included in-memory rate limiter is per process. Replace it with a shared limiter before horizontally scaling the API. Run `pnpm db:migrate` before starting a new service revision. Never seed production.

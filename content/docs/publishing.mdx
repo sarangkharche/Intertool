@@ -1,117 +1,30 @@
 ---
-title: Publishing Skills
-description: How to publish skills, MCP servers, and prompt templates to your registry.
+title: Publishing Memories
+description: Propose, review, publish, edit, dispute, and archive shared context.
 ---
 
-## Supported types
+## Draft first
 
-| Type | Description | Installed as |
-|------|-------------|--------------|
-| `skill` | Claude Code skill (SKILL.md) | `.claude/skills/<slug>/SKILL.md` |
-| `mcp-server` | MCP server configuration | `.claude/mcp-servers/<slug>/server.json` |
-| `agent-tool` | Standalone agent tool | `.claude/skills/<slug>/SKILL.md` |
-| `prompt-template` | Reusable prompt template | `.claude/skills/<slug>/SKILL.md` |
+Every memory starts as a draft. Drafts never appear in context retrieval. A useful memory captures one durable conclusion, uses the narrowest repository/path scope, and includes a source URL or an attributable author where possible.
 
-## From the CLI
+Allowed types are `decision`, `convention`, `warning`, `discovery`, `ownership`, and `runbook`. Confidence is either `tentative` or `confirmed`.
 
-You can scaffold a publishable starter file:
+## Explicit publication
 
-```bash
-intertool init --type skill --name "My Code Reviewer" --description "Reviews PRs for common issues" --category dev-tools
-```
+The `propose_memory` MCP tool returns the exact draft and tells Claude to show it to the user. `publish_memory` must be called only after the user explicitly approves that exact draft. Publication records the publisher, timestamp, and an audit event.
 
-Create a `SKILL.md` file with frontmatter:
+Members can publish their own drafts. Owners and admins can manage every memory in their organisation.
 
-```markdown
----
-name: My Code Reviewer
-type: skill
-description: Reviews PRs for common issues
-category: dev-tools
-tags: [code-review, quality]
----
+## Corrections
 
-You are a code reviewer. When asked to review code...
-```
+Editing an already published memory creates an immutable snapshot. Disputing or archiving a published memory also creates a version and immediately excludes the current record from retrieval.
 
-Then publish:
+Any member can file a stale, incorrect, conflicting, or sensitive-content report. A report does not silently delete the memory; it lowers retrieval ranking until an owner or admin marks the report resolved.
 
-```bash
-intertool publish SKILL.md
-```
+## Safety rules
 
-The CLI extracts metadata from `SKILL.md` frontmatter or from `skill.yaml`. You can override any field with flags:
-
-```bash
-intertool publish SKILL.md --name "My Skill" --type skill --category dev-tools
-```
-
-When a submission requires admin review, the CLI reports that it was submitted for review. In JSON mode, `publish` includes `status`, `published`, and `submitted_for_review`.
-
-## From the web UI
-
-1. Sign in to your registry
-2. Click **Publish** in the header
-3. Choose a type or use the quick import flow
-4. Upload `SKILL.md`, `skill.yaml`, `server.json`, `.zip`, `.md`, or `.txt` files, or import from a GitHub repository
-5. Review the detected metadata, edit the README, and submit
-
-Uploaded package files are stored with the registry item and installed by the CLI into the item's local install directory.
-
-## Review and approval
-
-Admins can enable **Require admin review** in **Settings > Storage & Auth > Governance**. When enabled, new submissions from members are saved with `review` status instead of becoming immediately installable.
-
-Pending submissions appear in **Review**. Owners and admins can approve a submission, which changes it to `published`, or archive it. Browse, search, CLI install, API list results, raw downloads, and package-file downloads only expose `published` items to regular members. Authors and admins can still open pending item detail pages for review.
-
-Updates to already-published items remain versioned immediately. A future pending-revision flow can extend review to updates without taking the currently published version offline.
-
-## Security scanning
-
-Every publish request runs a baseline static scan over README content, source URLs, and uploaded text-like package files. The scan records a security status on the item:
-
-- `passed` — no findings
-- `warning` — risky patterns such as prompt-injection style override language or shell install patterns
-- `blocked` — critical findings such as private keys or obvious cloud access keys
-
-Blocked submissions are rejected before files are written to storage. Warnings are saved with the registry item and appear in audit metadata.
-
-## Plan limits
-
-The default SaaS plan is `free`, which allows 10 active or pending registry items and 3 members. Team, Business, and Enterprise plans raise or remove those limits. Plan enforcement happens in the publish and member-management APIs.
-
-## MCP servers
-
-For MCP servers, you can publish a `server.json`. Intertool stores the full JSON configuration and uses it for raw downloads and CLI installs:
-
-```json
-{
-  "name": "My MCP Server",
-  "description": "Connects to internal APIs",
-  "transport": {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["my-server"]
-  }
-}
-```
-
-```bash
-intertool publish server.json --type mcp-server --category integrations
-```
-
-If the MCP server was created with `intertool init`, `publish server.json` also reads the adjacent `intertool.yaml` sidecar for Intertool-only metadata such as category and tags, and uses `README.md` as the registry README when present.
-
-## Updating a skill
-
-Re-publishing with the same slug updates the existing entry:
-
-```bash
-intertool publish SKILL.md
-```
-
-Each update creates a version snapshot. To update a locally installed item to the latest registry version, run:
-
-```bash
-intertool update @team/my-code-reviewer
-```
+- Repository paths must be relative and cannot contain traversal segments.
+- Source URLs must use HTTPS.
+- High-confidence private-key, cloud-key, GitHub-token, and credential patterns are rejected.
+- Do not paste transcripts, prompts, source files, terminal output, personal data, or secrets into a memory.
+- Current repository code and checked-in instructions outrank Intertool memories.

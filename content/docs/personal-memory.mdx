@@ -1,0 +1,34 @@
+---
+title: Personal Memory
+description: Import local Codex memory into a private, searchable Intertool vault.
+---
+
+Personal memory is a private layer for durable context collected by your coding agents. It belongs to your user account, follows you across organisation memberships, and is not available to teammates.
+
+This is separate from **Team memory**, where engineering conventions, decisions, warnings, and runbooks are reviewed and explicitly published for an organisation.
+
+## Import local Codex memory
+
+[Codex memory](https://learn.chatgpt.com/docs/customization/memories) is stored locally under `~/.codex/memories/`. Create a personal Intertool API token, then run:
+
+```bash
+export INTERTOOL_API_TOKEN="itk_..."
+pnpm memory:import:codex
+```
+
+Set `INTERTOOL_URL` when the API is not running at `http://127.0.0.1:3001`. Set `CODEX_MEMORY_DIR` to import from a non-default memory directory.
+
+The importer recursively sends Markdown documents only. Each document uses its relative path as a stable source key. Re-running the command creates new documents, updates changed documents, and leaves unchanged documents untouched.
+
+For larger imports, **My memory** shows a compact distribution of documents by the first folder in that source key. This is a path-based collection view, not an inferred knowledge graph: Intertool does not draw semantic connections it has not stored. Small or single-collection vaults keep the simpler document, source, and import summary instead.
+
+The current MVP is an on-demand import, not continuous sync. It does not import ChatGPT web memory: OpenAI documents ChatGPT memory and local Codex memory as separate systems, and Intertool does not receive a bulk ChatGPT-memory feed through MCP.
+
+## Privacy boundary
+
+- Personal documents are always scoped by the authenticated user ID.
+- Organisation members and administrators cannot list or open another user's personal documents.
+- Personal documents are never returned by `/api/context/search`, `/api/context/get`, or the MCP context tools.
+- Importing never creates or publishes team memory.
+
+A later extraction workflow can identify engineering-specific candidates and create reviewable Team memory drafts. Human approval remains required before those drafts become retrievable team context.

@@ -1,33 +1,37 @@
 ---
 title: Intertool Documentation
-description: A private approval layer for AI agent skills, MCP servers, tools, and prompt playbooks.
+description: Governed engineering memory for teams and enterprises.
 ---
 
-Intertool is a private registry and approval layer for the capabilities your agents are allowed to use: skills, MCP servers, agent tools, and prompt playbooks. Registry artifacts and package files live in your own S3-compatible storage, access is controlled by OAuth and RBAC, and approved items install with one CLI command.
+Intertool gives each engineer a private memory vault and turns confirmed engineering learnings into sourced context another engineer's fresh coding session can retrieve. A team can begin with one repository, then expand the same reviewed workflow across an organisation without giving up ownership, permissions, or evidence.
 
-## What you can do
+The private **My memory** layer can import durable local Codex memory documents. It is scoped to the user and is never returned to the team. The **Team memory** layer stores reviewed decisions, conventions, warnings, discoveries, ownership, and runbooks—not raw conversations, prompts, source files, or terminal history. Every published team memory has an author and timestamp, may include a source, and remains inside its authenticated organisation.
 
-- **Browse and search** approved capabilities published by your team
-- **Install skills and MCP servers** into agent projects from one registry
-- **Publish** your own skills from SKILL.md files or server.json configs
-- **Review and audit** what becomes installable before agents can use it
-- **Manage access** with OAuth, org membership, and RBAC
+Read [Personal memory](/docs/personal-memory) for the import and privacy model.
 
-## Quick start
+## From one team to an enterprise
 
-1. Sign in at your registry URL with GitHub
-2. Install the CLI from source with `cd cli && npm install && npm run build && npm link` until the npm package is released
-3. Authenticate: `intertool login --url https://your-registry.example.com`
-4. Search: `intertool search "code review"`
-5. Install: `intertool install @team/code-review`
+- **Small teams** get one dependable place for the decisions, warnings, conventions, and runbooks that coding agents need.
+- **Growing organisations** keep retrieval precise with organisation, repository, path, status, and relevance scopes.
+- **Enterprise teams** retain tenant isolation, owner/admin/member roles, revocable personal tokens, immutable published-state versions, reports, and audited lifecycle actions.
 
-For the full command-line workflow, see [Using the CLI](/docs/using-cli).
+## The workflow
 
-## Architecture
+1. Codex, Claude, or an engineer proposes a team draft.
+2. A human reviews the exact wording and scope.
+3. The human explicitly publishes the draft.
+4. An authorised MCP client retrieves it when the repository, task, and paths match.
+5. Engineers report stale or conflicting context without silently deleting it.
 
-Intertool is a Next.js application backed by:
+## Start locally
 
-- **S3** for skill file storage
-- **Upstash Redis** for settings, rate limiting, and caching
-- **GitHub OAuth** for authentication, with optional Google Workspace auth
-- **Role-based access control** (owner, admin, member)
+```bash
+pnpm install
+cp .env.example .env.local
+docker compose up -d postgres
+pnpm db:migrate
+pnpm db:seed
+pnpm dev
+```
+
+Continue with [Getting started](/docs/getting-started), then read [Publishing memories](/docs/publishing) and the [API overview](/docs/api/overview).

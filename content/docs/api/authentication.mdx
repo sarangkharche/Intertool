@@ -1,108 +1,31 @@
 ---
-title: Authentication
-description: How authentication works in the Intertool API.
+title: Authentication and Roles
+description: Dashboard sessions, MCP bearer tokens, and tenant isolation.
 ---
 
-## Overview
+## Dashboard authentication
 
-Intertool uses OAuth for authentication. GitHub is the default provider, and Google Workspace can be enabled by an admin. The API accepts bearer tokens issued during the OAuth flow or personal API tokens created in Settings.
+Auth.js provides GitHub OAuth. Configure `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `AUTH_SECRET`. The development identity provider exists only when `NODE_ENV` is not `production` and `DEV_AUTH_BYPASS=true`.
 
-## CLI authentication
+Anonymous browser requests to protected product routes are redirected to the public landing page. Users start authentication explicitly from the landing page or `/sign-in`.
 
-The CLI handles authentication automatically:
+The Intertool mark on the sign-in page returns to the public landing page without starting authentication.
 
-```bash
-intertool login --url https://your-registry.example.com
+The browser never sends an organisation ID to the database layer. Next.js signs the authenticated session identity with `WEB_INTERNAL_SECRET`; Fastify verifies the timestamped signature and resolves the user's first active organisation membership itself. Organisation switching is not part of the MVP.
+
+## MCP authentication
+
+MCP and direct REST clients use personal bearer tokens:
+
+```http
+Authorization: Bearer itk_ab12cd34_...
 ```
 
-This opens a browser, completes the OAuth flow, and stores the token locally at `~/.intertool/config.json`.
-
-## API token usage
-
-For direct API access, include the token as a Bearer header:
-
-```bash
-curl -H "Authorization: Bearer <token>" \
-  https://your-registry.example.com/api/skills
-```
+The full token is returned once. PostgreSQL stores its safe prefix and SHA-256 hash, along with owner, organisation, expiry, revocation, creation, and last-used timestamps. Candidate hash comparison is constant-time.
 
 ## Roles
 
-Intertool supports three roles:
+- **Owner/admin:** manage repositories, inspect organisation token metadata and the team roster, manage all memories, dispute memories, resolve reports, and review organisation state.
+- **Member:** retrieve published memories, create and publish their own drafts after explicit confirmation, edit/archive their own memories, report problems, and manage their own tokens.
 
-| Role | Permissions |
-|------|------------|
-| **owner** | Full access: manage settings, users, all skills, transfer ownership, delete the organization |
-| **admin** | Manage settings, users, all skills, delete the organization |
-| **member** | Publish, edit own skills, install any skill |
-
-Roles are assigned in **Settings > Members**. Admins can promote and demote members; only the current owner can transfer ownership to another member. The first user to sign in becomes the owner.
-
-## GitHub org restriction
-
-Admins can restrict access to members of a specific GitHub organization. When enabled, only users who belong to the configured org can sign in.
-
-## SaaS org routing
-
-Hosted SaaS deployments use path-based org routing: `/{org}/...` sets the active organization for auth, registry reads, API requests, and RBAC checks. Reserved app routes and public route aliases such as `/landing-exp` are never treated as org slugs, and OAuth callbacks from those aliases are normalized back to the canonical app path before sign-in completes.
-
-When an authenticated SaaS user lands on `/sign-in`, Intertool resolves their current or primary organization and redirects them to the org-aware callback path. For example, `/sign-in?callbackUrl=/dashboard` becomes `/{org}/dashboard` for users who already belong to an organization. Nested sign-in callbacks are unwrapped, and stale org prefixes in callbacks are replaced with the user's resolved org so repeated auth redirects do not leave users on technical or invalid callback URLs.
-
-Root private routes such as `/dashboard` and `/settings` also resolve the user's active organization server-side. This keeps stale browser cookies from bouncing between root and org-prefixed URLs.
-
-Auth redirects, org-cookie updates, and org-cookie clears are sent with no-store cache headers. The internal `default` namespace is reserved and cannot become an organization slug or persistent `intertool.org` cookie value.
-If an older session, cookie, or control-plane record still references `default`, Intertool ignores it as an active organization, clears the stale org cookie, and collapses repeated `/default/default/...` callback paths back to the canonical app route before continuing authentication.
-
-Signing out uses `/logout`, which clears Auth.js cookies and the `intertool.org` cookie in a single no-store redirect. This route accepts same-origin or relative `callbackUrl` values only.
-
-## Member invitations
-
-Admins can invite new members by email. The invited person receives an email with a link to accept or decline the invitation.
-
-### How it works
-
-1. An admin enters an email address in **Settings > Members** and clicks **Invite**
-2. The invitee receives an email with an "Accept Invitation" link
-3. Clicking the link opens the invitation page at `/invite?token=...`
-4. The invitee signs in via OAuth (GitHub or Google) and accepts the invitation
-5. They are added as a member with the role specified by the admin
-
-Invitations expire after **7 days**. Admins can revoke pending invitations at any time.
-
-### Auto-accept
-
-If the invitee's OAuth email matches the invitation email, the invitation is automatically accepted during sign-in. No manual acceptance is needed.
-
-### Email transport configuration
-
-One of the following must be configured for invitations to work:
-
-**Resend (recommended)**
-
-Set the `RESEND_API_KEY` environment variable with your [Resend](https://resend.com) API key.
-
-**SMTP (self-hosted fallback)**
-
-SMTP is optional and not bundled in the default install. If you need it in a self-hosted deployment, install `nodemailer` in your deployment image and set all of the following environment variables:
-
-| Variable | Description |
-|----------|-------------|
-| `SMTP_HOST` | SMTP server hostname |
-| `SMTP_PORT` | SMTP port (default: 587) |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASS` | SMTP password |
-
-**Optional**
-
-| Variable | Description |
-|----------|-------------|
-| `EMAIL_FROM` | Sender address (default: `noreply@{your-domain}`) |
-
-### API endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/members` | Send an invitation (`{ "email": "...", "role": "member" }`) |
-| `GET` | `/api/invitations/[token]` | View invitation details (public) |
-| `POST` | `/api/invitations/[token]` | Accept or decline (`{ "action": "accept" }` or `{ "action": "decline" }`) |
-| `DELETE` | `/api/invitations/[token]` | Revoke an invitation (admin only) |
+Every tenant-owned read and mutation includes the organisation resolved from the authenticated session or token. The API does not accept `organization_id` from request bodies.

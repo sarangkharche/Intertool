@@ -1,97 +1,29 @@
 ---
 title: Browser E2E Automation
-description: Playwright workflow, coverage map, and automation conventions for Intertool.
+description: Playwright setup and workflow coverage for the memory MVP.
 ---
 
-Intertool uses Playwright for browser automation and E2E tests. The suite starts small with public smoke coverage and should grow around complete product workflows.
-
-## Quick start
-
-Install the Chromium browser once:
+Intertool uses Playwright for public, authentication, onboarding, and memory-lifecycle browser checks.
 
 ```bash
-npm run test:e2e:install
+docker compose up -d postgres
+pnpm test:e2e:install
+pnpm test:e2e
 ```
 
-Run E2E tests:
+The Playwright configuration migrates/seeds the local database, starts Fastify on port 3001, and starts Next.js in an isolated build directory on port 3317. `DEV_AUTH_BYPASS=true` is set only in those local processes; browser tests never depend on real OAuth.
 
-```bash
-npm run test:e2e
-```
+Use `PLAYWRIGHT_PORT` to change the web port. Set `PLAYWRIGHT_BASE_URL` to test an already running target, or `PLAYWRIGHT_REUSE_SERVER=true` to intentionally reuse local processes.
 
-Run against an existing app instead of letting Playwright start `npm run dev`:
+## Coverage
 
-```bash
-PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
-```
+- public home, sign-in, docs, and LLM documentation endpoints;
+- safe logout and callback normalization;
+- guarded local sign-in;
+- Alice creating, reviewing, sourcing, and explicitly publishing a memory;
+- fresh-user onboarding entry;
+- responsive desktop and mobile public surfaces.
 
-The managed Playwright dev server uses `127.0.0.1:3000` by default and starts a fresh server so stale local processes cannot mask routing changes. If port 3000 is already occupied, set `PLAYWRIGHT_PORT` to a free port. To intentionally test an already-running local server, set `PLAYWRIGHT_REUSE_SERVER=true`; to test production or another deployed app, set `PLAYWRIGHT_BASE_URL`.
+Protocol-level integration tests separately verify MCP initialization/tool listing, Alice-to-Bob context retrieval, tenant isolation, lifecycle exclusions, token hashing/revocation, audit records, ranking, and compaction.
 
-Debug locally:
-
-```bash
-npm run test:e2e:headed
-npm run test:e2e:ui
-npm run test:e2e:report
-```
-
-## Current coverage
-
-The initial suite in `tests/e2e/public.spec.ts` covers:
-
-- unauthenticated home page rendering
-- sign-in page rendering
-- `/docs`
-- `/llms.txt`
-- `/llms-full.txt`
-- SaaS route-alias safety through unit coverage for `/landing-exp` so experiment paths do not become org cookies
-
-These tests are intentionally fixture-light so they can run on a new checkout.
-
-## Coverage roadmap
-
-Add tests around workflows, not isolated components:
-
-| Area | Scenarios |
-|---|---|
-| Public discovery | Home, browse, search filters, category routes, docs, LLM endpoints |
-| Auth | Sign-in errors, OAuth provider visibility, invitation acceptance, org creation |
-| Admin setup | S3 settings validation, owner/admin access, non-admin denial |
-| Publishing | Manual publish, `SKILL.md` upload, `server.json` upload, GitHub import, package files, validation errors |
-| Registry items | Detail page, install command copy, raw download, package file download, edit, versions, diff |
-| CLI/API | CLI login token mode, search, publish, install, update, API token auth, RBAC failures |
-| SaaS mode | `/{org}` routing, reserved route protection, org cookie API fallback, local SaaS fallback |
-
-## Authenticated tests
-
-Do not depend on real OAuth for CI. Add a deterministic auth setup before broad authenticated coverage.
-
-Recommended pattern:
-
-1. Add a test-only auth bypass guarded by `NODE_ENV === "test"` or a dedicated env var that is never enabled in production.
-2. Seed a user with the needed role and org state.
-3. Save browser state to `tests/e2e/.auth/user.json`.
-4. Reuse that state from workflow tests.
-
-The `.auth` directory is ignored by git.
-
-## Browser automation conventions
-
-- Prefer accessible locators: `getByRole`, `getByLabel`, `getByText`.
-- Add `data-testid` only when a control has no stable accessible role or name.
-- Assert user-visible outcomes and network responses, not internal implementation details.
-- Use Playwright request contexts for text endpoints, file downloads, and API contract checks.
-- Keep tests deterministic by avoiding shared S3 buckets unless the test owns setup and cleanup.
-- Capture traces on retry and screenshots on failure. The config already enables both.
-
-## Local storage fixtures
-
-Public tests should not need S3. Publish, install, and package-file tests need isolated storage.
-
-Good local options:
-
-- local SaaS fallback with `INTERTOOL_MODE=saas` and `INTERTOOL_LOCAL_SAAS_FALLBACK=true`
-- an S3-compatible test bucket with unique object prefixes per test run
-- a future registry storage adapter that can point to a temporary local fixture
-
-Any fixture that writes credentials or tokens must stay out of git.
+Prefer `getByRole`, `getByLabel`, and visible outcome assertions. Do not add test IDs when an accessible name can remain stable.

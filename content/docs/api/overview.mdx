@@ -1,169 +1,74 @@
 ---
 title: API Overview
-description: Programmatic access to the Intertool registry.
+description: Intertool REST and MCP endpoints.
 ---
 
-The Intertool API is available at your registry's base URL. Most endpoints return JSON; raw and package-file download endpoints return file content.
+The Fastify service defaults to `http://localhost:3001`. REST endpoints return JSON with errors shaped as `{ "error": { "code", "message" } }`. Validation errors also include field-level details.
 
-## Base URL
+## Health and identity
 
-```
-https://your-registry.example.com/api
-```
-
-## Freshness and caching
-
-Authenticated registry endpoints are served with `Cache-Control: private, no-store` so CLI and UI reads reflect the current organization after publish, update, or delete operations. Public documentation helper routes such as `/llms.txt` may still use short-lived public caching.
-
-## Endpoints
-
-### Organizations
-
-```
-GET /api/orgs
-GET /api/orgs/check?slug=acme
-POST /api/orgs
-DELETE /api/orgs
+```text
+GET    /health
+GET    /api/me
+GET    /api/organizations/current
+GET    /api/members
+POST   /api/organizations
+GET    /api/dashboard
 ```
 
-In SaaS mode, `GET /api/orgs` returns the current user's active organization and memberships. `GET /api/orgs/check` validates a candidate slug against the same format and reserved-name rules used by creation, then checks the configured metadata store.
+## Repositories and tokens
 
-`POST /api/orgs` creates a new organization for an authenticated user who does not already have one. `DELETE /api/orgs` deletes the current organization and requires an owner or admin. Deletion removes SaaS control-plane records, API tokens, invitations, members, settings, and managed storage objects under `orgs/{org}`; custom external buckets are left untouched.
-
-### List skills
-
-```
-GET /api/skills?page=1&limit=20&type=skill&q=search-term
-```
-
-Returns a paginated list of skills. Supports filtering by type, category, tag, author, and search query.
-
-Plan limits are enforced at publish time. The default `free` plan allows 10 active or pending registry items and 3 members. `team`, `business`, and `enterprise` plans raise those limits.
-
-### Get skill detail
-
-```
-GET /api/skills/:slug
+```text
+GET    /api/repositories
+POST   /api/repositories
+PATCH  /api/repositories/:id
+DELETE /api/repositories/:id
+GET    /api/tokens
+POST   /api/tokens
+DELETE /api/tokens/:id
 ```
 
-Returns full skill metadata including the readme/content.
+Token plaintext is returned only by `POST /api/tokens`. List responses contain metadata and the safe prefix only.
 
-Only `published` skills are visible to regular registry members. Items in
-`review` or `archived` status can be read only by their author or an admin.
+`POST /api/repositories` accepts `full_name` as either `owner/repository` or a full HTTPS GitHub repository URL and normalizes it to `owner/repository`. Non-GitHub and nested GitHub URLs are rejected with field-level validation details.
 
-### Download raw skill
+## Memories
 
-```
-GET /api/skills/:slug/raw
-```
-
-Returns the raw SKILL.md or server.json content with appropriate `Content-Disposition` header for direct download.
-
-### Download package file
-
-```
-GET /api/skills/:slug/files/:path
-```
-
-Downloads an attached package file. Package file metadata is returned in `GET /api/skills/:slug` under `files`.
-
-Raw and package-file downloads follow the same visibility rules as skill
-detail: non-published items are hidden from regular members.
-
-### Search
-
-```
-GET /api/search?q=query&type=skill&category=dev-tools&tag=code-review&author=alice&limit=20
+```text
+GET    /api/memories
+POST   /api/memories
+GET    /api/memories/:id
+PATCH  /api/memories/:id
+POST   /api/memories/:id/publish
+POST   /api/memories/:id/dispute
+POST   /api/memories/:id/archive
+POST   /api/memories/:id/reports
+POST   /api/memories/:id/reports/:reportId/resolve
+POST   /api/context/search
+POST   /api/context/get
 ```
 
-Full-text search across skill names, slugs, descriptions, tags, authors, and README/content. Query text also supports inline filters such as `type:mcp-server`, `tag:automation`, and `author:alice`. Supports rate limiting.
+`GET /api/memories` supports stable cursor pagination plus query, repository, type, status, and confidence filters.
 
-### Publish
+## Personal memory
 
-```
-POST /api/publish
-Content-Type: multipart/form-data
-```
-
-Publishes or updates a skill. Requires authentication. See [Authentication](/docs/api/authentication) for details.
-
-Supported form fields include `name`, `slug`, `type`, `description`, `readme`, `category`, `tags`, `compatibility`, `source_url`, `source_format`, `transport`, `mcp_config`, `changelog`, and one or more `files` entries. For MCP servers, `mcp_config` stores the original `server.json` object so raw downloads and CLI installs preserve command, args, URL, and other server configuration fields. Attached files are limited to 20 files, 10MB per file, and 50MB total.
-
-If admin review is required, new non-admin submissions return `status: "review"` and are excluded from list, search, and install results until approved.
-
-### Review or archive a skill
-
-```
-PATCH /api/skills/:slug
-Content-Type: application/json
+```text
+GET    /api/personal-memories
+GET    /api/personal-memories/stats
+GET    /api/personal-memories/:id
+POST   /api/personal-memories/import
 ```
 
-Body:
+These endpoints are scoped to the authenticated user, not the current organisation. `POST /api/personal-memories/import` upserts one source document by `source_kind` and `source_key`; the server computes its content checksum. The list endpoint supports cursor pagination plus `query` and `source_kind` filters and returns a short content preview. The stats endpoint returns totals by source and by the first folder in each source key so the dashboard can show an honest collection distribution without inferring semantic relationships. Personal memory never participates in the team context endpoints or MCP retrieval.
 
-```json
-{ "status": "published" }
-```
+## MCP
 
-`status` may be `review`, `published`, or `archived`. This endpoint requires an admin role.
+`POST /mcp` implements Streamable HTTP and requires `Authorization: Bearer itk_...`. It exposes exactly:
 
-### Admin settings
+- `get_context`
+- `search_context`
+- `propose_memory`
+- `publish_memory`
+- `report_stale`
 
-```
-GET /api/admin/settings
-PUT /api/admin/settings
-```
-
-Manage registry-wide settings. Requires admin role.
-
-### Audit log
-
-```
-GET /api/audit-log?limit=100
-```
-
-Returns recent governance events for the current organization, including org creation, settings changes, member changes, submissions, approvals, and deletions. Requires admin role.
-
-### Billing plan
-
-```
-GET /api/billing/plan
-PATCH /api/billing/plan
-```
-
-Returns the current plan, subscription status, and enforced limits. `PATCH` is owner-only and is the internal attachment point for a billing provider or back-office migration.
-
-### Billing checkout
-
-```
-POST /api/billing/checkout
-Content-Type: application/json
-```
-
-Starts a Stripe-hosted subscription Checkout Session for the current organization. Requires an owner session or bearer token.
-
-Body:
-
-```json
-{ "plan": "team" }
-```
-
-`plan` must be `team` or `business`. The response contains `{ "url": "https://checkout.stripe.com/..." }` when the matching Stripe price ID is configured.
-
-Stripe webhooks are received at `POST /api/webhooks/stripe`. That route verifies the Stripe signature, handles Checkout/session and subscription lifecycle events, and updates the organization's plan state.
-
-### MCP registry feed
-
-```
-GET /api/mcp/v0/servers
-GET /api/mcp/v0/servers/:slug
-```
-
-Returns published MCP servers in an MCP Registry-style response shape for private discovery by approved clients.
-
-### Claude Code marketplace
-
-```
-GET /api/claude/marketplace
-```
-
-Returns a Claude Code marketplace manifest for published registry items. The manifest is private and requires the same session or bearer-token authentication as other registry API endpoints.
+Missing, invalid, expired, and revoked tokens return `401`. Unknown cross-tenant objects return the same `404` as absent objects. Validation errors and tool failures never include server stack traces.

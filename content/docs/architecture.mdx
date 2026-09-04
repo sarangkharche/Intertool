@@ -1,182 +1,37 @@
 ---
 title: Architecture
-description: Project structure, tech stack, data model, and SaaS mode.
+description: Intertool MVP services, packages, storage, and retrieval design.
 ---
 
-## Tech stack
+## Runtime shape
 
-- **Framework**: [Next.js 16](https://nextjs.org) with App Router, React 19, Turbopack
-- **Auth**: [NextAuth v5](https://authjs.dev) with GitHub OAuth
-- **Storage**: [AWS S3 SDK v3](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/) (any S3-compatible service)
-- **Control plane**: Postgres via `postgres` for SaaS organizations, memberships, invitations, API tokens, audit events, and billing state
-- **Billing**: Stripe Checkout and subscription webhooks
-- **UI**: [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS 4](https://tailwindcss.com) + [Lucide](https://lucide.dev) icons
-- **Docs**: [Fumadocs](https://fumadocs.vercel.app) with MDX
-- **Fonts**: Geist Sans + Geist Mono via the `geist` package
-- **Theme**: OKLCH design tokens with a warm dark surface ladder, high-contrast muted text, and limited light accents for readable dark-mode sessions
-- **Editor**: [@uiw/react-md-editor](https://github.com/uiwjs/react-md-editor) for markdown with preview
-- **CLI**: TypeScript with Commander.js, published as `intertool` on npm
-
-## Project structure
-
-```
-app/
-├── (auth)/sign-in/              # Sign-in page
-├── (main)/
-│   ├── settings/                # Admin settings, members, tokens
-│   ├── brand/                   # Brand kit page
-│   ├── browse/                  # Browse & filter registry
-│   ├── dashboard/               # User dashboard
-│   ├── design-system/           # Design system reference
-│   ├── publish/                 # Publish wizard (upload + manual)
-│   └── skills/[slug]/           # Skill detail, edit, versions
-├── api/
-│   ├── admin/settings/          # S3 config (GET/PUT/POST)
-│   ├── audit-log/               # Admin audit log API
-│   ├── billing/checkout/        # Stripe Checkout session creation
-│   ├── billing/plan/            # Current SaaS plan and limit metadata
-│   ├── claude/marketplace/      # Claude Code marketplace manifest
-│   ├── cli-auth/                # CLI authentication flow
-│   ├── import/                  # GitHub repo import
-│   ├── me/                      # Current user info
-│   ├── members/                 # Member management
-│   ├── mcp/v0/servers/          # MCP Registry-style private server feed
-│   ├── orgs/                    # Org management (SaaS mode)
-│   ├── publish/                 # Publish API (form + bearer auth)
-│   ├── search/                  # Search API
-│   ├── skills/                  # Skills CRUD API
-│   ├── tokens/                  # API token management
-│   └── webhooks/stripe/         # Stripe subscription lifecycle webhook
-├── docs/                        # Fumadocs route handler
-├── llms.txt/                    # LLM-friendly docs index
-├── llms-full.txt/               # Full LLM-friendly docs corpus
-├── robots.ts                    # Public crawl rules
-├── sitemap.ts                   # Public sitemap
-└── opengraph-image.tsx          # Dynamic social preview image
-cli/
-├── src/
-│   ├── commands/                # CLI commands (install, publish, search, etc.)
-│   ├── lib/                     # API client, config, formatting
-│   └── index.ts                 # CLI entry point
-components/
-├── command-palette.tsx          # Cmd+K search
-├── edit-skill-form.tsx          # Edit skill form with versioning
-├── filter-sidebar.tsx           # Browse filters (type, category, sort)
-├── header.tsx                   # App header with nav, search, user menu
-├── footer.tsx                   # App footer
-├── markdown-editor.tsx          # Rich markdown editor
-├── publish-wizard.tsx           # Multi-step publish (upload + manual)
-├── skill-card.tsx               # Skill list card
-├── skill-readme.tsx             # Markdown renderer
-├── install-command.tsx          # Copy-to-clipboard install command
-└── ui/                          # shadcn/ui primitives
-content/
-└── docs/                        # MDX documentation pages
-lib/
-├── api-auth.ts                  # API auth (session + bearer token)
-├── audit-log.ts                 # Governance audit event storage
-├── auth.ts                      # NextAuth v5 config (GitHub OAuth)
-├── constants.ts                 # Type labels, colors, config
-├── control-plane.ts             # Postgres-backed SaaS control-plane tables
-├── distribution.ts              # MCP and Claude marketplace export shapes
-├── org.ts                       # Org slug resolution (SaaS mode)
-├── plans.ts                     # SaaS plan definitions and limits
-├── rbac.ts                      # Role-based access control
-├── registry.ts                  # S3-backed data layer
-├── s3.ts                        # S3 client wrapper
-├── seo.ts                       # Canonical origin, metadata, and JSON-LD helpers
-├── settings.ts                  # Settings store (file + env + KV)
-├── stripe.ts                    # Stripe SDK and plan price mapping
-└── types.ts                     # TypeScript interfaces
+```text
+Browser -> Next.js web -> signed internal request -> Fastify REST -> PostgreSQL
+Claude Code -> personal bearer token -> Streamable HTTP MCP -> retrieval -> PostgreSQL
 ```
 
-## Public discovery surface
+The existing Next.js root remains the web workspace so Intertool's established design system, Fumadocs surface, Auth.js integration, and accessibility primitives stay intact. The separate service and shared packages are:
 
-Intertool is private by default, so search indexing focuses on public product and documentation pages. `robots.txt` allows `/`, `/pricing`, `/brand`, `/docs/`, `/llms.txt`, and `/llms-full.txt`, and disallows private registry, settings, auth, and API routes. `sitemap.xml` lists the canonical public pages. `NEXT_PUBLIC_SITE_URL` controls the absolute origin used in canonical metadata, Open Graph data, sitemaps, and LLM docs links.
-
-The root layout emits global JSON-LD for the Intertool application, organization, website, and LLM documentation endpoints. Docs pages emit `TechArticle` and breadcrumb JSON-LD.
-
-## Data model
-
-All skill data lives in your S3 bucket:
-
-```
-s3://your-bucket/
-├── skills/{slug}/
-│   ├── skill.json              # current version
-│   ├── files/                  # optional package files
-│   │   └── README.md
-│   └── versions/
-│       ├── 1.0.0.json          # version snapshots
-│       └── 1.0.1.json
-├── mcp-servers/{slug}/skill.json
-├── agent-tools/{slug}/skill.json
-├── prompt-templates/{slug}/skill.json
-├── _index.json                 # auto-rebuilt catalog
-└── _categories.json            # seeded on first setup
+```text
+apps/server          REST API and MCP endpoint
+packages/contracts   Zod schemas and shared domain types
+packages/db          Drizzle schema, SQL migration, seed, tenant-scoped store
+packages/retrieval   deterministic ranking and context compaction
+claude-plugin        plugin manifest, MCP config, skill, hook, remember command
 ```
 
-MCP server records can include `mcp_config`, the original `server.json` object. Raw downloads and CLI installs use this stored config so command, args, URL, and other server fields round-trip from publish to install.
+## Database
 
-SaaS deployments can also use shared managed object storage. When `INTERTOOL_MANAGED_STORAGE=true`, new orgs are automatically configured with `s3_prefix=orgs/{orgSlug}` so all registry object operations are isolated under that prefix. Set `INTERTOOL_STORAGE_DRIVER=vercel-blob` to use a linked private Vercel Blob store, or leave the default `s3` driver for AWS S3, Cloudflare R2, MinIO, and other S3-compatible services.
+The migration creates UUID-keyed `users`, `organizations`, `memberships`, `repositories`, `api_tokens`, `memories`, `memory_versions`, `memory_reports`, and `audit_events`. Foreign keys and cascading behavior preserve unambiguous tenant ownership.
 
-The SaaS control plane lives in Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured. `lib/control-plane.ts` creates and uses these tables:
+PostgreSQL maintains a weighted `tsvector` for title, content, and tags. A GIN index supports lexical search; a trigram title index is added when `pg_trgm` is available.
 
-- `intertool_orgs`
-- `intertool_user_orgs`
-- `intertool_org_members`
-- `intertool_api_tokens`
-- `intertool_invitations`
-- `intertool_audit_events`
+## Retrieval
 
-Redis remains available for rate limiting, analytics, distributed locks, and legacy fallback storage, but production tenant identity and billing state should live in Postgres.
+Candidates must be in the caller's organisation, published, unexpired, and either repository-scoped to the requested repository or organisation-wide. Type filters apply before ranking.
 
-## Skill types
+The explicit score combines full-text relevance, exact repository match, path match, confirmed confidence, organisation-wide applicability, source presence, age, and open reports. Ordering is stable by score, update time, then ID. Context is grouped by warnings, decisions, conventions, and remaining types, capped by count and character budget, and always keeps source and timestamp information.
 
-| Type | S3 folder | Description | Auto-detected from |
-|---|---|---|---|
-| **Skill** | `skills/` | Claude Code skills | `SKILL.md`, `skill.yaml` |
-| **MCP Server** | `mcp-servers/` | Model Context Protocol servers | `server.json` |
-| **Agent Tool** | `agent-tools/` | Reusable tools for AI agents | `skill.yaml` |
-| **Prompt Template** | `prompt-templates/` | Shared prompt patterns | `skill.yaml` |
+## Security
 
-## Access control
-
-Intertool uses role-based access control (RBAC) with three roles:
-
-| Role | Permissions |
-|---|---|
-| **Owner** | Full access: settings, members, tokens, publish, edit, delete, transfer ownership |
-| **Admin** | Manage settings, members, tokens, and all registry items |
-| **Member** | Publish and edit own items, browse and install all |
-
-The first user, or the user specified in `INTERTOOL_ADMIN`, is assigned the owner role. New users are assigned the member role by default in self-hosted mode.
-
-## Governance
-
-Registry items have a status lifecycle: `review`, `published`, or `archived` for org-visible workflows, with `draft` reserved for future server-side draft storage. Browse, search, CLI install, and API list endpoints only return `published` items.
-
-Admins can enable `publish_review_required` in settings. When enabled, new member submissions are stored with `review` status and appear in `/review`. Owners and admins approve or archive them through `PATCH /api/skills/:slug`.
-
-Audit events are written through `lib/audit-log.ts` for org creation, org deletion, settings changes, member changes, submissions, status transitions, and deletions. Redis-backed deployments store events under `audit:{org}`, while local/self-hosted fallback stores best-effort events in `registry/audit-log.json`.
-
-Baseline security scanning runs during publish and stores a `security` result on each registry item. Critical findings block the publish before package files are written.
-
-SaaS plan limits live in `lib/plans.ts`. The default `free` plan allows 3 members and 10 active or pending registry items; higher plans raise or remove those limits. Stripe Checkout starts from `POST /api/billing/checkout`, and `POST /api/webhooks/stripe` updates `plan`, `subscription_status`, `stripe_customer_id`, and `stripe_subscription_id`.
-
-## Private distribution
-
-Intertool exposes private distribution endpoints for approved clients:
-
-- `/api/mcp/v0/servers` and `/api/mcp/v0/servers/:slug` return published MCP servers in an MCP Registry-style shape.
-- `/api/claude/marketplace` returns a Claude Code marketplace manifest for published registry items.
-
-Both surfaces require normal Intertool session or bearer-token authentication.
-
-## SaaS mode
-
-Intertool supports multi-tenant SaaS mode with path-based organization routing. Each organization gets its own path (for example, `intertool.sh/acme`) with isolated settings and data stored in Postgres plus isolated registry objects in S3-compatible storage.
-
-SaaS mode is activated by setting `INTERTOOL_MODE=saas` and configuring a Postgres connection string. Redis credentials are still useful for rate limits, analytics, locks, and legacy fallback mode.
-
-Owners and admins can delete an organization from the admin settings danger zone. Deletion removes the organization's Postgres control-plane records and, when the org uses managed storage with `s3_prefix=orgs/{org}`, removes objects under that managed prefix from either Vercel Blob or S3-compatible storage. Custom org-owned buckets are not bulk-deleted.
+Fastify caps request bodies, redacts authorization/cookies from logs, rate-limits token and retrieval calls, and uses production-safe errors. Next.js applies a restrictive CSP and same-origin mutation check. Structured validators reject absolute/traversing paths, non-HTTPS sources, oversized fields, and high-confidence secret patterns.

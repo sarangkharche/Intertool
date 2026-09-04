@@ -1,80 +1,85 @@
 ---
 title: Getting Started
-description: Set up the Intertool CLI and install your first skill.
+description: Run Intertool locally and connect Claude Code.
 ---
 
-## Prerequisites
+## Requirements
 
-- Node.js 20+
-- A GitHub account that belongs to your organization
-- Your team's Intertool registry URL
+- Node.js 20 or newer
+- pnpm
+- Docker with Compose
 
-## Install the CLI from source
-
-Until the npm package is published, build and link the CLI from this repository:
+## Install
 
 ```bash
-cd cli
-npm install
-npm run build
-npm link
+pnpm install
+cp .env.example .env.local
 ```
 
-After the npm package is released, you can install it globally instead:
+Generate separate secrets for the Auth.js session and the signed web-to-API boundary:
 
 ```bash
-npm install -g intertool
+openssl rand -base64 32
 ```
 
-## Authenticate
+Set `DATABASE_URL`, `AUTH_URL`, `AUTH_SECRET`, and `WEB_INTERNAL_SECRET` in `.env.local`. Set `DEV_AUTH_BYPASS=true` only for local development.
 
-Log in to your organization's registry:
+## Start
 
 ```bash
-intertool login --url https://your-registry.example.com
+docker compose up -d postgres
+pnpm db:migrate
+pnpm db:seed
+pnpm dev
 ```
 
-For SaaS registries, use your organization path:
+The web dashboard runs at `http://localhost:3000`; REST and MCP run at `http://localhost:3001`. The local seed provides Alice and Bob in Acme plus Mallory in a separate organisation.
+
+`pnpm dev` loads the root `.env.local` for both services. When deliberately using a different web port, set `AUTH_URL`/`NEXTAUTH_URL` and the GitHub OAuth callback URL to that same origin; otherwise GitHub will return to the wrong local port.
+
+The local dev, migration, seed, and integration-test commands default to the Docker PostgreSQL URL. Export `DATABASE_URL` in the shell only when you deliberately want to target another database; an older value in `.env.local` does not override the local default.
+
+During onboarding, register a repository using either `owner/repository` or its full `https://github.com/owner/repository` URL. Intertool stores the normalized repository name; it does not clone or read the repository.
+
+## Connect Claude Code
+
+Create a token from **API tokens**, export it locally, and add `.mcp.json` to the target repository:
+
+```json
+{
+  "mcpServers": {
+    "intertool": {
+      "type": "http",
+      "url": "${INTERTOOL_URL:-http://localhost:3001}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${INTERTOOL_API_TOKEN}"
+      }
+    }
+  }
+}
+```
 
 ```bash
-intertool login --url https://intertool.sh/example-org
+export INTERTOOL_API_TOKEN="itk_..."
 ```
 
-This opens a browser window for OAuth. Once authenticated, your token is stored locally at `~/.intertool/config.json`.
+Run `/mcp` in Claude Code to inspect the connection. Never commit the token.
 
-## Verify
+## Import your Codex memory
+
+The same personal token can import the durable Markdown memory stored by Codex on this computer:
 
 ```bash
-intertool whoami
+export INTERTOOL_API_TOKEN="itk_..."
+pnpm memory:import:codex
 ```
 
-## Search for skills
+Open **My memory** in the dashboard to search the imported documents. The import is private to your user and idempotent; run it again whenever local Codex memory changes. It does not publish anything to Team memory. See [Personal memory](/docs/personal-memory) for the exact boundary and source options.
+
+## Plugin
+
+`claude-plugin/` contains the Intertool plugin. It adds the MCP server, context-retrieval guidance, a short SessionStart instruction, and `/intertool:remember`.
 
 ```bash
-intertool search "code review"
+claude plugin validate ./claude-plugin
 ```
-
-## Install a skill
-
-```bash
-intertool install @team/code-review
-```
-
-For **skills**, **agent tools**, and **prompt templates**, this writes a `SKILL.md` file to `.claude/skills/<slug>/SKILL.md` in your current project.
-
-For **MCP servers**, it writes a `server.json` to `.claude/mcp-servers/<slug>/server.json` with the server configuration and install commands.
-
-If the published item includes package files, the CLI downloads those files into the same install directory and writes `.intertool.json` metadata used by `intertool update`.
-
-## List installed skills
-
-```bash
-intertool list
-```
-
-## Next steps
-
-- [Using the CLI](/docs/using-cli) for end-to-end install, update, publish, and automation workflows
-- [Publishing skills](/docs/publishing) to share your own work
-- [CLI reference](/docs/cli-reference) for all available commands
-- [API overview](/docs/api/overview) for programmatic access

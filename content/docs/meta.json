@@ -2,9 +2,8 @@
   "title": "Docs",
   "pages": [
     "getting-started",
-    "using-cli",
+    "personal-memory",
     "publishing",
-    "cli-reference",
     "architecture",
     "deployment",
     "development-context",

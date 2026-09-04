@@ -1,215 +1,48 @@
 ---
 title: Development Context
-description: LLM-oriented project map, workflows, contracts, and change rules.
+description: LLM-oriented map and change rules for the Intertool memory MVP.
 ---
 
-This page is written for humans and LLM agents working on Intertool. It is included in `/llms-full.txt`, so keep it current when architecture, routes, workflows, or developer commands change.
+Intertool is a permission-aware memory layer with two deliberately separate scopes: private, imported personal memory and reviewed organisation memory. The product stores durable memory documents and structured engineering memories, not raw conversations or agent telemetry.
 
-## Product shape
+## Project map
 
-Intertool is a private registry for AI agent skills, MCP servers, agent tools, and prompt templates. Teams publish items through the web UI, CLI, or API, then discover and install them into local AI tooling.
+- `app/` is the Next.js web dashboard and server-side API proxy.
+- `components/memory/` contains onboarding, repository, memory lifecycle, and token UI.
+- `lib/intertool-api.ts` signs authenticated web-to-service requests.
+- `apps/server/` is the Fastify REST and Streamable HTTP MCP service.
+- `packages/contracts/` owns Zod validation and public input limits.
+- `packages/db/` owns schema, migrations, seed data, tenant-scoped queries, versions, and audits.
+- `packages/retrieval/` owns deterministic ranking and compaction.
+- `scripts/import-codex-memories.ts` imports local Codex Markdown memory into the private user layer.
+- `claude-plugin/` contains the installable Claude Code integration.
+- `content/docs/` is the public and LLM-readable documentation corpus.
 
-Core promises:
+Dashboard route transitions use `components/ui/shining-text.tsx` for concise theme-aware progress copy. Preserve the surrounding skeleton, visible focus states, reduced-motion behavior, Geist typography, and compact control rhythm. The dashboard loading state must reserve the same major regions as the resolved overview so navigation does not reflow. Dashboard motion follows the usage-led Transitions.dev scale in `app/globals.css`: one short staggered route reveal, number pop-ins for changing metrics, transform-based chart reveals, origin-aware menus, in-place icon swaps, and 150ms text-state swaps. Do not animate decorative surfaces or layout dimensions, cap stagger at three steps, and keep the full result immediately available when `prefers-reduced-motion` is enabled. Async labels use `components/ui/stable-status-label.tsx` to reserve their widest state before copy changes, and every motion-enhanced state must still communicate its result to assistive technology when motion is reduced. Signed-in product routes are wrapped by `components/dashboard-theme-boundary.tsx` and use the scoped semantic OKLCH roles in `app/globals.css`: cool neutrals for ordinary surfaces, blue for brand, selection, information, and primary chart data, plus dedicated success, warning, danger, and discovery roles. The public homepage intentionally uses the same scoped palette so the landing page and signed-in product feel continuous; other public routes retain the warm palette. On larger screens the signed-in product is framed as one restrained application surface, while the homepage receives the palette without the dashboard shell; mobile remains edge-to-edge. Keep status meaning explicit in text or icons rather than relying on colour alone. Desktop buttons use a 32px standard height and 36px emphasized height; coarse-pointer devices retain 44px touch targets. Memory creation has one persistent entry point, labelled `Add memory`, in the authenticated header. Render it as a quiet text link rather than a filled button, and do not repeat creation actions in dashboard content or empty states. Dashboard page headers begin with the meaningful heading; do not add decorative uppercase eyebrow copy above it. Functional statuses, table headings, and metadata labels remain explicit.
 
-- User data is stored in managed object storage: Vercel Blob for hosted SaaS, or S3-compatible storage for self-hosted/custom deployments.
-- The app can run self-hosted as a single tenant or in SaaS mode with path-based organizations.
-- Access is controlled by NextAuth, OAuth providers, API tokens, and RBAC.
-- Documentation is served through Fumadocs and exposed to LLMs at `/llms.txt` and `/llms-full.txt`.
-- Public SEO/AEO discovery is intentionally limited to the homepage, pricing page, brand page, documentation, `robots.txt`, `sitemap.xml`, and LLM documentation endpoints. Private registry, settings, auth, and API routes should remain blocked from indexing.
+## Non-negotiable boundaries
 
-## Architecture map
+- Derive organisations from authenticated sessions/tokens; never accept tenant identity from request bodies.
+- Scope every personal-memory query by the authenticated user ID. Personal memory follows that user across organisation memberships and must never be widened to the current organisation.
+- Scope every data query by the authenticated organisation, including known-ID mutations.
+- Return generic `404` for cross-tenant objects.
+- Return token plaintext once, store only the hash, and redact bearer headers from logs.
+- Keep drafts, expired, disputed, and archived memories out of retrieval.
+- Create immutable versions before changing non-draft published state.
+- Do not publish a proposed MCP memory without explicit human approval of the exact draft.
+- Never include personal-memory rows in team REST or MCP retrieval. Extraction may create a reviewable team draft later, but must never publish automatically.
+- Repository code and checked-in instructions outrank Intertool memories.
+- Do not store raw conversations, prompts, code files, terminal output, or credentials. Personal imports may contain user-specific durable context, so keep them private and avoid copying their content into logs or organisation audit metadata.
 
-- `app/` contains Next.js App Router pages and route handlers.
-- `app/(main)/` contains the main registry UI: home, browse, dashboard, publish, review, settings, teams, skill detail, edit, versions, and diff pages.
-- `app/(auth)/` contains sign-in, invitation, and org creation pages.
-- `app/api/` contains JSON and file endpoints for auth, org creation/deletion, settings, members, invitations, tokens, import, publish, search, analytics, audit logs, Stripe billing, private distribution manifests, and skill files.
-- `components/` contains shared React UI, including the publish wizard, command palette, skill cards, markdown rendering, filters, preferences, and shadcn-style primitives under `components/ui/`.
-- `lib/` contains the app contracts and backend logic: auth, API auth, RBAC, org routing, settings, Postgres control plane, object storage access, registry reads/writes, validation, rate limits, analytics, audit logs, plan limits, Stripe billing, distribution exports, security scanning, webhooks, and email.
-- `cli/` contains the separate `intertool` npm CLI implemented with Commander.
-- `content/docs/` contains MDX docs. Update these when CLI, API, auth, publishing, install behavior, or other user-facing behavior changes.
-- `registry/` contains local category seed data and local development registry state.
-- `lib/seo.ts`, `app/robots.ts`, `app/sitemap.ts`, `app/opengraph-image.tsx`, `/llms.txt`, and `/llms-full.txt` define the public discovery surface for search engines, social previews, and LLM/agent consumption.
-
-## Data flow
-
-Web reads usually follow this path:
-
-```text
-Page or API route -> lib/auth or lib/api-auth -> lib/registry -> lib/settings -> lib/s3
-```
-
-Publishing flows follow this path:
-
-```text
-PublishWizard or CLI -> /api/publish -> authenticateApi -> validateSkillInput -> replaceSkillFiles -> upsertSkill -> S3 objects and index
-```
-
-When `publish_review_required` is enabled, new non-admin submissions are written with `status: review`. Browse, search, CLI install, and list APIs only expose `published` items. Owners and admins approve or archive pending submissions from `/review`, which calls `PATCH /api/skills/:slug`.
-
-Publishing also enforces SaaS plan limits from `lib/plans.ts` and runs `scanRegistryItem` from `lib/security-scan.ts`. Critical scan findings reject the publish before files are written to storage.
-
-CLI flows usually follow this path:
-
-```text
-intertool command -> cli/src/lib/config.ts -> cli/src/lib/api.ts -> app/api route -> local install files
-```
-
-SaaS routing follows this path:
-
-```text
-/{org}/route -> proxy.ts strips org prefix -> x-org-slug header -> lib/org.ts -> settings/RBAC lookup
-```
-
-Public route aliases for deployment or landing experiments, currently `/landing-exp`, are stripped before routing and must not set the `intertool.org` cookie. Keep `lib/public-route-aliases.ts`, `proxy.ts`, and `lib/org-slugs.ts` aligned when adding another alias.
-
-Auth redirect normalization lives in `lib/auth-redirects.ts`. The sign-in page sanitizes `callbackUrl`, unwraps nested sign-in callbacks, and redirects authenticated SaaS users to their current or primary org path so root callbacks like `/dashboard` become `/{org}/dashboard`. If a callback contains a stale org prefix, such as `/default/dashboard`, the redirect helper replaces it with the user's resolved org.
-
-For authenticated root private routes such as `/dashboard`, `proxy.ts` sets `x-org-slug` from the user's resolved org and lets the request continue instead of issuing another browser redirect. This avoids root/org redirect loops when a browser has stale org cookies.
-
-`proxy.ts` must pass the same Auth.js session cookie name configured in `lib/auth.ts` when calling `getToken`; production uses `__Secure-authjs.session-token`.
-
-Proxy responses that redirect for auth, set `intertool.org`, or clear `intertool.org` must use no-store cache headers. `default` is an internal fallback namespace and is reserved in both `proxy.ts` and `lib/org-slugs.ts` so it cannot become an org cookie value.
-Org resolution helpers must also treat reserved slugs as unusable even if they exist in old cookies or legacy control-plane rows. Auth callback normalization strips repeated stale `/default` prefixes so paths such as `/default/default/dashboard` resolve to `/dashboard` before org-aware redirect logic runs.
-Logout is handled by `/logout`, not the Auth.js client sign-out flow, so Intertool can clear Auth.js cookies and the SaaS `intertool.org` cookie together. Keep `/logout` public in `proxy.ts` and reserved in `lib/org-slugs.ts`.
-
-SaaS control-plane reads and writes prefer Postgres when `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL` is configured:
-
-```text
-settings/RBAC/invitations/tokens/audit -> lib/control-plane.ts -> intertool_* Postgres tables
-```
-
-Stripe billing follows this path:
-
-```text
-Owner -> /api/billing/checkout -> Stripe Checkout -> /api/webhooks/stripe -> saveSettings(plan/subscription ids)
-```
-
-Private distribution endpoints follow this path:
-
-```text
-Authenticated client -> /api/mcp/v0/servers or /api/claude/marketplace -> lib/registry -> lib/distribution
-```
-
-## Storage contracts
-
-Registry items use `Skill` from `lib/types.ts`.
-
-Supported item types:
-
-- `skill`
-- `mcp-server`
-- `agent-tool`
-- `prompt-template`
-
-Supported source formats:
-
-- `skill-yaml`
-- `skill-md`
-- `server-json`
-- `zip`
-
-MCP server items may include `mcp_config`, which stores the original `server.json` object. CLI install and raw download should use that object when present and only fall back to generated install metadata for older records.
-
-Important storage limits:
-
-- Package files are stored under `{type-folder}/{slug}/files/{path}`.
-- At most 20 package files are allowed.
-- Each package file must be 10MB or smaller.
-- Package files must be 50MB or smaller in total.
-- Paths are normalized by `sanitizeSkillFilePath`.
-- SaaS managed storage may set `s3_prefix=orgs/{orgSlug}` for either Vercel Blob or S3-compatible storage. Storage helpers must preserve prefix isolation and return unprefixed keys to registry callers.
-
-Self-hosted settings resolve in this order:
-
-1. `registry/settings.json`
-2. Upstash Redis key `self-hosted:settings`
-3. S3 environment variables
-
-SaaS settings resolve by org slug from Postgres first, then local fallback JSON in development, then the legacy Upstash Redis metadata path. Hosted SaaS should use Postgres as the source of truth for org settings, memberships, invitations, API tokens, audit events, and Stripe identifiers. Org deletion must remove the current org's control-plane rows and only bulk-delete registry objects when the org uses managed storage under `s3_prefix=orgs/{orgSlug}`. `INTERTOOL_STORAGE_DRIVER=vercel-blob` uses Vercel Blob through `@vercel/blob`; the default `s3` driver uses the AWS SDK.
-
-## Auth and permissions
-
-Web sessions use NextAuth v5 in `lib/auth.ts`. GitHub and Google providers are enabled only when credentials are configured. OAuth credentials can come from admin settings or environment variables.
-
-API routes use `authenticateApi` from `lib/api-auth.ts`. It accepts:
-
-- a NextAuth session for browser requests
-- per-user bearer tokens with the `itk_` prefix
-- legacy `INTERTOOL_API_KEY` fallback
-
-RBAC lives in `lib/rbac.ts`. Roles are `owner`, `admin`, and `member`. Permission checks should use `hasPermission` instead of duplicating role logic in routes.
-
-Governance audit events use `appendAuditEvent` from `lib/audit-log.ts`. Audit writes are best effort and should not block the primary user action unless a future compliance mode explicitly requires that.
-
-Billing integrations should update `RegistrySettings.plan` and `RegistrySettings.subscription_status`. Hosted Stripe billing uses owner-only `POST /api/billing/checkout` for subscription Checkout Sessions and `POST /api/webhooks/stripe` for signed subscription lifecycle events. `PATCH /api/billing/plan` remains owner-only and is intended for back-office corrections or migrations.
-
-## CLI commands
-
-The CLI is in `cli/src/index.ts` and `cli/src/commands/`.
-
-Commands:
-
-- `login`
-- `logout`
-- `whoami`
-- `search`
-- `install`
-- `remove`
-- `list`
-- `info`
-- `publish`
-- `update`
-- `init`
-- `completions`
-
-When changing command behavior, update `content/docs/cli-reference.mdx` and run the CLI build from `cli/`.
-
-## Development commands
+## Verification
 
 ```bash
-npm run dev
-npm run lint
-npm run typecheck
-npm run test
-npm run test:e2e
-npm run build
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:integration
+pnpm test:e2e
+pnpm build
 ```
 
-CLI checks:
-
-```bash
-cd cli
-npm run build
-node dist/index.js --help
-```
-
-Install Playwright browsers before the first E2E run:
-
-```bash
-npm run test:e2e:install
-```
-
-## Change rules for LLM agents
-
-- Read the relevant route, component, library module, CLI command, and docs before editing.
-- Preserve existing uncommitted work. Do not revert unrelated changes.
-- Keep behavior changes close to their owning module.
-- Prefer existing helpers in `lib/` and `components/ui/` over new abstractions.
-- Use role, permission, and validation helpers instead of duplicating checks.
-- If changing CLI, API, auth, publishing, install behavior, or user-facing UX, update `content/docs/`.
-- If changing publish review, item status semantics, or audit events, update `content/docs/publishing.mdx`, `content/docs/api/overview.mdx`, and this page.
-- If changing plan limits, managed storage, Stripe billing, Postgres control-plane behavior, security scan semantics, or distribution manifests, update `content/docs/architecture.mdx`, `content/docs/deployment.mdx`, `content/docs/api/overview.mdx`, and this page.
-- If changing browser-visible behavior, add or update Playwright coverage where practical.
-- If changing public routes, docs, canonical origins, metadata, or machine-readable discovery output, update the SEO/AEO helpers and deployment docs together.
-- If changing storage shape, update `lib/types.ts`, registry read/write logic, docs, and CLI consumers together.
-
-## High-risk areas
-
-- Auth callback behavior, cookies, org routing, and OAuth provider setup.
-- Postgres control-plane schema changes and migrations.
-- Stripe webhook signature verification and subscription state mapping.
-- Object storage keys, registry indexing, file downloads, and package file limits.
-- RBAC permission gates for publish, edit, delete, members, tokens, and settings.
-- CLI install/update paths that write into user projects.
-- SaaS path rewriting in `proxy.ts` and org cookie fallback for API requests.
-- Docs and LLM endpoints, because `/llms-full.txt` depends on Fumadocs source metadata and MDX files.
+Start PostgreSQL before database integration or browser tests. When a user-facing flow, API, authentication behavior, publishing transition, or plugin contract changes, update the corresponding page in `content/docs/`.
