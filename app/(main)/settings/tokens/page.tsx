@@ -34,7 +34,8 @@ export default async function TokensPage() {
       <div className="mb-8 border-b border-border-subtle pb-6">
         <h1 className="text-lg font-medium tracking-tight">API tokens</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Connect Claude Code without sharing credentials between engineers.
+          Connect ChatGPT, Codex, Claude Code, Copilot, Grok, and other MCP
+          clients without sharing credentials between engineers.
         </p>
       </div>
       <TokenManager tokens={response.items} />

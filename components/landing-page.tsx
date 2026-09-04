@@ -1,381 +1,389 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { Newsreader } from "next/font/google";
 import {
-  ArrowRight,
-  CheckCircle2,
-  FileCheck2,
+  ArrowUpRight,
+  Bot,
+  Braces,
   GitBranch,
-  History,
-  KeyRound,
+  Package,
+  SearchCheck,
   ShieldCheck,
 } from "lucide-react";
-import { CopyCommandButton } from "@/components/copy-command-button";
+import { LandingInstallPicker } from "@/components/landing-install-picker";
 
-const claudeCommand = "/intertool:remember";
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
 
-const operatingScale = [
+const demoPrompts = [
   {
-    stage: "Small teams",
-    title: "Make hard-won knowledge reusable",
-    description:
-      "Start with one repository and capture the decisions, warnings, and runbooks the team would otherwise keep rediscovering.",
+    prompt: "What should I know before changing refund tests?",
+    answer: [
+      "3 published memories found",
+      "Repository  acme/payments-service",
+      "Path        tests/refunds/**",
+      "Source      PR #1842",
+      "Refund tests must emit LEDGER_EVENTS before asserting settlement state.",
+    ],
   },
   {
-    stage: "Growing organisations",
-    title: "Keep context precise as adoption spreads",
-    description:
-      "Repository and path scopes give each session relevant guidance without flattening every team's context into one generic wiki.",
+    prompt: "Why does login depend on the profile service?",
+    answer: [
+      "2 published memories found",
+      "Repository  acme/identity",
+      "Path        src/login/**",
+      "Source      ADR-014",
+      "Profile hydration moved behind authentication; entitlement lookup remains a boundary.",
+    ],
   },
   {
-    stage: "Enterprise",
-    title: "Govern shared memory as infrastructure",
-    description:
-      "Tenant boundaries, role-aware administration, revocable tokens, lifecycle controls, and audit events keep rollout accountable.",
+    prompt: "Which team owns payments reconciliation?",
+    answer: [
+      "1 published memory found",
+      "Repository  acme/payments-service",
+      "Path        jobs/reconciliation/**",
+      "Owner       Payments Platform",
+      "Escalate failed settlement batches through the payments operations runbook.",
+    ],
   },
-];
+  {
+    prompt: "What changed after the last release?",
+    answer: [
+      "4 published memories found",
+      "Repository  acme/web",
+      "Path        app/**",
+      "Source      Release 2026.09",
+      "The auth callback, billing retry, and repository sync paths changed in this release.",
+    ],
+  },
+] as const;
 
-const workflow = [
+const capabilities = [
   {
-    number: "01",
-    title: "Capture the learning",
-    description:
-      "A coding agent or engineer drafts one durable memory from the work, without uploading the conversation.",
+    label: "Get scoped context",
+    request: "What should I know before editing refund tests?",
+    skill: "Selecting reviewed repository context",
+    detail:
+      "Matching organisation, repository, path, status, and task relevance",
+    result: "Returning 3 published memories with sources",
   },
   {
-    number: "02",
-    title: "Review the exact wording",
-    description:
-      "A human confirms the source, repository scope, confidence, and expiry before publication.",
+    label: "Find ownership",
+    request: "Who owns payments reconciliation?",
+    skill: "Tracing ownership and responsibility",
+    detail:
+      "Reading confirmed owners, repositories, runbooks, and escalation paths",
+    result: "Returning the owning team and source record",
   },
   {
-    number: "03",
-    title: "Retrieve it in a fresh session",
-    description:
-      "The next authorised session asks Intertool for task-specific context and receives only relevant, published memories.",
+    label: "Summarize decisions",
+    request: "Why was the ledger event made mandatory?",
+    skill: "Collecting versioned engineering decisions",
+    detail: "Reading published memory versions and their linked evidence",
+    result: "Returning the decision, rationale, and source",
   },
-];
+  {
+    label: "Review engineering work",
+    request: "What could this refund-test change break?",
+    skill: "Retrieving path-specific warnings",
+    detail: "Filtering confirmed constraints for the files in this task",
+    result: "Returning relevant risks without unrelated memory",
+  },
+  {
+    label: "Prepare operations",
+    request: "How do we respond to a failed settlement batch?",
+    skill: "Finding the current operational runbook",
+    detail: "Checking publication state, owner, version, and expiry",
+    result: "Returning the approved response path",
+  },
+  {
+    label: "Move work forward",
+    request: "What is the next safe change?",
+    skill: "Combining reviewed context for the active task",
+    detail: "Ranking compact, source-backed memories for this repository",
+    result: "Returning the next action with evidence",
+  },
+] as const;
 
-const guardrails = [
-  {
-    icon: FileCheck2,
-    title: "Human approved",
-    description: "No proposed memory becomes shared context by itself.",
-  },
-  {
-    icon: GitBranch,
-    title: "Repository scoped",
-    description:
-      "Paths and repositories keep guidance close to the work it belongs to.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Tenant isolated",
-    description:
-      "Every team-memory read and mutation stays inside the authenticated organisation.",
-  },
-  {
-    icon: KeyRound,
-    title: "Access revocable",
-    description:
-      "Personal tokens keep retrieval attributable and independently revocable.",
-  },
-  {
-    icon: History,
-    title: "Lifecycle recorded",
-    description:
-      "Publish, dispute, archive, and token actions retain an actor and timestamp.",
-  },
-];
+function TerminalDemo() {
+  const [activePrompt, setActivePrompt] = useState(0);
+  const selected = demoPrompts[activePrompt];
 
-function Reveal({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <div className={className}>{children}</div>;
+  return (
+    <div className="landing-demo-frame" data-interactive-demo>
+      <div className="landing-terminal-window" aria-live="polite">
+        <div className="landing-window-bar">
+          <span className="flex items-center gap-1.5" aria-hidden="true">
+            <span className="landing-window-dot bg-destructive" />
+            <span className="landing-window-dot bg-warning" />
+            <span className="landing-window-dot bg-success" />
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">
+            intertool · agent preview
+          </span>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            Illustrative data
+          </span>
+        </div>
+        <div className="landing-terminal-output">
+          <p className="text-sm text-foreground">$ {selected.prompt}</p>
+          <div className="mt-6 space-y-2 font-mono text-xs leading-5 text-muted-foreground">
+            {selected.answer.map((line, index) => (
+              <p
+                key={line}
+                className={
+                  index === 0 || index === selected.answer.length - 1
+                    ? "text-foreground"
+                    : undefined
+                }
+              >
+                <span className="mr-3 text-primary">{index + 1}.</span>
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+        <div className="landing-terminal-status">
+          <span>Intertool MCP · illustrative session</span>
+          <span>ready</span>
+        </div>
+      </div>
+
+      <div className="landing-prompt-grid" aria-label="Example prompts">
+        {demoPrompts.map((item, index) => (
+          <button
+            key={item.prompt}
+            type="button"
+            onClick={() => setActivePrompt(index)}
+            className="landing-prompt-button"
+            aria-pressed={activePrompt === index}
+          >
+            <SearchCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+            <span>{item.prompt}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CapabilityExplorer() {
+  const [activeCapability, setActiveCapability] = useState(0);
+  const selected = capabilities[activeCapability];
+
+  return (
+    <div className="landing-capability-layout">
+      <div className="landing-capability-copy">
+        <div className="mb-6 flex items-center gap-3 text-muted-foreground">
+          <Bot className="h-4 w-4" aria-hidden="true" />
+          <Braces className="h-4 w-4" aria-hidden="true" />
+          <GitBranch className="h-4 w-4" aria-hidden="true" />
+          <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+        </div>
+        <h2
+          className={`${newsreader.className} max-w-sm text-3xl leading-tight font-normal tracking-[-0.018em] text-foreground sm:text-4xl`}
+        >
+          Give your agents reviewed engineering context.
+        </h2>
+        <p className="mt-6 max-w-sm text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+          Intertool helps supported agents find confirmed decisions, warnings,
+          runbooks, and ownership without widening access or sending unrelated
+          memory.
+        </p>
+        <div
+          className="mt-8 flex flex-col"
+          role="tablist"
+          aria-label="Intertool capabilities"
+        >
+          {capabilities.map((capability, index) => (
+            <button
+              key={capability.label}
+              type="button"
+              role="tab"
+              aria-selected={activeCapability === index}
+              onClick={() => setActiveCapability(index)}
+              className="landing-capability-tab"
+            >
+              {capability.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="landing-capability-stage" role="tabpanel">
+        <div className="landing-capability-window">
+          <div className="flex gap-2" aria-hidden="true">
+            <span className="landing-window-dot bg-destructive" />
+            <span className="landing-window-dot bg-warning" />
+            <span className="landing-window-dot bg-success" />
+          </div>
+          <p className="ml-auto mt-6 max-w-md rounded-full bg-foreground px-5 py-3 text-sm text-background">
+            {selected.request}
+          </p>
+
+          <ol className="landing-capability-sequence">
+            <li>
+              <span>Agent</span>
+              <p>Received request</p>
+            </li>
+            <li className="landing-capability-active-step">
+              <span>Intertool</span>
+              <p>{selected.skill}</p>
+              <code>get_context</code>
+            </li>
+            <li>
+              <span>Memory layer</span>
+              <p>{selected.detail}</p>
+            </li>
+            <li>
+              <span>Answer</span>
+              <p>{selected.result}</p>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function LandingPage() {
   return (
-    <div className="overflow-hidden bg-background">
-      <section
-        id="product"
-        className="scroll-mt-16 border-b border-border-subtle"
-      >
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
-          <div className="border-x border-t border-border-subtle">
-            <Reveal className="px-5 py-14 text-center sm:px-8 sm:py-20">
-              <h1 className="mx-auto max-w-xl text-lg leading-7 font-medium tracking-tight text-balance">
-                Engineering memory for every team and every coding agent.
-              </h1>
-              <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-pretty text-muted-foreground">
-                Start with one repository. Scale reviewed, source-backed context
-                across an organisation without losing ownership, permissions, or
-                control.
-              </p>
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
-                <Link
-                  href="/sign-in"
-                  className="btn-pill border-foreground bg-foreground text-background hover:bg-foreground/90"
-                >
-                  Open Intertool
-                  <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                </Link>
-                <Link href="#scale" className="btn-pill">
-                  See how it scales
-                </Link>
-              </div>
-            </Reveal>
+    <div className="landing-page-shell bg-background text-foreground">
+      <section id="product" className="landing-cli-hero">
+        <div className="landing-cli-hero-message">
+          <h1 className={newsreader.className}>
+            Reviewed engineering memory, now in every coding agent.
+          </h1>
+          <p>
+            Install Intertool and bring source-backed repository context to
+            Claude Code, Codex, Copilot, and other MCP clients.
+          </p>
+        </div>
+        <div className="landing-cli-installer">
+          <LandingInstallPicker />
+        </div>
+      </section>
 
-            <Reveal className="border-y border-border-subtle bg-surface/35 px-4 py-5 sm:px-8 sm:py-6">
-              <div className="mx-auto flex max-w-3xl items-stretch border border-border-subtle bg-background">
-                <span className="hidden shrink-0 items-center border-r border-border-subtle px-4 font-mono text-[11px] text-muted-foreground sm:flex">
-                  Claude Code
-                </span>
-                <code className="flex min-w-0 flex-1 items-center overflow-x-auto px-3 font-mono text-xs whitespace-nowrap sm:px-4">
-                  {claudeCommand}
-                </code>
-                <CopyCommandButton value={claudeCommand} />
-              </div>
-              <div className="mt-3 text-center">
-                <Link
-                  href="/docs/getting-started"
-                  className="inline-flex min-h-8 items-center gap-1.5 text-xs text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground focus-ring"
-                >
-                  Connect Claude Code
-                  <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                </Link>
-              </div>
-            </Reveal>
+      <section id="explore" className="landing-cli-section">
+        <div className="landing-cli-section-heading">
+          <h2 className={newsreader.className}>Explore Intertool</h2>
+          <p>
+            Try sample prompts to see how reviewed engineering memory reaches a
+            coding agent.
+          </p>
+        </div>
+        <TerminalDemo />
+      </section>
+
+      <section id="capabilities" className="landing-cli-section">
+        <CapabilityExplorer />
+      </section>
+
+      <section
+        className="landing-proof-section"
+        aria-label="Product guarantees"
+      >
+        <div>
+          <strong className={newsreader.className}>Human approved</strong>
+          <span>before publication</span>
+        </div>
+        <div>
+          <strong className={newsreader.className}>Scope checked</strong>
+          <span>before retrieval</span>
+        </div>
+        <p>Intertool control-plane guarantees</p>
+      </section>
+
+      <section
+        id="get-started"
+        className="landing-cli-section landing-get-started"
+      >
+        <h2 className={newsreader.className}>Get started</h2>
+        <div className="landing-start-grid">
+          <Link href="/docs/getting-started" className="landing-start-card">
+            <span>01</span>
+            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            <strong>Create an API token</strong>
+            <p>Generate a personal token that can be revoked independently.</p>
+          </Link>
+          <Link
+            href="/docs/getting-started#connect-ai-clients"
+            className="landing-start-card"
+          >
+            <span>02</span>
+            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            <strong>Connect your agent</strong>
+            <p>
+              Add Intertool to Claude Code, Codex, Copilot, or another client.
+            </p>
+          </Link>
+          <Link
+            href="/docs/getting-started#verify-the-connection"
+            className="landing-start-card"
+          >
+            <span>03</span>
+            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            <strong>Verify the context</strong>
+            <p>Confirm the MCP tools and retrieve one reviewed memory.</p>
+          </Link>
+        </div>
+
+        <div className="landing-learn-more">
+          <div>
+            <Link href="/docs">
+              <span>Read the documentation</span>
+              <small>Install, publish, retrieve, and govern memory</small>
+            </Link>
+            <Link href="/docs/api/overview">
+              <span>Explore the API</span>
+              <small>Use the REST and Streamable HTTP MCP interfaces</small>
+            </Link>
+            <Link href="/docs/architecture">
+              <span>Understand the architecture</span>
+              <small>
+                See how evidence, scope, versions, and audits connect
+              </small>
+            </Link>
           </div>
-
-          <div
-            data-hero-placeholder
-            className="mt-16 aspect-[4/3] rounded-md border border-dashed border-border-subtle bg-surface/30 sm:mt-20 sm:aspect-[16/7]"
-            aria-hidden="true"
-          />
         </div>
       </section>
 
-      <section
-        id="scale"
-        className="scroll-mt-16 border-b border-border-subtle bg-surface/35"
-      >
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:py-24 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
-          <Reveal className="max-w-sm">
-            <h2 className="text-lg leading-7 font-medium tracking-tight text-balance">
-              Start with one team. Keep the controls as you scale.
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Small teams can begin with a focused shared memory. Larger
-              organisations keep the same evidence, access boundaries, and
-              lifecycle as adoption expands.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <ol className="border-t border-border-subtle">
-              {operatingScale.map((item, index) => (
-                <li
-                  key={item.stage}
-                  className="grid gap-3 border-b border-border-subtle py-6 sm:grid-cols-[8.5rem_1fr] sm:gap-6"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      0{index + 1}
-                    </span>
-                    <span className="text-xs font-medium">{item.stage}</span>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium">{item.title}</h3>
-                    <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </Reveal>
+      <footer className="landing-cli-footer">
+        <div className="landing-footer-brand">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Package className="h-4 w-4" aria-hidden="true" />
+            intertool
+          </div>
+          <p>Reviewed context for engineering agents.</p>
         </div>
-      </section>
-
-      <section
-        id="context"
-        className="scroll-mt-16 border-b border-border-subtle"
-      >
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:py-24 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
-          <Reveal className="max-w-sm">
-            <h2 className="text-lg leading-7 font-medium tracking-tight text-balance">
-              Memory that keeps its evidence.
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Every memory stays attached to an owner, a source, and the part of
-              the repository where it applies. Teams can review what coding
-              agents will receive before it spreads.
-            </p>
-
-            <dl className="mt-8 divide-y divide-border-subtle border-y border-border-subtle text-xs">
-              <div className="flex items-center justify-between gap-6 py-3">
-                <dt className="text-muted-foreground">Source</dt>
-                <dd className="font-mono">PR #1842</dd>
-              </div>
-              <div className="flex items-center justify-between gap-6 py-3">
-                <dt className="text-muted-foreground">Path scope</dt>
-                <dd className="font-mono">tests/refunds/**</dd>
-              </div>
-              <div className="flex items-center justify-between gap-6 py-3">
-                <dt className="text-muted-foreground">Confidence</dt>
-                <dd>Confirmed by Alice</dd>
-              </div>
-            </dl>
-          </Reveal>
-
-          <Reveal>
-            <div
-              data-media-placeholder
-              className="aspect-[1365/900] rounded-md border border-dashed border-border-subtle bg-surface/30"
-              aria-hidden="true"
-            />
-          </Reveal>
+        <div>
+          <strong>Product</strong>
+          <Link href="#explore">Explore</Link>
+          <Link href="#capabilities">MCP context</Link>
+          <Link href="#get-started">Get started</Link>
         </div>
-      </section>
-
-      <section className="border-b border-border-subtle bg-surface/35">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:py-24 lg:grid-cols-[1.28fr_0.72fr] lg:gap-16">
-          <Reveal className="lg:order-1">
-            <div
-              data-media-placeholder
-              className="aspect-[1365/900] rounded-md border border-dashed border-border-subtle bg-background/40"
-              aria-hidden="true"
-            />
-          </Reveal>
-
-          <Reveal className="max-w-sm lg:order-2">
-            <h2 className="text-lg leading-7 font-medium tracking-tight text-balance">
-              Only the right context reaches the session.
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Intertool filters by organisation, repository, path, status, and
-              task relevance. Draft, disputed, expired, and archived memories
-              stay out of retrieval.
-            </p>
-            <Link
-              href="/docs/development-context"
-              className="mt-6 inline-flex min-h-11 items-center gap-1.5 text-xs font-medium underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground focus-ring"
-            >
-              Read the retrieval rules
-              <ArrowRight className="h-3 w-3" aria-hidden="true" />
-            </Link>
-          </Reveal>
+        <div>
+          <strong>Developers</strong>
+          <Link href="/docs">Documentation</Link>
+          <Link href="/docs/api/overview">API</Link>
+          <Link href="/docs/api/authentication">Authentication</Link>
         </div>
-      </section>
-
-      <section
-        id="how-it-works"
-        className="scroll-mt-16 border-b border-border-subtle"
-      >
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:py-24 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
-          <Reveal className="max-w-sm">
-            <h2 className="text-lg leading-7 font-medium tracking-tight text-balance">
-              Capture once. Confirm deliberately. Retrieve when it matters.
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              The workflow is deliberately small. Intertool stores structured
-              engineering memory, not a second copy of your conversations.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <ol className="border-t border-border-subtle">
-              {workflow.map((step) => (
-                <li
-                  key={step.number}
-                  className="grid gap-4 border-b border-border-subtle py-6 sm:grid-cols-[2.5rem_1fr] sm:gap-6"
-                >
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {step.number}
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-medium">{step.title}</h3>
-                    <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
-                      {step.description}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </Reveal>
+        <div>
+          <strong>Connect</strong>
+          <Link href="/docs/getting-started#claude-code">Claude Code</Link>
+          <Link href="/docs/getting-started#chatgpt-desktop-and-codex">
+            Codex
+          </Link>
+          <Link href="/docs/getting-started#github-copilot">
+            GitHub Copilot
+          </Link>
         </div>
-      </section>
-
-      <section className="border-b border-border-subtle bg-surface/35">
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:py-24 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
-          <Reveal className="max-w-sm">
-            <h2 className="text-lg leading-7 font-medium tracking-tight text-balance">
-              Controls that stay in place as the organisation grows.
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              No raw transcripts. No autonomous publishing. No cross-tenant
-              discovery. Governance is part of the operating model from the
-              first team to an enterprise rollout.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <div className="border-t border-border-subtle">
-              {guardrails.map((item) => (
-                <div
-                  key={item.title}
-                  className="grid grid-cols-[1.5rem_1fr] gap-4 border-b border-border-subtle py-5"
-                >
-                  <item.icon
-                    className="mt-0.5 h-4 w-4 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <h3 className="text-sm font-medium">{item.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section>
-        <div className="mx-auto grid max-w-6xl items-end gap-8 px-4 py-20 sm:py-24 lg:grid-cols-[1fr_auto]">
-          <Reveal className="max-w-lg">
-            <CheckCircle2
-              className="mb-5 h-4 w-4 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <h2 className="text-lg leading-7 font-medium tracking-tight text-balance">
-              Start with one repository. Scale when the organisation is ready.
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Give every authorised engineer consistent, reviewed repository
-              context without losing the controls enterprise teams need.
-            </p>
-          </Reveal>
-
-          <Reveal className="flex flex-wrap gap-2 lg:justify-end">
-            <Link
-              href="/sign-in"
-              className="btn-pill border-foreground bg-foreground text-background hover:bg-foreground/90"
-            >
-              Open Intertool
-              <ArrowRight className="h-3 w-3" aria-hidden="true" />
-            </Link>
-            <Link href="/docs" className="btn-pill">
-              Read the docs
-            </Link>
-          </Reveal>
-        </div>
-      </section>
+      </footer>
     </div>
   );
 }

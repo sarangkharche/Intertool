@@ -20,6 +20,7 @@ export const RESERVED_ORG_SLUGS = new Set([
   "help",
   "icon.svg",
   "invite",
+  "install",
   ...PUBLIC_ROUTE_ALIASES,
   "llms",
   "llms-full.txt",

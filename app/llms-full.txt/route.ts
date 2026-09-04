@@ -32,6 +32,7 @@ export function GET() {
     "",
     `- Home: ${getAbsoluteUrl("/")}`,
     `- Documentation index: ${getAbsoluteUrl("/docs")}`,
+    `- Agent installer: ${getAbsoluteUrl("/install")}`,
     `- LLM index: ${getAbsoluteUrl("/llms.txt")}`,
     "",
   ];

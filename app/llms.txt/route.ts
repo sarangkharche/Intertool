@@ -15,6 +15,7 @@ export function GET() {
     "",
     `- [Home](${getAbsoluteUrl("/")})`,
     `- [Documentation](${getAbsoluteUrl("/docs")})`,
+    `- [Agent installer](${getAbsoluteUrl("/install")})`,
     `- [Full LLM corpus](${getAbsoluteUrl("/llms-full.txt")})`,
     "",
     "## Pages",

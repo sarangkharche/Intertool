@@ -42,12 +42,13 @@ Defined in `lib/constants.ts` as `SKILL_TYPE_COLORS`.
 
 ### Fonts
 
-| Font           | Variable            | Usage                                            |
-| -------------- | ------------------- | ------------------------------------------------ |
-| **Inter**      | `--font-inter`      | All UI text (body, headings, labels)             |
-| **Geist Mono** | `--font-geist-mono` | Code, slugs, version numbers, technical metadata |
+| Font           | Variable            | Usage                                             |
+| -------------- | ------------------- | ------------------------------------------------- |
+| **Newsreader** | Component scoped    | Public landing hero and major section statements  |
+| **Geist Sans** | `--font-geist-sans` | Body text, navigation, controls, product headings |
+| **Geist Mono** | `--font-geist-mono` | Code, slugs, version numbers, technical metadata  |
 
-Loaded from Google Fonts in `app/layout.tsx`. Applied globally via `antialiased` on `<body>`.
+Geist is loaded for the application shell. Newsreader Regular is self-hosted by `next/font` and scoped to the public landing page; it is never used for body copy or controls.
 
 ### Scale
 

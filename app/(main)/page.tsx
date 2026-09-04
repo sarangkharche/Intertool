@@ -5,9 +5,9 @@ import { auth } from "@/lib/auth";
 import { getPublicPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = getPublicPageMetadata({
-  title: "Governed engineering memory for teams and enterprises",
+  title: "Reviewed engineering memory for every coding agent",
   description:
-    "Intertool scales reviewed, source-backed engineering context from one repository to an enterprise-wide coding-agent rollout.",
+    "Install Intertool to give coding agents reviewed, source-backed context scoped to the right organisation, repository, and path.",
   path: "/",
 });
 

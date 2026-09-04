@@ -6,7 +6,7 @@ const AUTH_SESSION_COOKIE =
     ? "authjs.session-token"
     : "__Secure-authjs.session-token";
 
-const PUBLIC_PATHS = new Set(["/", "/sign-in", "/brand"]);
+const PUBLIC_PATHS = new Set(["/", "/sign-in", "/brand", "/install"]);
 const PUBLIC_PREFIXES = [
   "/api/",
   "/docs",

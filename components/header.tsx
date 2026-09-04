@@ -36,12 +36,7 @@ const nav = [
   { href: "/settings/members", label: "Team", icon: Users },
 ];
 
-const publicNav = [
-  { href: "/#product", label: "Product" },
-  { href: "/#scale", label: "Scale" },
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/docs", label: "Docs" },
-];
+const publicNav = [{ href: "/docs", label: "Docs" }];
 
 const subscribeToHydration = () => () => {};
 
@@ -56,6 +51,8 @@ export function Header() {
     () => false
   );
   const user = session?.user;
+  const landingPage = pathname === "/";
+  const signedInProduct = Boolean(user) && !landingPage;
   const isDark = themeReady && resolvedTheme === "dark";
   const initials = (user?.name || user?.email || "?").slice(0, 2).toUpperCase();
   const refreshedPath = useRef<string | null>(null);
@@ -70,19 +67,20 @@ export function Header() {
     <header
       className={cn(
         "sticky top-0 z-50 border-b border-border-subtle bg-background/92 text-foreground backdrop-blur-md",
-        user && "dashboard-theme"
+        landingPage && "landing-page-header",
+        signedInProduct && "dashboard-theme"
       )}
     >
       <div className="mx-auto flex max-w-6xl items-center gap-5 px-4 py-1.5 sm:h-11 sm:py-0">
         <Link
-          href={user ? "/dashboard" : "/"}
+          href={signedInProduct ? "/dashboard" : "/"}
           className="micro-press flex h-8 shrink-0 items-center gap-2 rounded-md text-sm font-medium tracking-tight focus-ring"
         >
           <Package className="h-4 w-4" aria-hidden="true" />
           <span>intertool</span>
         </Link>
 
-        {user && (
+        {signedInProduct && (
           <nav
             className="hidden items-center gap-0.5 md:flex"
             aria-label="Product navigation"
@@ -109,7 +107,7 @@ export function Header() {
           </nav>
         )}
 
-        {!user && status !== "loading" && (
+        {!signedInProduct && (status !== "loading" || pathname === "/") && (
           <nav
             className="hidden items-center gap-0.5 md:flex"
             aria-label="Public navigation"
@@ -118,7 +116,10 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="micro-press flex h-8 items-center rounded-md px-2.5 text-xs text-muted-foreground hover:text-foreground focus-ring"
+                className={cn(
+                  "micro-press flex h-8 items-center rounded-md px-2.5 text-xs hover:text-foreground focus-ring",
+                  landingPage ? "text-foreground" : "text-muted-foreground"
+                )}
               >
                 {item.label}
               </Link>
@@ -127,7 +128,7 @@ export function Header() {
         )}
 
         <div className="ml-auto flex items-center gap-1.5">
-          {user && (
+          {signedInProduct && (
             <Link
               href="/memories/new"
               className="micro-press touch-target focus-ring inline-flex h-8 items-center rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -135,7 +136,7 @@ export function Header() {
               Add memory
             </Link>
           )}
-          {user && (
+          {signedInProduct && (
             <Link
               href="/docs"
               className="touch-target flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
@@ -147,7 +148,10 @@ export function Header() {
           <button
             type="button"
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            className="touch-target flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+            className={cn(
+              "touch-target flex h-8 w-8 items-center justify-center rounded-md interactive-ghost",
+              landingPage ? "text-foreground" : "text-muted-foreground"
+            )}
             aria-label={isDark ? "Use light theme" : "Use dark theme"}
           >
             <span className="t-icon-swap" data-state={isDark ? "b" : "a"}>
@@ -160,9 +164,9 @@ export function Header() {
             </span>
           </button>
 
-          {status === "loading" ? (
+          {status === "loading" && pathname !== "/" ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-          ) : user ? (
+          ) : signedInProduct && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="touch-target flex h-8 w-8 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                 <Avatar className="h-8 w-8">

@@ -41,9 +41,35 @@ The local dev, migration, seed, and integration-test commands default to the Doc
 
 During onboarding, register a repository using either `owner/repository` or its full `https://github.com/owner/repository` URL. Intertool stores the normalized repository name; it does not clone or read the repository.
 
-## Connect Claude Code
+## Connect AI clients
 
-Create a token from **API tokens**, export it locally, and add `.mcp.json` to the target repository:
+Create a token from **API tokens** and export it locally. Create a separate token for each client so you can revoke one connection without interrupting the others.
+
+For agent-guided setup, paste this into Codex, Claude Code, Copilot, Grok, or another capable coding agent:
+
+```text
+Install the Intertool MCP for me. Read and follow the canonical instructions at https://intertool.sh/install
+```
+
+The client selector on the Intertool homepage prepares this prompt for Claude Code, Codex, GitHub Copilot, Grok, or another MCP client and links directly to the matching manual setup below.
+
+The `/install` endpoint returns plain Markdown designed for agents. It tells the agent how to detect its client, merge Intertool into existing MCP configuration without overwriting other servers, keep token plaintext out of chat and git, and verify the installed tools.
+
+### ChatGPT desktop and Codex
+
+The ChatGPT desktop app, Codex CLI, and Codex IDE extension share the MCP servers configured in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.intertool]
+url = "http://localhost:3001/mcp"
+bearer_token_env_var = "INTERTOOL_API_TOKEN"
+```
+
+Restart the app or extension, then use `/mcp` to confirm the connection.
+
+### Claude Code
+
+Add `.mcp.json` to the target repository:
 
 ```json
 {
@@ -64,6 +90,24 @@ export INTERTOOL_API_TOKEN="itk_..."
 ```
 
 Run `/mcp` in Claude Code to inspect the connection. Never commit the token.
+
+### GitHub Copilot
+
+Copilot CLI can register the local server directly:
+
+```bash
+copilot mcp add --transport http \
+  --header "Authorization: Bearer $INTERTOOL_API_TOKEN" \
+  intertool http://localhost:3001/mcp
+```
+
+For Copilot cloud agent, add the deployed Intertool MCP endpoint in **Repository settings → Copilot → MCP servers**. Store the token as an Agents secret whose name begins with `COPILOT_MCP_`; do not put token plaintext in the MCP JSON.
+
+### Grok and other remote clients
+
+In Grok, open **Connectors**, create a custom MCP connector, and enter your deployed Intertool `/mcp` URL with bearer-token authentication. Grok runs remotely and cannot reach `localhost`, so use a public HTTPS deployment or a secure tunnel.
+
+Any MCP client that supports Streamable HTTP can connect to the same `/mcp` endpoint by sending `Authorization: Bearer itk_...`.
 
 ## Import your Codex memory
 

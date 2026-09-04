@@ -16,6 +16,21 @@ test.describe("memory workflow", () => {
       page.getByRole("heading", { name: /context your team/i })
     ).toBeVisible();
 
+    await page.goto("/settings/tokens");
+    await expect(
+      page.getByRole("heading", { name: "Install with your agent" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "ChatGPT + Codex", selected: true })
+    ).toBeVisible();
+    await expect(page.getByText("[mcp_servers.intertool]")).toBeVisible();
+    await page.getByRole("tab", { name: "GitHub Copilot" }).click();
+    await expect(
+      page.getByText(/copilot mcp add --transport http/)
+    ).toBeVisible();
+    await page.getByRole("tab", { name: "Grok" }).click();
+    await expect(page.getByText(/grok mcp add --transport http/)).toBeVisible();
+
     await page.goto("/my-memory");
     await expect(
       page.getByRole("heading", { name: "My memory", exact: true })
@@ -87,6 +102,9 @@ test.describe("memory workflow", () => {
     await page.goto("/sign-in?callbackUrl=/my-memory");
     await page.getByRole("button", { name: "alice" }).click();
     await expect(page).toHaveURL(/\/my-memory$/);
+    await expect(
+      page.getByRole("heading", { name: "My memory", exact: true })
+    ).toBeVisible();
     await page.goto(`/my-memory?query=${encodeURIComponent(title)}`);
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
     await expect(page.getByText("Private by default")).toBeVisible();

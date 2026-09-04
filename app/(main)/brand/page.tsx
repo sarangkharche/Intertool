@@ -296,10 +296,11 @@ export default function BrandPage() {
           Typography
         </h2>
         <p className="mb-6 text-sm text-muted-foreground">
-          Geist Sans for interface text with zero negative tracking and looser
-          dark-mode reading rhythm. Page and marketing headings use text-lg at
-          medium weight; supporting copy uses text-sm. Geist Mono is reserved
-          for code, commands, versions, and identifiers.
+          Newsreader Regular gives public landing-page display headings an
+          editorial voice. Geist Sans remains the interface and body face with
+          zero negative tracking and a looser dark-mode reading rhythm. Product
+          headings use text-lg at medium weight; Geist Mono is reserved for
+          code, commands, versions, and identifiers.
         </p>
 
         <div className="mb-6 rounded-lg border border-border">
