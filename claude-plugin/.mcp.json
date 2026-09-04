@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "intertool": {
+      "type": "http",
+      "url": "${INTERTOOL_URL:-http://localhost:3001}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${INTERTOOL_API_TOKEN}"
+      }
+    }
+  }
+}

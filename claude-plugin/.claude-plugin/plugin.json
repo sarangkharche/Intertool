@@ -1,0 +1,9 @@
+{
+  "name": "intertool",
+  "version": "0.1.0",
+  "description": "Retrieve and propose human-approved shared engineering context.",
+  "author": {
+    "name": "Intertool"
+  },
+  "homepage": "https://intertool.sh/docs"
+}

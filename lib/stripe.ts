@@ -12,7 +12,7 @@ export function getStripe(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) throw new Error("STRIPE_SECRET_KEY is not configured");
   stripeClient = new Stripe(secretKey, {
-    apiVersion: "2026-04-22.dahlia",
+    apiVersion: "2026-08-26.dahlia",
     typescript: true,
   });
   return stripeClient;

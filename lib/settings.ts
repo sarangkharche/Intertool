@@ -383,9 +383,14 @@ export function getOAuthCredentialsSync(): {
     // ignore
   }
 
-  const githubId = settings?.github_client_id || process.env.GITHUB_ID;
+  const githubId =
+    settings?.github_client_id ||
+    process.env.GITHUB_CLIENT_ID ||
+    process.env.GITHUB_ID;
   const githubSecret =
-    settings?.github_client_secret || process.env.GITHUB_SECRET;
+    settings?.github_client_secret ||
+    process.env.GITHUB_CLIENT_SECRET ||
+    process.env.GITHUB_SECRET;
   const googleId = settings?.google_client_id || process.env.GOOGLE_CLIENT_ID;
   const googleSecret =
     settings?.google_client_secret || process.env.GOOGLE_CLIENT_SECRET;
@@ -438,19 +443,22 @@ export async function createOrg(
   adminUsername: string
 ): Promise<void> {
   if (!isSaasMode()) return;
-  const settings: RegistrySettings =
-    hostedStorageSettings(orgSlug, orgName, adminUsername) ?? {
-      admin_username: adminUsername,
-      configured_at: new Date().toISOString(),
-      s3_bucket: "",
-      s3_region: "us-east-1",
-      s3_access_key_id: "",
-      s3_secret_access_key: "",
-      org_slug: orgSlug,
-      org_name: orgName,
-      plan: "free",
-      subscription_status: "trialing",
-    };
+  const settings: RegistrySettings = hostedStorageSettings(
+    orgSlug,
+    orgName,
+    adminUsername
+  ) ?? {
+    admin_username: adminUsername,
+    configured_at: new Date().toISOString(),
+    s3_bucket: "",
+    s3_region: "us-east-1",
+    s3_access_key_id: "",
+    s3_secret_access_key: "",
+    org_slug: orgSlug,
+    org_name: orgName,
+    plan: "free",
+    subscription_status: "trialing",
+  };
 
   if (hasControlPlane()) {
     if (await cpOrgExists(orgSlug)) {
@@ -571,7 +579,9 @@ export async function deleteOrg(orgSlug: string): Promise<boolean> {
     for (const [id, memberships] of Object.entries(
       data.user_org_memberships ?? {}
     )) {
-      const remaining = memberships.filter((memberOrg) => memberOrg !== orgSlug);
+      const remaining = memberships.filter(
+        (memberOrg) => memberOrg !== orgSlug
+      );
       if (remaining.length === 0) {
         delete data.user_org_memberships?.[id];
       } else {
@@ -621,7 +631,7 @@ export async function getOrgForUser(username: string): Promise<string | null> {
   } else if (isLocalSaasFallbackMode()) {
     const data = readLocalSaasData();
     orgSlug =
-      data.user_orgs?.[id] ?? data.user_org_memberships?.[id]?.[0] ?? null
+      data.user_orgs?.[id] ?? data.user_org_memberships?.[id]?.[0] ?? null;
   } else {
     const activeOrg = await getRedis().get<string>(`user:${id}:org`);
     if (activeOrg) orgSlug = activeOrg;
@@ -653,9 +663,7 @@ export async function getOrgsForUser(username: string): Promise<string[]> {
       ])
     ).filter(isUsableOrgSlug);
   }
-  return (await getRedis().smembers(`user:${id}:orgs`)).filter(
-    isUsableOrgSlug
-  );
+  return (await getRedis().smembers(`user:${id}:orgs`)).filter(isUsableOrgSlug);
 }
 
 // ── Org membership helpers (SaaS mode) ──

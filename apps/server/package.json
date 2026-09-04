@@ -1,0 +1,31 @@
+{
+  "name": "@intertool/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/app.ts",
+  "scripts": {
+    "dev:service": "tsx watch --env-file=../../.env.local src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src/rate-limit.unit.test.ts src/dev-environment.unit.test.ts",
+    "test:integration": "vitest run src/mvp.integration.test.ts"
+  },
+  "dependencies": {
+    "@intertool/contracts": "workspace:*",
+    "@intertool/db": "workspace:*",
+    "@intertool/retrieval": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "fastify": "^5.12.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsup": "^8.5.1",
+    "tsx": "^4.22.3",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}

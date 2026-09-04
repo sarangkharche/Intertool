@@ -1,0 +1,204 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Actor, IntertoolStore } from "@intertool/db";
+import {
+  detectSecretLikeContent,
+  getContextSchema,
+  proposeMemorySchema,
+  publishMemorySchema,
+  reportStaleSchema,
+  searchContextSchema,
+} from "@intertool/contracts";
+import {
+  compactContext,
+  rankMemories,
+  searchExcerpts,
+} from "@intertool/retrieval";
+
+function textResult(value: unknown, isError = false) {
+  return {
+    isError,
+    content: [
+      {
+        type: "text" as const,
+        text:
+          typeof value === "string" ? value : JSON.stringify(value, null, 2),
+      },
+    ],
+  };
+}
+
+function safeError(error: unknown) {
+  const candidate = error as { status?: number; message?: string };
+  const message =
+    candidate.status === 404
+      ? "The requested item was not found."
+      : candidate.status === 403
+        ? "You do not have permission to perform this action."
+        : (candidate.message ?? "The Intertool request failed.");
+  return textResult({ error: message }, true);
+}
+
+export function createMcpServer(
+  store: IntertoolStore,
+  actor: Actor
+): McpServer {
+  const server = new McpServer({ name: "intertool", version: "0.1.0" });
+
+  server.registerTool(
+    "get_context",
+    {
+      description:
+        "Retrieve compact, sourced team context before repository implementation or debugging work.",
+      inputSchema: getContextSchema,
+    },
+    async (input) => {
+      try {
+        const candidates = await store.searchCandidates(actor, {
+          repository: input.repository,
+          query: input.task,
+        });
+        const ranked = rankMemories(candidates, {
+          repository: input.repository,
+          query: input.task,
+          paths: input.paths,
+        });
+        return textResult(
+          compactContext(ranked, {
+            repository: input.repository,
+            query: input.task,
+            limit: input.limit,
+            maxCharacters: input.max_characters,
+          })
+        );
+      } catch (error) {
+        return safeError(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "search_context",
+    {
+      description:
+        "Search published team memories and return concise sourced excerpts.",
+      inputSchema: searchContextSchema,
+    },
+    async (input) => {
+      try {
+        const candidates = await store.searchCandidates(actor, {
+          repository: input.repository,
+          query: input.query,
+          types: input.types,
+        });
+        return textResult({
+          results: searchExcerpts(
+            rankMemories(candidates, {
+              repository: input.repository,
+              query: input.query,
+              paths: input.paths,
+            }),
+            input.limit
+          ),
+        });
+      } catch (error) {
+        return safeError(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "propose_memory",
+    {
+      description:
+        "Create a reviewable draft learning. This never publishes automatically.",
+      inputSchema: proposeMemorySchema,
+    },
+    async (input) => {
+      try {
+        const detectedSecret = detectSecretLikeContent(
+          `${input.title}\n${input.content}`
+        );
+        if (detectedSecret) {
+          return textResult(
+            {
+              error: `Draft rejected because it appears to contain a ${detectedSecret}. Remove secrets and try again.`,
+            },
+            true
+          );
+        }
+        const repository = input.repository
+          ? await store.repositoryByName(actor, input.repository)
+          : null;
+        if (input.repository && !repository) {
+          return textResult(
+            { error: "The requested repository was not found." },
+            true
+          );
+        }
+        const draft = await store.createMemory(actor, {
+          repository_id: repository ? String(repository.id) : null,
+          type: input.type,
+          title: input.title,
+          content: input.content,
+          confidence: input.confidence,
+          paths: input.paths,
+          tags: input.tags,
+          source_url: input.source_url,
+          source_label: input.source_label,
+          expires_at: input.expires_at,
+        });
+        return textResult({
+          draft_id: draft.id,
+          draft,
+          next_step:
+            "Show this exact draft to the user. Publication requires their explicit confirmation.",
+        });
+      } catch (error) {
+        return safeError(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "publish_memory",
+    {
+      description:
+        "Publish an exact draft. Call only after the user explicitly approves publishing this exact draft.",
+      inputSchema: publishMemorySchema,
+    },
+    async (input) => {
+      try {
+        return textResult({
+          memory: await store.publishMemory(actor, input.memory_id),
+        });
+      } catch (error) {
+        return safeError(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "report_stale",
+    {
+      description:
+        "Report published context as stale, incorrect, conflicting, or sensitive without deleting it.",
+      inputSchema: reportStaleSchema,
+    },
+    async (input) => {
+      try {
+        const report = await store.reportMemory(actor, input.memory_id, {
+          reason: input.reason,
+          comment: input.comment,
+        });
+        return textResult({
+          report,
+          message: "Report recorded. The memory was not deleted.",
+        });
+      } catch (error) {
+        return safeError(error);
+      }
+    }
+  );
+
+  return server;
+}
