@@ -2,21 +2,18 @@ import type { Metadata } from "next";
 import { GITHUB_URL } from "@/lib/constants";
 
 export const SITE_NAME = "Intertool";
-export const SITE_TITLE = "Intertool - Private Agent Capability Registry";
+export const SITE_TITLE = "Intertool - Governed Engineering Memory";
 export const SITE_DESCRIPTION =
-  "A private registry and approval layer for AI agent skills, MCP servers, prompt playbooks, and internal tools across Claude, Codex, Cursor, Copilot, and custom agents.";
+  "A permission-aware memory layer that scales reviewed, source-backed engineering context from one team to an enterprise.";
 
 export const SEO_KEYWORDS = [
-  "AI agent registry",
-  "agent capability governance",
-  "agent skills",
-  "MCP server registry",
-  "prompt template registry",
-  "Claude Code skills",
-  "Cursor tools",
-  "self-hosted AI tools",
-  "private AI registry",
-  "Intertool CLI",
+  "Claude Code team memory",
+  "shared engineering context",
+  "MCP context server",
+  "engineering knowledge base",
+  "AI coding agent governance",
+  "enterprise AI governance",
+  "repository memory",
 ];
 
 const DEFAULT_LOCAL_URL = "http://localhost:3000";
@@ -62,7 +59,7 @@ export function getOpenGraphImage(): OpenGraphImage {
     url: "/opengraph-image",
     width: 1200,
     height: 630,
-    alt: "Intertool private AI agent registry",
+    alt: "Intertool shared engineering context",
   };
 }
 
@@ -172,13 +169,11 @@ export function buildHomeJsonLd() {
         },
         codeRepository: GITHUB_URL,
         featureList: [
-          "Private registry for approved AI agent capabilities",
-          "MCP server and prompt playbook catalog",
-          "CLI install and publishing workflows",
-          "S3-compatible storage",
-          "OAuth and role-based access control",
-          "Review queue and audit history",
-          "LLM-readable documentation endpoints",
+          "Human-approved engineering memories",
+          "Repository and path-scoped retrieval",
+          "Remote MCP tools for Claude Code",
+          "Source attribution and version history",
+          "Tenant isolation and personal API tokens",
         ],
         publisher: {
           "@id": `${siteUrl}#organization`,

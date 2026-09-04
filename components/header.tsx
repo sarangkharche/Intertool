@@ -1,9 +1,23 @@
 "use client";
 
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
+import {
+  BookOpen,
+  Brain,
+  Database,
+  KeyRound,
+  LogOut,
+  Moon,
+  Package,
+  Sun,
+  UserRound,
+  Users,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,196 +25,188 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Package,
-  Plus,
-  LogOut,
-  Sun,
-  Moon,
-  Search,
-  Settings,
-  Shield,
-  BookOpen,
-  CircleDollarSign,
-  ClipboardCheck,
-} from "lucide-react";
-import { CommandPalette } from "./command-palette";
-import { GITHUB_URL } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+
+const nav = [
+  { href: "/dashboard", label: "Overview", icon: Brain },
+  { href: "/my-memory", label: "My memory", icon: UserRound },
+  { href: "/memories", label: "Team memory", icon: Database },
+  { href: "/repositories", label: "Repositories", icon: BookOpen },
+  { href: "/settings/tokens", label: "API tokens", icon: KeyRound },
+  { href: "/settings/members", label: "Team", icon: Users },
+];
+
+const publicNav = [
+  { href: "/#product", label: "Product" },
+  { href: "/#scale", label: "Scale" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/docs", label: "Docs" },
+];
+
+const subscribeToHydration = () => () => {};
 
 export function Header() {
+  const pathname = usePathname();
   const router = useRouter();
-  const { data: session, status } = useSession();
-  const { theme, setTheme } = useTheme();
+  const { data: session, status, update } = useSession();
+  const { resolvedTheme, setTheme } = useTheme();
+  const themeReady = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  );
   const user = session?.user;
+  const isDark = themeReady && resolvedTheme === "dark";
+  const initials = (user?.name || user?.email || "?").slice(0, 2).toUpperCase();
+  const refreshedPath = useRef<string | null>(null);
 
-  const initials = user?.name
-    ? user.name.slice(0, 2).toUpperCase()
-    : user?.email
-      ? user.email.slice(0, 2).toUpperCase()
-      : "?";
+  useEffect(() => {
+    if (refreshedPath.current === pathname) return;
+    refreshedPath.current = pathname;
+    void update();
+  }, [pathname, update]);
 
   return (
-    <>
-      <CommandPalette />
-      <header className="sticky top-0 z-50 border-b border-border-subtle bg-background/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:h-12 sm:flex-nowrap sm:gap-6 sm:py-0">
-          <Link
-            href="/"
-            className="flex h-11 items-center gap-2 rounded-md text-sm font-medium tracking-tight focus-ring sm:h-8"
+    <header
+      className={cn(
+        "sticky top-0 z-50 border-b border-border-subtle bg-background/92 text-foreground backdrop-blur-md",
+        user && "dashboard-theme"
+      )}
+    >
+      <div className="mx-auto flex max-w-6xl items-center gap-5 px-4 py-1.5 sm:h-11 sm:py-0">
+        <Link
+          href={user ? "/dashboard" : "/"}
+          className="micro-press flex h-8 shrink-0 items-center gap-2 rounded-md text-sm font-medium tracking-tight focus-ring"
+        >
+          <Package className="h-4 w-4" aria-hidden="true" />
+          <span>intertool</span>
+        </Link>
+
+        {user && (
+          <nav
+            className="hidden items-center gap-0.5 md:flex"
+            aria-label="Product navigation"
           >
-            <Package className="h-4 w-4 text-foreground" aria-hidden="true" />
-            <span>intertool</span>
-          </Link>
+            {nav.map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "micro-press flex h-8 items-center rounded-md px-2.5 text-xs focus-ring",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
-          <div className="order-3 w-full sm:order-none sm:flex-1">
-            <button
-              onClick={() =>
-                document.dispatchEvent(
-                  new KeyboardEvent("keydown", { key: "k", metaKey: true })
-                )
-              }
-              className="mx-auto flex h-11 w-full items-center gap-2 rounded-md border border-border-subtle bg-transparent px-3 text-sm text-muted-foreground interactive-ghost hover:bg-muted/30 sm:h-8 sm:max-w-sm sm:text-xs"
-              aria-label="Search skills"
+        {!user && status !== "loading" && (
+          <nav
+            className="hidden items-center gap-0.5 md:flex"
+            aria-label="Public navigation"
+          >
+            {publicNav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="micro-press flex h-8 items-center rounded-md px-2.5 text-xs text-muted-foreground hover:text-foreground focus-ring"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+
+        <div className="ml-auto flex items-center gap-1.5">
+          {user && (
+            <Link
+              href="/memories/new"
+              className="micro-press touch-target focus-ring inline-flex h-8 items-center rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
-              <Search
-                className="h-3.5 w-3.5 sm:h-3 sm:w-3"
-                aria-hidden="true"
-              />
-              <span className="flex-1 text-left">Search skills…</span>
-              <kbd className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">
-                ⌘K
-              </kbd>
-            </button>
-          </div>
-
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
+              Add memory
+            </Link>
+          )}
+          {user && (
             <Link
               href="/docs"
-              className="flex h-11 w-11 items-center justify-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost sm:h-8 sm:w-auto"
+              className="touch-target flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
               aria-label="Documentation"
             >
-              <BookOpen className="h-3 w-3" aria-hidden="true" />
-              <span className="hidden sm:inline">Docs</span>
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
             </Link>
-            <Link
-              href="/pricing"
-              className="flex h-11 w-11 items-center justify-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground interactive-ghost sm:h-8 sm:w-auto"
-              aria-label="Pricing"
-            >
-              <CircleDollarSign
-                className="h-3.5 w-3.5 sm:hidden"
-                aria-hidden="true"
-              />
-              <span className="hidden sm:inline">Pricing</span>
-            </Link>
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground interactive-ghost sm:h-8 sm:w-8"
-              aria-label="GitHub repository"
-            >
-              <svg
-                className="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-            </a>
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="relative flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground interactive-ghost sm:h-8 sm:w-8"
-              aria-label="Toggle theme"
-            >
-              <Sun
-                className="h-3.5 w-3.5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0"
-                aria-hidden="true"
-              />
-              <Moon
-                className="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100"
-                aria-hidden="true"
-              />
-            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+            className="touch-target flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground interactive-ghost"
+            aria-label={isDark ? "Use light theme" : "Use dark theme"}
+          >
+            <span className="t-icon-swap" data-state={isDark ? "b" : "a"}>
+              <span className="t-icon" data-icon="a">
+                <Sun className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="t-icon" data-icon="b">
+                <Moon className="h-4 w-4" aria-hidden="true" />
+              </span>
+            </span>
+          </button>
 
-            {status === "loading" ? (
-              <div className="flex items-center gap-3">
-                <div className="hidden h-4 w-12 animate-pulse rounded bg-muted sm:block" />
-                <div className="h-10 w-10 animate-pulse rounded-full bg-muted sm:h-7 sm:w-7" />
-              </div>
-            ) : user ? (
-              <>
-                <Link
-                  href="/publish"
-                  className="flex h-11 w-11 items-center justify-center gap-1 rounded-md px-1.5 py-0.5 text-sm text-muted-foreground interactive-ghost sm:h-8 sm:w-auto"
-                  aria-label="Publish"
+          {status === "loading" ? (
+            <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger className="touch-target flex h-8 w-8 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                <Avatar className="h-8 w-8">
+                  {user.image && (
+                    <AvatarImage src={user.image} alt={user.name ?? "User"} />
+                  )}
+                  <AvatarFallback className="text-[10px]">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5">
+                  <p className="truncate text-xs font-medium">{user.name}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+                <DropdownMenuSeparator />
+                {nav.map((item) => (
+                  <DropdownMenuItem
+                    key={item.href}
+                    onClick={() => router.push(item.href)}
+                    className="gap-2 md:hidden"
+                  >
+                    <item.icon className="h-3.5 w-3.5" /> {item.label}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator className="md:hidden" />
+                <DropdownMenuItem
+                  onClick={() => router.push("/logout")}
+                  className="gap-2"
                 >
-                  <Plus className="h-3 w-3" aria-hidden="true" />
-                  <span className="hidden sm:inline">Publish</span>
-                </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background">
-                    <Avatar className="h-11 w-11 transition-opacity hover:opacity-80 sm:h-8 sm:w-8">
-                      {user.image && (
-                        <AvatarImage
-                          src={user.image}
-                          alt={user.name ?? "User"}
-                        />
-                      )}
-                      <AvatarFallback className="text-[10px]">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem
-                      onClick={() => router.push("/settings")}
-                      className="gap-2"
-                    >
-                      <Settings className="h-3.5 w-3.5" aria-hidden="true" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => router.push("/review")}
-                      className="gap-2"
-                    >
-                      <ClipboardCheck
-                        className="h-3.5 w-3.5"
-                        aria-hidden="true"
-                      />
-                      Review
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => router.push("/settings/admin")}
-                      className="gap-2"
-                    >
-                      <Shield className="h-3.5 w-3.5" aria-hidden="true" />
-                      Admin
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => window.location.assign("/logout")}
-                      className="gap-2"
-                    >
-                      <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                      Sign out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <Link
-                href="/sign-in"
-                className="flex h-11 items-center rounded-md px-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-ring sm:h-8"
-              >
-                Sign in
-              </Link>
-            )}
-          </div>
+                  <LogOut className="h-3.5 w-3.5" /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link href="/sign-in" className="btn-pill">
+              Sign in
+            </Link>
+          )}
         </div>
-      </header>
-    </>
+      </div>
+    </header>
   );
 }

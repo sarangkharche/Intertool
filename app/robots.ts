@@ -6,14 +6,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: [
-          "/",
-          "/docs/",
-          "/brand",
-          "/pricing",
-          "/llms.txt",
-          "/llms-full.txt",
-        ],
+        allow: ["/", "/docs/", "/brand", "/llms.txt", "/llms-full.txt"],
         disallow: [
           "/api/",
           "/admin",
@@ -21,14 +14,11 @@ export default function robots(): MetadataRoute.Robots {
           "/create-org",
           "/dashboard",
           "/design-system",
-          "/invite",
-          "/publish",
-          "/review",
-          "/search",
+          "/memories",
+          "/onboarding",
+          "/repositories",
           "/settings",
           "/sign-in",
-          "/skills",
-          "/teams",
         ],
       },
     ],

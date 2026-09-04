@@ -69,7 +69,7 @@ export default function BrandPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-foreground">
             <Package className="h-5 w-5 text-background" />
           </div>
-          <h1 className="text-2xl font-medium tracking-tight">Brand Kit</h1>
+          <h1 className="text-lg font-medium tracking-tight">Brand Kit</h1>
         </div>
         <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
           Guidelines for representing Intertool consistently across interfaces,
@@ -80,7 +80,7 @@ export default function BrandPage() {
       {/* ── Logo ── */}
       <section className="mb-16">
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-lg font-medium tracking-tight">Logo</h2>
+          <h2 className="text-base font-medium tracking-tight">Logo</h2>
           <DownloadAllLogos />
         </div>
         <p className="mb-6 text-sm text-muted-foreground">
@@ -164,7 +164,7 @@ export default function BrandPage() {
 
       {/* ── Colors ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">Colors</h2>
+        <h2 className="mb-1 text-base font-medium tracking-tight">Colors</h2>
         <p className="mb-6 text-sm text-muted-foreground">
           The palette uses oklch for perceptual uniformity. Dark mode applies a
           warm slate surface ladder with high-contrast muted text for long
@@ -261,7 +261,8 @@ export default function BrandPage() {
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
                 --primary
               </code>{" "}
-              sparingly — links, active states, and key CTAs only.
+              sparingly — links, focus rings, and active states only. Filled
+              buttons stay neutral.
             </li>
             <li>
               Use{" "}
@@ -291,54 +292,57 @@ export default function BrandPage() {
 
       {/* ── Typography ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">Typography</h2>
+        <h2 className="mb-1 text-base font-medium tracking-tight">
+          Typography
+        </h2>
         <p className="mb-6 text-sm text-muted-foreground">
           Geist Sans for interface text with zero negative tracking and looser
-          dark-mode reading rhythm. Geist Mono for code, commands, versions,
-          and identifiers.
+          dark-mode reading rhythm. Page and marketing headings use text-lg at
+          medium weight; supporting copy uses text-sm. Geist Mono is reserved
+          for code, commands, versions, and identifiers.
         </p>
 
         <div className="mb-6 rounded-lg border border-border">
           <TypographySample
             label="Page title"
-            className="text-xl font-medium tracking-tight"
+            className="text-lg font-medium tracking-tight"
             text="Dashboard"
-            spec="text-xl / font-medium / tracking-tight"
+            spec="text-lg / font-medium / tracking-tight"
           />
           <TypographySample
             label="Section heading"
-            className="text-lg font-medium tracking-tight"
-            text="Browse Registry"
-            spec="text-lg / font-medium / tracking-tight"
+            className="text-base font-medium tracking-tight"
+            text="Shared memories"
+            spec="text-base / font-medium / tracking-tight"
           />
           <TypographySample
             label="Card title"
             className="text-sm font-medium"
-            text="Claude Code Skill"
+            text="Repository warning"
             spec="text-sm / font-medium"
           />
           <TypographySample
             label="Body text"
-            className="text-base leading-7 text-muted-foreground"
-            text="A private registry for your organization. Share skills, MCP servers, agents, and prompt templates."
-            spec="text-base / leading-7 / text-muted-foreground"
+            className="text-sm leading-5 text-muted-foreground"
+            text="Reviewed engineering context shared with every authorised Claude Code session."
+            spec="text-sm / leading-5 / text-muted-foreground"
           />
           <TypographySample
             label="Label"
             className="text-xs text-muted-foreground"
-            text="Category"
+            text="Confidence"
             spec="text-xs / text-muted-foreground"
           />
           <TypographySample
             label="Monospace"
             className="font-mono text-sm"
-            text="@sarang/my-skill v1.0.0"
+            text="acme/payments-service · confirmed"
             spec="font-mono / text-sm"
           />
           <TypographySample
             label="Code / command"
             className="rounded bg-muted px-2 py-1 font-mono text-xs"
-            text="npx intertool install @org/skill-name"
+            text="https://api.intertool.sh/mcp"
             spec="font-mono / text-xs / bg-muted"
           />
           <TypographySample
@@ -375,7 +379,9 @@ export default function BrandPage() {
 
       {/* ── Iconography ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">Iconography</h2>
+        <h2 className="mb-1 text-base font-medium tracking-tight">
+          Iconography
+        </h2>
         <p className="mb-6 text-sm text-muted-foreground">
           Icons are from Lucide at 14px (h-3.5 w-3.5) for inline use, 16px (h-4
           w-4) for standalone, and 20px (h-5 w-5) for hero contexts. Always
@@ -472,7 +478,9 @@ export default function BrandPage() {
 
       {/* ── Components ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">Components</h2>
+        <h2 className="mb-1 text-base font-medium tracking-tight">
+          Components
+        </h2>
         <p className="mb-6 text-sm text-muted-foreground">
           Key UI patterns used across the application.
         </p>
@@ -503,19 +511,19 @@ export default function BrandPage() {
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
-                Skill
+                Warning
               </span>
               <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
-                MCP Server
+                Decision
               </span>
               <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
-                Agents
+                Convention
               </span>
               <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] text-muted-foreground">
-                Prompt Template
+                Runbook
               </span>
               <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                v1.0.0
+                published
               </span>
               <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
                 Claude Code
@@ -533,18 +541,19 @@ export default function BrandPage() {
                 <div className="mb-1.5 flex items-start justify-between gap-2">
                   <div>
                     <h3 className="truncate text-sm font-medium">
-                      Example Skill
+                      Refund tests require ledger events
                     </h3>
                     <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                      @author/example-skill
+                      acme/payments-service
                     </p>
                   </div>
                   <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                    Skill
+                    Warning
                   </span>
                 </div>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  A short description of what this skill does for the team.
+                  Run Redis and enable ledger events before refund integration
+                  tests.
                 </p>
               </div>
               <div className="rounded-lg border border-dashed border-border py-12 text-center">
@@ -558,11 +567,11 @@ export default function BrandPage() {
           {/* Install command */}
           <div>
             <p className="mb-3 text-xs font-medium text-muted-foreground">
-              Install command
+              MCP endpoint
             </p>
             <div className="flex items-center rounded-lg border border-border bg-muted/50 px-4 py-3">
               <code className="flex-1 font-mono text-sm">
-                npx intertool install @org/my-skill
+                https://api.intertool.sh/mcp
               </code>
               <button className="shrink-0 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-ring">
                 Copy
@@ -574,7 +583,7 @@ export default function BrandPage() {
 
       {/* ── Voice & Tone ── */}
       <section className="mb-16">
-        <h2 className="mb-1 text-lg font-medium tracking-tight">
+        <h2 className="mb-1 text-base font-medium tracking-tight">
           Voice &amp; Tone
         </h2>
         <p className="mb-6 text-sm text-muted-foreground">
@@ -589,10 +598,7 @@ export default function BrandPage() {
               <li>Use technical terms your audience knows</li>
               <li>Lead with the action, not the explanation</li>
               <li>Use sentence case for headings</li>
-              <li>
-                Say &quot;skill&quot; not &quot;resource&quot; or
-                &quot;asset&quot;
-              </li>
+              <li>Say &quot;memory&quot; for reviewed, durable context</li>
             </ul>
           </div>
           <div className="rounded-lg border border-border p-4">
@@ -615,7 +621,7 @@ export default function BrandPage() {
 
       {/* ── Spacing ── */}
       <section>
-        <h2 className="mb-1 text-lg font-medium tracking-tight">
+        <h2 className="mb-1 text-base font-medium tracking-tight">
           Spacing &amp; Layout
         </h2>
         <p className="mb-6 text-sm text-muted-foreground">

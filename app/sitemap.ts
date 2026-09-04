@@ -24,12 +24,6 @@ const STATIC_ROUTES: Array<{
     changeFrequency: "yearly",
     priority: 0.35,
   },
-  {
-    path: "/pricing",
-    sourceFile: ["(main)", "pricing", "page.tsx"],
-    changeFrequency: "monthly",
-    priority: 0.8,
-  },
 ];
 
 function lastModified(fullPath: string): Date | undefined {

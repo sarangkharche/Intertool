@@ -39,6 +39,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { getPrivatePageMetadata } from "@/lib/seo";
+import { Demo as ShiningTextDemo } from "@/components/demo";
 
 export const metadata: Metadata = getPrivatePageMetadata("Design System");
 
@@ -110,7 +111,7 @@ export default async function DesignSystemPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-10">
-        <h1 className="text-xl font-medium tracking-tight">Design System</h1>
+        <h1 className="text-lg font-medium tracking-tight">Design System</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Complete visual reference for all UI patterns. Use this as the source
           of truth when building new pages.
@@ -651,6 +652,15 @@ export default async function DesignSystemPage() {
                   Loader2 animate-spin
                 </code>
               </div>
+            </SubSection>
+            <SubSection title="Progress copy">
+              <div className="rounded-lg border border-border/60 bg-surface px-4 py-3">
+                <ShiningTextDemo />
+              </div>
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                Use shining text for short-lived route or assistant progress,
+                never for decorative headings.
+              </p>
             </SubSection>
           </div>
         </Section>

@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
+import { SITE_NAME } from "@/lib/seo";
 
-export const alt = "Intertool private AI agent registry";
+export const alt =
+  "Intertool governed engineering memory for teams and enterprises";
 export const size = {
   width: 1200,
   height: 630,
@@ -17,8 +18,8 @@ export default function Image() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        background: "#0d1117",
-        color: "#f8fafc",
+        background: "#faf9f6",
+        color: "#090909",
         padding: "72px",
         fontFamily: "Geist, Arial, sans-serif",
       }}
@@ -28,8 +29,8 @@ export default function Image() {
           display: "flex",
           alignItems: "center",
           gap: "18px",
-          fontSize: 34,
-          fontWeight: 700,
+          fontSize: 30,
+          fontWeight: 600,
         }}
       >
         <div
@@ -39,11 +40,12 @@ export default function Image() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 14,
-            background: "#f8fafc",
-            color: "#0d1117",
-            fontSize: 30,
-            fontWeight: 900,
+            borderRadius: 10,
+            border: "1px solid #e9e6df",
+            background: "#f5f3ee",
+            color: "#2169df",
+            fontSize: 26,
+            fontWeight: 700,
           }}
         >
           I
@@ -53,38 +55,39 @@ export default function Image() {
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
         <div
           style={{
-            maxWidth: 900,
-            fontSize: 76,
-            lineHeight: 1.02,
-            fontWeight: 800,
+            maxWidth: 930,
+            fontSize: 74,
+            lineHeight: 0.98,
+            fontWeight: 650,
             letterSpacing: 0,
           }}
         >
-          Private approval layer for agent capabilities.
+          Engineering memory for every team and every coding agent.
         </div>
         <div
           style={{
             maxWidth: 890,
-            color: "#cbd5e1",
-            fontSize: 30,
-            lineHeight: 1.35,
+            color: "#4b4b49",
+            fontSize: 27,
+            lineHeight: 1.4,
           }}
         >
-          {SITE_DESCRIPTION}
+          Start with one repository. Scale reviewed, source-backed context
+          across an organisation with permissions and control intact.
         </div>
       </div>
       <div
         style={{
           display: "flex",
           gap: 16,
-          color: "#94a3b8",
-          fontSize: 24,
+          color: "#4b4b49",
+          fontSize: 22,
         }}
       >
-        <span>Skills</span>
-        <span>MCP servers</span>
-        <span>Prompt playbooks</span>
-        <span>CLI installs</span>
+        <span>Human published</span>
+        <span>Tenant isolated</span>
+        <span>Role-aware</span>
+        <span>Lifecycle recorded</span>
       </div>
     </div>,
     size

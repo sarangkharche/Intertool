@@ -46,9 +46,13 @@
   --color-card: var(--card);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-information: var(--information);
+  --color-discovery: var(--discovery);
   --color-surface: var(--surface);
   --color-success-foreground: var(--success-foreground);
   --color-warning-foreground: var(--warning-foreground);
+  --color-information-foreground: var(--information-foreground);
+  --color-discovery-foreground: var(--discovery-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -98,6 +102,29 @@
   --success-foreground: oklch(0.145 0 0);
   --warning: oklch(0.58 0.145 70);
   --warning-foreground: oklch(0.145 0 0);
+  --information: oklch(0.545 0.195 260);
+  --information-foreground: oklch(0.205 0.07 260);
+  --discovery: oklch(0.547 0.157 287.5);
+  --discovery-foreground: oklch(0.31 0.11 287.5);
+
+  /* Transitions.dev motion scale — usage-led, not decorative. */
+  --duration-stagger: 40ms;
+  --duration-micro: 80ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-medium: 350ms;
+  --duration-slow: 400ms;
+  --duration-very-slow: 500ms;
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: ease-in-out;
+  --ease-linear: linear;
+  --distance-micro: 4px;
+  --distance-base: 8px;
+  --distance-medium: 12px;
+  --scale-medium: 0.97;
+  --scale-tiny: 0.99;
+  --blur-small: 2px;
+  --blur-medium: 3px;
 
   /* Fonts — ensure fumadocs picks up our font stack */
   --font-sans:
@@ -162,6 +189,10 @@
   --success-foreground: oklch(0.16 0.009 78);
   --warning: oklch(0.82 0.13 78);
   --warning-foreground: oklch(0.16 0.009 78);
+  --information: oklch(0.74 0.13 252);
+  --information-foreground: oklch(0.86 0.07 252);
+  --discovery: oklch(0.704 0.138 290);
+  --discovery-foreground: oklch(0.86 0.07 290);
 
   /* Fumadocs overrides — match app contrast and accent semantics */
   --color-fd-background: oklch(0.19 0.009 78);
@@ -180,6 +211,303 @@
   --color-fd-accent: oklch(0.32 0.012 78);
   --color-fd-accent-foreground: oklch(0.94 0.006 78);
   --color-fd-ring: oklch(0.74 0.13 252);
+}
+
+/*
+ * Signed-in product surfaces use semantic color roles modelled on Atlassian's
+ * foundation: neutral UI by default, blue for brand/information, and dedicated
+ * success, warning, danger, and discovery roles. Public pages retain the warm
+ * Intertool palette above.
+ */
+.dashboard-theme {
+  --background: oklch(0.979 0.002 248);
+  --foreground: oklch(0.292 0.068 260.4);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.292 0.068 260.4);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.292 0.068 260.4);
+  --primary: oklch(0.542 0.207 259.4);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.958 0.004 255);
+  --secondary-foreground: oklch(0.292 0.068 260.4);
+  --muted: oklch(0.958 0.004 255);
+  --muted-foreground: oklch(0.444 0.049 260.7);
+  --accent: oklch(0.958 0.02 257.5);
+  --accent-foreground: oklch(0.486 0.198 259.9);
+  --destructive: oklch(0.557 0.185 28.8);
+  --border: oklch(0.903 0.008 260.7);
+  --border-subtle: oklch(0.932 0.006 260.7);
+  --input: oklch(0.651 0.03 260.3);
+  --ring: oklch(0.542 0.207 259.4);
+  --chart-1: oklch(0.542 0.207 259.4);
+  --chart-2: oklch(0.546 0.112 160.5);
+  --chart-3: oklch(0.547 0.157 287.5);
+  --chart-4: oklch(0.661 0.176 47.8);
+  --chart-5: oklch(0.444 0.049 260.7);
+  --sidebar: oklch(0.979 0.002 248);
+  --sidebar-foreground: oklch(0.292 0.068 260.4);
+  --sidebar-primary: oklch(0.542 0.207 259.4);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.958 0.02 257.5);
+  --sidebar-accent-foreground: oklch(0.486 0.198 259.9);
+  --sidebar-border: oklch(0.903 0.008 260.7);
+  --sidebar-ring: oklch(0.542 0.207 259.4);
+  --surface: oklch(1 0 0);
+  --success: oklch(0.546 0.112 160.5);
+  --success-foreground: oklch(0.34 0.09 160.5);
+  --warning: oklch(0.661 0.176 47.8);
+  --warning-foreground: oklch(0.39 0.11 47.8);
+  --information: oklch(0.542 0.207 259.4);
+  --information-foreground: oklch(0.36 0.14 259.4);
+  --discovery: oklch(0.547 0.157 287.5);
+  --discovery-foreground: oklch(0.36 0.12 287.5);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.dashboard-shell {
+  min-height: 100svh;
+}
+
+@media (min-width: 640px) {
+  .dashboard-shell {
+    min-height: calc(100svh - 1rem);
+    margin: 0.5rem;
+    overflow: clip;
+    border: 1px solid var(--border-subtle);
+    border-radius: 1rem;
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, var(--foreground) 5%, transparent),
+      0 18px 50px -36px color-mix(in oklab, var(--foreground) 34%, transparent);
+  }
+}
+
+.dark .dashboard-theme {
+  --background: oklch(0.245 0.01 248.2);
+  --foreground: oklch(0.809 0.023 250.3);
+  --card: oklch(0.269 0.01 242.1);
+  --card-foreground: oklch(0.809 0.023 250.3);
+  --popover: oklch(0.29 0.013 245);
+  --popover-foreground: oklch(0.809 0.023 250.3);
+  --primary: oklch(0.696 0.161 257.2);
+  --primary-foreground: oklch(0.2 0.025 257.2);
+  --secondary: oklch(0.31 0.014 248);
+  --secondary-foreground: oklch(0.86 0.018 250);
+  --muted: oklch(0.31 0.014 248);
+  --muted-foreground: oklch(0.741 0.027 250);
+  --accent: oklch(0.335 0.055 257.2);
+  --accent-foreground: oklch(0.86 0.07 257.2);
+  --destructive: oklch(0.709 0.167 26);
+  --border: oklch(0.4 0.018 248);
+  --border-subtle: oklch(0.345 0.015 248);
+  --input: oklch(0.606 0.034 249.9);
+  --ring: oklch(0.696 0.161 257.2);
+  --chart-1: oklch(0.696 0.161 257.2);
+  --chart-2: oklch(0.765 0.14 162);
+  --chart-3: oklch(0.704 0.138 290);
+  --chart-4: oklch(0.86 0.152 91.9);
+  --chart-5: oklch(0.741 0.027 250);
+  --sidebar: oklch(0.225 0.009 248);
+  --sidebar-foreground: oklch(0.809 0.023 250.3);
+  --sidebar-primary: oklch(0.696 0.161 257.2);
+  --sidebar-primary-foreground: oklch(0.2 0.025 257.2);
+  --sidebar-accent: oklch(0.335 0.055 257.2);
+  --sidebar-accent-foreground: oklch(0.86 0.07 257.2);
+  --sidebar-border: oklch(0.4 0.018 248);
+  --sidebar-ring: oklch(0.696 0.161 257.2);
+  --surface: oklch(0.269 0.01 242.1);
+  --success: oklch(0.765 0.14 162);
+  --success-foreground: oklch(0.86 0.08 162);
+  --warning: oklch(0.86 0.152 91.9);
+  --warning-foreground: oklch(0.9 0.1 91.9);
+  --information: oklch(0.696 0.161 257.2);
+  --information-foreground: oklch(0.86 0.07 257.2);
+  --discovery: oklch(0.704 0.138 290);
+  --discovery-foreground: oklch(0.86 0.07 290);
+}
+
+/* Transitions.dev: a single restrained route-entry choreography. */
+@keyframes t-page-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(var(--distance-base));
+    filter: blur(var(--blur-medium));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.t-page-reveal > * {
+  animation: t-page-reveal var(--duration-slow) var(--ease-smooth-out) both;
+}
+
+.t-page-reveal > :nth-child(2) {
+  animation-delay: var(--duration-stagger);
+}
+
+.t-page-reveal > :nth-child(3) {
+  animation-delay: calc(var(--duration-stagger) * 2);
+}
+
+.t-page-reveal > :nth-child(n + 4) {
+  animation-delay: calc(var(--duration-stagger) * 3);
+}
+
+/* Transitions.dev: numbers re-enter without changing their layout slot. */
+@keyframes t-digit-pop-in {
+  from {
+    transform: translateY(var(--distance-base));
+    opacity: 0;
+    filter: blur(var(--blur-small));
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.t-digit-group {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.t-digit {
+  display: inline-block;
+  will-change: transform, opacity, filter;
+}
+
+.t-digit-group.is-animating .t-digit {
+  animation: t-digit-pop-in var(--duration-very-slow) var(--ease-smooth-out)
+    both;
+}
+
+.t-digit-group.is-animating .t-digit[data-stagger="1"] {
+  animation-delay: var(--duration-stagger);
+}
+
+.t-digit-group.is-animating .t-digit[data-stagger="2"] {
+  animation-delay: calc(var(--duration-stagger) * 2);
+}
+
+/* Transitions.dev: data bars reveal from their origin, never by animating width. */
+@keyframes t-bar-reveal {
+  from {
+    transform: scaleX(0);
+    opacity: 0.45;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.t-bar-reveal {
+  transform-origin: left center;
+  animation: t-bar-reveal var(--duration-slow) var(--ease-smooth-out) both;
+  will-change: transform, opacity;
+}
+
+.t-bar-list > :nth-child(2) .t-bar-reveal {
+  animation-delay: var(--duration-stagger);
+}
+
+.t-bar-list > :nth-child(3) .t-bar-reveal {
+  animation-delay: calc(var(--duration-stagger) * 2);
+}
+
+.t-bar-list > :nth-child(n + 4) .t-bar-reveal {
+  animation-delay: calc(var(--duration-stagger) * 3);
+}
+
+/* Transitions.dev: icon states share one slot and cross-fade in place. */
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+}
+
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--duration-fast) var(--ease-in-out),
+    filter var(--duration-fast) var(--ease-in-out),
+    transform var(--duration-fast) var(--ease-in-out);
+  will-change: opacity, filter, transform;
+}
+
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+  opacity: 0;
+  filter: blur(var(--blur-small));
+  transform: scale(0.25);
+}
+
+/* Transitions.dev: anchored menus open from their trigger and close faster. */
+.t-dropdown[data-open] {
+  --tw-enter-scale: var(--scale-medium);
+  animation-duration: var(--duration-fast);
+  animation-timing-function: var(--ease-smooth-out);
+}
+
+.t-dropdown[data-closed] {
+  --tw-exit-scale: var(--scale-tiny);
+  animation-duration: var(--duration-quick);
+  animation-timing-function: var(--ease-smooth-out);
+}
+
+/* Transitions.dev: directional links acknowledge hover without moving text. */
+.t-learn-chevron {
+  display: inline-flex;
+  transform: translateX(0);
+  transition: transform var(--duration-quick) var(--ease-smooth-out);
+}
+
+.t-learn-arm {
+  transform-box: view-box;
+  transform-origin: 10.5px 8px;
+  vector-effect: non-scaling-stroke;
+  transition: transform var(--duration-quick) var(--ease-smooth-out);
+}
+
+.t-learn:hover .t-learn-chevron {
+  transform: translateX(2px);
+  transition-duration: var(--duration-fast);
+}
+
+.t-learn:hover .t-learn-arm {
+  transition-duration: var(--duration-fast);
+}
+
+.t-learn:hover .t-learn-arm-top {
+  transform: rotate(8deg);
+}
+
+.t-learn:hover .t-learn-arm-bot {
+  transform: rotate(-8deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-page-reveal > *,
+  .t-digit-group .t-digit,
+  .t-bar-reveal {
+    animation: none !important;
+  }
+
+  .t-icon-swap .t-icon,
+  .t-learn-chevron,
+  .t-learn-arm {
+    transition: none !important;
+  }
 }
 
 /* Fumadocs: override fd-* tokens with our warm oklch design system */
@@ -521,35 +849,30 @@
     text-wrap: balance;
   }
 
-  .landing-display {
-    font-family:
-      var(--font-landing-display, var(--font-geist-sans)), ui-serif, Georgia,
-      serif;
-    font-optical-sizing: auto;
-    font-variation-settings:
-      "SOFT" 24,
-      "WONK" 0,
-      "opsz" 72;
-    font-weight: 630;
-    letter-spacing: 0;
-    text-wrap: balance;
-  }
-
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+  }
+
+  .micro-press {
+    @apply transition-[transform,color,background-color,border-color,opacity] duration-150 active:translate-y-px;
+  }
+
+  .field-input {
+    @apply min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none
+      placeholder:text-muted-foreground/45 focus:border-ring focus:ring-2 focus:ring-ring/20;
   }
 
   /* Ghost-style interactive: icon buttons, nav links, subtle actions */
   .interactive-ghost {
     @apply transition-all duration-100
-      hover:bg-muted active:brightness-95
+      hover:bg-muted active:translate-y-px active:brightness-95
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background;
   }
 
   /* Solid-style interactive: primary buttons, CTAs */
   .interactive-solid {
     @apply transition-all duration-100
-      active:brightness-95
+      active:translate-y-px active:brightness-95
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background;
   }
 
@@ -557,7 +880,7 @@
   .interactive-card {
     @apply transition-all duration-150
       hover:border-border hover:bg-muted/20 hover:shadow-[0_1px_3px_0_rgb(0_0_0/0.04)]
-      active:brightness-[0.97]
+      active:translate-y-px active:brightness-[0.97]
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50;
   }
 
@@ -577,17 +900,17 @@
     @apply inline-flex items-center gap-1.5 rounded-full border border-border
       min-h-8 px-3.5 py-1.5 text-xs font-medium text-foreground
       transition-all duration-100
-      hover:bg-muted active:brightness-95
+      hover:bg-muted active:translate-y-px active:brightness-95
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50
       disabled:pointer-events-none disabled:opacity-50;
   }
 
-  /* Button: pill-lg — larger capsule for hero CTAs */
+  /* Button: pill-lg — compact emphasis for primary CTAs */
   .btn-pill-lg {
     @apply inline-flex items-center gap-2 rounded-full border border-border
-      min-h-11 px-5 py-2.5 text-sm font-medium text-foreground
+      min-h-9 px-4 py-2 text-xs font-medium text-foreground
       transition-all duration-100
-      hover:bg-muted active:brightness-95
+      hover:bg-muted active:translate-y-px active:brightness-95
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50
       disabled:pointer-events-none disabled:opacity-50;
   }
@@ -595,9 +918,9 @@
   /* Button: ghost — plain text for secondary actions (Cancel, Back) */
   .btn-ghost {
     @apply inline-flex items-center gap-1 rounded-full
-      min-h-11 px-3 py-1.5 text-xs text-muted-foreground
+      min-h-8 px-2.5 py-1 text-xs text-muted-foreground
       transition-all duration-100
-      hover:text-foreground
+      hover:text-foreground active:translate-y-px
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50
       disabled:pointer-events-none disabled:opacity-50;
   }
@@ -612,6 +935,18 @@
 
     .touch-target {
       @apply min-w-11;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .micro-press,
+    .interactive-ghost,
+    .interactive-solid,
+    .interactive-card,
+    .btn-pill,
+    .btn-pill-lg,
+    .btn-ghost {
+      transition-duration: 0ms;
     }
   }
 }
