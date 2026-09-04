@@ -167,6 +167,8 @@ export function PublishWizard({
   // Slug availability check (debounced)
   useEffect(() => {
     if (!slug || slug.length < 2) {
+      // Reset async validation state when the input becomes incomplete.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSlugAvailable(null);
       return;
     }
@@ -473,8 +475,7 @@ export function PublishWizard({
       if (!res.ok) {
         const err = await res.json();
         const details = err.details as
-          | { field: string; message: string }[]
-          | undefined;
+          { field: string; message: string }[] | undefined;
         const msg = details?.length
           ? details.map((d) => `${d.field}: ${d.message}`).join("; ")
           : err.error || "Failed to publish";

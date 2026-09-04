@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useReducedMotion } from "motion/react";
 
 export function NavigationProgress() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const reduceMotion = useReducedMotion();
   const barRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const trickleRef = useRef<ReturnType<typeof setInterval>>(null);
+  const resetRef = useRef<number | null>(null);
   const progressRef = useRef(0);
 
   const set = (value: number) => {
@@ -21,7 +24,12 @@ export function NavigationProgress() {
 
   const start = useCallback(() => {
     if (trickleRef.current) clearInterval(trickleRef.current);
+    if (resetRef.current) window.clearTimeout(resetRef.current);
     if (containerRef.current) containerRef.current.style.display = "";
+    if (reduceMotion) {
+      set(80);
+      return;
+    }
     set(15);
     trickleRef.current = setInterval(() => {
       const p = progressRef.current;
@@ -30,17 +38,30 @@ export function NavigationProgress() {
       else if (p < 80) set(p + 0.5);
       // stall at 80 — waits for complete()
     }, 80);
-  }, []);
+  }, [reduceMotion]);
 
   const complete = useCallback(() => {
     if (trickleRef.current) clearInterval(trickleRef.current);
     trickleRef.current = null;
+    if (resetRef.current) window.clearTimeout(resetRef.current);
     set(100);
-    setTimeout(() => {
-      set(0);
-      if (containerRef.current) containerRef.current.style.display = "none";
-    }, 300);
-  }, []);
+    resetRef.current = window.setTimeout(
+      () => {
+        set(0);
+        if (containerRef.current) containerRef.current.style.display = "none";
+        resetRef.current = null;
+      },
+      reduceMotion ? 100 : 300
+    );
+  }, [reduceMotion]);
+
+  useEffect(
+    () => () => {
+      if (trickleRef.current) clearInterval(trickleRef.current);
+      if (resetRef.current) window.clearTimeout(resetRef.current);
+    },
+    []
+  );
 
   // Complete on route change
   useEffect(() => {
@@ -70,6 +91,7 @@ export function NavigationProgress() {
   return (
     <div
       ref={containerRef}
+      aria-hidden="true"
       className="fixed inset-x-0 top-0 z-[100] h-[3px]"
       style={{ display: "none" }}
     >
@@ -79,8 +101,9 @@ export function NavigationProgress() {
         style={{
           transform: "scaleX(0)",
           opacity: 0,
-          transition:
-            "transform 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease",
+          transition: reduceMotion
+            ? "none"
+            : "transform 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease",
         }}
       />
     </div>

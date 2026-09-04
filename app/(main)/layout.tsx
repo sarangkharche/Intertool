@@ -3,6 +3,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { PreferencesApplier } from "@/components/preferences-applier";
+import { DashboardThemeBoundary } from "@/components/dashboard-theme-boundary";
 
 export default function MainLayout({
   children,
@@ -15,9 +16,11 @@ export default function MainLayout({
       <Suspense fallback={null}>
         <NavigationProgress />
       </Suspense>
-      <Header />
-      <main className="flex-1">{children}</main>
-      <Footer />
+      <DashboardThemeBoundary>
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </DashboardThemeBoundary>
     </div>
   );
 }
