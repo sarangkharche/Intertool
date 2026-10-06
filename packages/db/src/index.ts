@@ -610,6 +610,71 @@ export class IntertoolStore {
     await appendAudit(this.db, actor, "token.revoked", "api_token", id);
   }
 
+  async capturePersonalMemory(
+    actor: Actor,
+    input: {
+      repository: string;
+      title: string;
+      content: string;
+      evidence: string;
+    }
+  ): Promise<PersonalMemoryRecord> {
+    const contentHash = crypto
+      .createHash("sha256")
+      .update(input.content)
+      .digest("hex");
+    const sourceKey = crypto
+      .createHash("sha256")
+      .update(JSON.stringify(input))
+      .digest("hex");
+    const metadata = {
+      repository: input.repository,
+      evidence: input.evidence,
+      captured_by: "agent",
+    };
+    const rows = await this.db`
+      INSERT INTO personal_memories (
+        user_id, source_kind, source_key, title, content, content_hash, metadata
+      ) VALUES (
+        ${actor.userId}, 'agent_capture', ${sourceKey}, ${input.title},
+        ${input.content}, ${contentHash}, ${this.db.json(metadata)}
+      )
+      ON CONFLICT (user_id, source_kind, source_key)
+      DO UPDATE SET source_key = EXCLUDED.source_key
+      RETURNING *
+    `;
+    return personalMemoryFromRow(rows[0] as Row);
+  }
+
+  async recentPersonalCaptures(actor: Actor, repository: string) {
+    const rows = await this.db`
+      SELECT id, title, LEFT(content, 1500) AS content,
+        LEFT(metadata->>'evidence', 500) AS evidence, created_at
+      FROM personal_memories
+      WHERE user_id = ${actor.userId} AND source_kind = 'agent_capture'
+        AND metadata->>'repository' = ${repository}
+      ORDER BY created_at DESC, id DESC LIMIT 3
+    `;
+    return rows;
+  }
+
+  async recallPersonalMemories(
+    actor: Actor,
+    input: { repository: string; query: string; limit: number }
+  ): Promise<PersonalMemoryRecord[]> {
+    const rows = await this.db`
+      SELECT * FROM personal_memories
+      WHERE user_id = ${actor.userId}
+        AND source_kind = 'agent_capture'
+        AND metadata->>'repository' = ${input.repository}
+        AND search_vector @@ websearch_to_tsquery('english', ${input.query})
+      ORDER BY ts_rank(search_vector, websearch_to_tsquery('english', ${input.query})) DESC,
+        created_at DESC, id DESC
+      LIMIT ${input.limit}
+    `;
+    return rows.map((row) => personalMemoryFromRow(row as Row));
+  }
+
   async upsertPersonalMemory(
     actor: Actor,
     input: PersonalMemoryImportInput

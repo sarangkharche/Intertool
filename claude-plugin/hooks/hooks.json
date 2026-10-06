@@ -1,5 +1,5 @@
 {
-  "description": "Reminds Claude to retrieve relevant shared context without collecting session data.",
+  "description": "Retrieves context before work and checks durable private capture before completion.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,7 +7,29 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.py\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.py\" hook",
+            "timeout": 30
           }
         ]
       }

@@ -27,3 +27,5 @@ Use `PLAYWRIGHT_PORT` to change the web port. Set `PLAYWRIGHT_BASE_URL` to test 
 Protocol-level integration tests separately verify MCP initialization/tool listing, Alice-to-Bob context retrieval, tenant isolation, lifecycle exclusions, token hashing/revocation, audit records, ranking, and compaction.
 
 Prefer `getByRole`, `getByLabel`, and visible outcome assertions. Do not add test IDs when an accessible name can remain stable.
+
+`pnpm test:hooks` exercises both client hook payloads, completion gates, local privacy, offline persistence, worker retries and configuration merging. The server integration suite covers the authenticated lifecycle API and private context isolation. These checks do not replace a real client installation and trust check.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  captureMemorySchema,
+  recallMemorySchema,
   createMemorySchema,
   createRepositorySchema,
   detectSecretLikeContent,
@@ -95,6 +97,32 @@ describe("memory contracts", () => {
         source_key: "../outside.md",
         title: "Unsafe memory",
         content: "This source key escapes the memory root.",
+      }).success
+    ).toBe(false);
+  });
+});
+
+describe("automatic capture limits", () => {
+  it("requires evidence and rejects oversized summaries", () => {
+    const input = {
+      repository: "acme/payments",
+      title: "Retry finding",
+      content: "Reuse the original request identifier for retries.",
+      evidence: "Retry integration test",
+    };
+    expect(captureMemorySchema.safeParse(input).success).toBe(true);
+    expect(
+      captureMemorySchema.safeParse({ ...input, evidence: "" }).success
+    ).toBe(false);
+    expect(
+      captureMemorySchema.safeParse({ ...input, content: "x".repeat(4001) })
+        .success
+    ).toBe(false);
+    expect(
+      recallMemorySchema.safeParse({
+        repository: "acme/payments",
+        query: "retry",
+        limit: 6,
       }).success
     ).toBe(false);
   });

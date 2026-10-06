@@ -447,8 +447,87 @@ describe("MVP isolation and lifecycle", () => {
   });
 });
 
+describe("Agent lifecycle API", () => {
+  it("captures idempotently and bootstraps only the token owner's private context", async () => {
+    const app = buildApp({ store, logger: false });
+    const token = await store.createToken(bob, { name: "Hook adapter" });
+    const aliceToken = await store.createToken(alice, {
+      name: "Other hook user",
+    });
+    const headers = { authorization: `Bearer ${token.token}` };
+    const input = {
+      repository: `acme-${suffix}/payments-service`,
+      title: "Hook retry finding",
+      content:
+        "Hookprivate findings use the original request identifier for payment retries.",
+      evidence: "Verified in retry integration tests",
+    };
+    try {
+      const denied = await app.inject({
+        method: "POST",
+        url: "/api/agent/context",
+        payload: { repository: input.repository },
+      });
+      expect(denied.statusCode).toBe(401);
+      const results = await Promise.all(
+        [1, 2].map(() =>
+          app.inject({
+            method: "POST",
+            url: "/api/agent/capture",
+            headers,
+            payload: input,
+          })
+        )
+      );
+      expect(results[0].statusCode).toBe(200);
+      expect(results[0].json()).toEqual(results[1].json());
+      const context = await app.inject({
+        method: "POST",
+        url: "/api/agent/context",
+        headers,
+        payload: { repository: input.repository },
+      });
+      expect(context.statusCode).toBe(200);
+      expect(JSON.stringify(context.json().personal)).toContain(input.content);
+      expect(JSON.stringify(context.json().team)).not.toContain(input.content);
+      for (const [auth, repository] of [
+        [aliceToken.token, input.repository],
+        [token.token, "other/repository"],
+      ]) {
+        const isolated = await app.inject({
+          method: "POST",
+          url: "/api/agent/context",
+          headers: { authorization: `Bearer ${auth}` },
+          payload: { repository },
+        });
+        expect(JSON.stringify(isolated.json())).not.toContain(input.content);
+      }
+      const secret = await app.inject({
+        method: "POST",
+        url: "/api/agent/capture",
+        headers,
+        payload: {
+          ...input,
+          evidence: "ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD",
+        },
+      });
+      expect(secret.statusCode).toBe(400);
+      expect(secret.body).not.toContain("ghp_");
+      const oversized = await app.inject({
+        method: "POST",
+        url: "/api/agent/capture",
+        headers,
+        payload: { ...input, content: "x".repeat(4001) },
+      });
+      expect(oversized.statusCode).toBe(400);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
 describe("MCP protocol", () => {
-  it("initializes, lists exactly five tools, and retrieves Alice's memory with Bob's token", async () => {
+  it("initializes, lists seven tools, and retrieves Alice's memory with Bob's token", async () => {
     const token = await store.createToken(bob, { name: "MCP integration" });
     const app = buildApp({ store, logger: false });
     await app.listen({ host: "127.0.0.1", port: 0 });
@@ -466,6 +545,8 @@ describe("MCP protocol", () => {
       const tools = await client.listTools();
       expect(tools.tools.map((tool) => tool.name).sort()).toEqual(
         [
+          "capture_memory",
+          "recall_memory",
           "get_context",
           "propose_memory",
           "publish_memory",
@@ -473,6 +554,69 @@ describe("MCP protocol", () => {
           "search_context",
         ].sort()
       );
+      expect(client.getInstructions()).toContain("automatically save");
+      const captureInput = {
+        repository: `acme-${suffix}/payments-service`,
+        title: "Private retry discovery",
+        content:
+          "Zebraretry requires the original request identifier to prevent duplicate payments.",
+        evidence: "Verified in the retry integration test",
+      };
+      const captures = await Promise.all(
+        [1, 2].map(() =>
+          client.callTool({
+            name: "capture_memory",
+            arguments: captureInput,
+          })
+        )
+      );
+      for (const capture of captures) expect(capture.isError).not.toBe(true);
+      expect(captures[0].content).toEqual(captures[1].content);
+      const recalled = await client.callTool({
+        name: "recall_memory",
+        arguments: { repository: captureInput.repository, query: "Zebraretry" },
+      });
+      expect(recalled.isError).not.toBe(true);
+      expect(JSON.stringify(recalled.content)).toContain(captureInput.content);
+      expect(
+        await store.recallPersonalMemories(alice, {
+          repository: captureInput.repository,
+          query: "Zebraretry",
+          limit: 5,
+        })
+      ).toEqual([]);
+      expect(
+        await store.recallPersonalMemories(outsider, {
+          repository: captureInput.repository,
+          query: "Zebraretry",
+          limit: 5,
+        })
+      ).toEqual([]);
+      expect(
+        await store.recallPersonalMemories(bob, {
+          repository: "another/repository",
+          query: "Zebraretry",
+          limit: 5,
+        })
+      ).toEqual([]);
+      expect(
+        JSON.stringify(
+          await store.searchCandidates(bob, {
+            repository: captureInput.repository,
+            query: "Zebraretry",
+          })
+        )
+      ).not.toContain(captureInput.content);
+      const rejected = await client.callTool({
+        name: "capture_memory",
+        arguments: {
+          ...captureInput,
+          content: "The token is ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD",
+        },
+      });
+      expect(rejected.isError).toBe(true);
+      expect(JSON.stringify(rejected.content)).not.toContain("ghp_");
+
       const result = await client.callTool({
         name: "get_context",
         arguments: {

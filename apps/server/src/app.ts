@@ -3,6 +3,8 @@ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
+  captureMemorySchema,
+  hookContextSchema,
   createMemorySchema,
   createOrganizationSchema,
   createRepositorySchema,
@@ -228,6 +230,52 @@ export function buildApp(
     if (!id) return;
     await store.revokeToken(actor, id);
     return reply.status(204).send();
+  });
+
+  app.post("/api/agent/capture", async (request, reply) => {
+    const actor = await actorFor(request, reply);
+    if (!actor) return;
+    if (limited(reply, `agent-capture:${actor.userId}`, 60)) return;
+    const parsed = captureMemorySchema.safeParse(request.body);
+    if (!parsed.success)
+      return reply.status(400).send(validationError(parsed.error));
+    if (detectSecretLikeContent(JSON.stringify(parsed.data))) {
+      return reply
+        .status(400)
+        .send({
+          error: "Capture rejected because it appears to contain a secret.",
+        });
+    }
+    const memory = await store.capturePersonalMemory(actor, parsed.data);
+    return { saved: true, memory_id: memory.id, visibility: "private" };
+  });
+
+  app.post("/api/agent/context", async (request, reply) => {
+    const actor = await actorFor(request, reply);
+    if (!actor) return;
+    if (limited(reply, `agent-context:${actor.userId}`, 60)) return;
+    const parsed = hookContextSchema.safeParse(request.body);
+    if (!parsed.success)
+      return reply.status(400).send(validationError(parsed.error));
+    const repository = parsed.data.repository;
+    const query = "Repository conventions decisions warnings and runbooks";
+    const candidates = await store.searchCandidates(actor, {
+      repository,
+      query,
+    });
+    const team = compactContext(
+      rankMemories(candidates, { repository, query, paths: [] }),
+      {
+        repository,
+        query,
+        limit: 3,
+        maxCharacters: 2500,
+      }
+    );
+    return {
+      team,
+      personal: await store.recentPersonalCaptures(actor, repository),
+    };
   });
 
   app.get("/api/personal-memories", async (request, reply) => {

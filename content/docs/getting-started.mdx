@@ -127,3 +127,13 @@ Open **My memory** in the dashboard to search the imported documents. The import
 ```bash
 claude plugin validate ./claude-plugin
 ```
+
+## Retrieval progress
+
+Intertool asks connected agents to say “Looking into Intertool…” before calling `get_context` or `search_context`, once per lookup when progress messages are supported. This guidance is included in the MCP tool descriptions, agent install instructions and Claude Code plugin. The client controls its built in tool status label, so the exact wording is not guaranteed.
+
+## Automatic memory capture
+
+Once connected, Intertool asks your agent to save useful verified learnings with `capture_memory` without waiting for you to add them manually. Captures appear in **My memory** and can be recalled by the same user through `recall_memory` in later work. Team sharing still uses reviewed publication. This is agent initiated capture, not guaranteed background recording: the client must follow the connection instructions and allow the tool call. See [Personal memory](/docs/personal-memory) for the capture and privacy boundaries.
+
+For reliable checks beyond MCP guidance, install the [automatic memory adapter](/docs/automatic-memory). Codex and Claude Code hooks retrieve context before each prompt and verify capture or a no learning decision before completion. Queued uploads retry after failures.

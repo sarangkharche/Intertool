@@ -3,7 +3,7 @@ title: Development Context
 description: LLM-oriented map and change rules for the Intertool memory MVP.
 ---
 
-Intertool is a permission-aware memory layer with two deliberately separate scopes: private, imported personal memory and reviewed organisation memory. The product stores durable memory documents and structured engineering memories, not raw conversations or agent telemetry.
+Intertool is a permission-aware memory layer with two deliberately separate scopes: private personal memory from imports and automatic agent captures and reviewed organisation memory. The product stores durable memory documents and structured engineering memories, not raw conversations or agent telemetry.
 
 ## Project map
 
@@ -15,7 +15,7 @@ Intertool is a permission-aware memory layer with two deliberately separate scop
 - `packages/db/` owns schema, migrations, seed data, tenant-scoped queries, versions, and audits.
 - `packages/retrieval/` owns deterministic ranking and compaction.
 - `scripts/import-codex-memories.ts` imports local Codex Markdown memory into the private user layer.
-- `claude-plugin/` contains the installable Claude Code integration.
+- `claude-plugin/` contains the installable Claude Code integration. Its `hooks/runtime.py` also installs Codex lifecycle hooks and owns private local queueing, retries and capture checks. Raw hook prompts and transcripts must never be persisted or uploaded.
 - `content/docs/` is the public and LLM-readable documentation corpus.
 
 Dashboard route transitions use `components/ui/shining-text.tsx` for concise theme-aware progress copy. Preserve the surrounding skeleton, visible focus states, reduced-motion behavior, Geist typography, and compact control rhythm. The dashboard loading state must reserve the same major regions as the resolved overview so navigation does not reflow. Dashboard motion follows the usage-led Transitions.dev scale in `app/globals.css`: one short staggered route reveal, number pop-ins for changing metrics, transform-based chart reveals, origin-aware menus, in-place icon swaps, and 150ms text-state swaps. Do not animate decorative surfaces or layout dimensions, cap stagger at three steps, and keep the full result immediately available when `prefers-reduced-motion` is enabled. Async labels use `components/ui/stable-status-label.tsx` to reserve their widest state before copy changes, and every motion-enhanced state must still communicate its result to assistive technology when motion is reduced. Signed-in product routes are wrapped by `components/dashboard-theme-boundary.tsx` and use the scoped semantic OKLCH roles in `app/globals.css`: cool neutrals for ordinary surfaces, blue for brand, selection, information, and primary chart data, plus dedicated success, warning, danger, and discovery roles. The public homepage intentionally uses the same scoped palette so the landing page and signed-in product feel continuous; other public routes retain the warm palette. On larger screens the signed-in product is framed as one restrained application surface, while the homepage receives the palette without the dashboard shell; mobile remains edge-to-edge. Keep status meaning explicit in text or icons rather than relying on colour alone. Desktop buttons use a 32px standard height and 36px emphasized height; coarse-pointer devices retain 44px touch targets. Memory creation has one persistent entry point, labelled `Add memory`, in the authenticated header. Render it as a quiet text link rather than a filled button, and do not repeat creation actions in dashboard content or empty states. Dashboard page headers begin with the meaningful heading; do not add decorative uppercase eyebrow copy above it. Functional statuses, table headings, and metadata labels remain explicit.
@@ -32,7 +32,7 @@ The public landing page uses Newsreader Regular for the hero and major section s
 - Keep drafts, expired, disputed, and archived memories out of retrieval.
 - Create immutable versions before changing non-draft published state.
 - Do not publish a proposed MCP memory without explicit human approval of the exact draft.
-- Never include personal-memory rows in team REST or MCP retrieval. Extraction may create a reviewable team draft later, but must never publish automatically.
+- Never include personal-memory rows in team REST or team MCP retrieval. The separate `recall_memory` tool may retrieve only the authenticated user’s agent captures for the requested repository. Extraction may create a reviewable team draft later, but must never publish automatically.
 - Repository code and checked-in instructions outrank Intertool memories.
 - Do not store raw conversations, prompts, code files, terminal output, or credentials. Personal imports may contain user-specific durable context, so keep them private and avoid copying their content into logs or organisation audit metadata.
 

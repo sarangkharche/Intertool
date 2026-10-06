@@ -59,12 +59,14 @@ GET    /api/personal-memories/:id
 POST   /api/personal-memories/import
 ```
 
-These endpoints are scoped to the authenticated user, not the current organisation. `POST /api/personal-memories/import` upserts one source document by `source_kind` and `source_key`; the server computes its content checksum. The list endpoint supports cursor pagination plus `query` and `source_kind` filters and returns a short content preview. The stats endpoint returns totals by source and by the first folder in each source key so the dashboard can show an honest collection distribution without inferring semantic relationships. Personal memory never participates in the team context endpoints or MCP retrieval.
+These endpoints are scoped to the authenticated user, not the current organisation. `POST /api/personal-memories/import` upserts one source document by `source_kind` and `source_key`; the server computes its content checksum. The list endpoint supports cursor pagination plus `query` and `source_kind` filters and returns a short content preview. The stats endpoint returns totals by source and by the first folder in each source key so the dashboard can show an honest collection distribution without inferring semantic relationships. Personal memory never participates in the team context endpoints or team MCP retrieval. Private agent captures have a separate user scoped `recall_memory` tool.
 
 ## MCP
 
 `POST /mcp` implements Streamable HTTP and requires `Authorization: Bearer itk_...`. It exposes exactly:
 
+- `capture_memory`
+- `recall_memory`
 - `get_context`
 - `search_context`
 - `propose_memory`
@@ -72,3 +74,11 @@ These endpoints are scoped to the authenticated user, not the current organisati
 - `report_stale`
 
 Missing, invalid, expired, and revoked tokens return `401`. Unknown cross-tenant objects return the same `404` as absent objects. Validation errors and tool failures never include server stack traces.
+
+`capture_memory` saves a concise learning and evidence reference privately for the authenticated user. Identical submissions reuse the same memory. `recall_memory` searches only that user’s agent captures within the requested repository and returns at most five results. Neither tool publishes team memory. Connection instructions request automatic capture after verified work, subject to client support and permissions.
+
+## Agent lifecycle adapter
+
+`POST /api/agent/context` accepts `{ "repository": "owner/name" }` and returns a bounded team overview plus up to three recent private captures belonging to the authenticated user. This endpoint does not accept a raw prompt or transcript. Private data remains separate from the team context fields.
+
+`POST /api/agent/capture` accepts the same repository, title, content and evidence fields as `capture_memory`. It returns `{ "saved": true, "memory_id": "...", "visibility": "private" }` after persistence. Identical submissions return the same memory. Validation and detected secrets return `400`; rate limits return `429`. Both endpoints require authentication and allow up to 60 requests per minute per user for each endpoint.

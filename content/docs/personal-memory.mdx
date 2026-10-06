@@ -7,6 +7,16 @@ Personal memory is a private layer for durable context collected by your coding 
 
 This is separate from **Team memory**, where engineering conventions, decisions, warnings, and runbooks are reviewed and explicitly published for an organisation.
 
+## Automatic agent capture
+
+Connected agents receive instructions to save useful verified learnings with `capture_memory` after substantive work, without a manual remember request. The tool accepts a repository, title, concise summary and evidence reference. It saves directly to **My memory** under the `agent_capture` source. Identical submissions return the existing memory; differently worded summaries are not semantically deduplicated.
+
+At the start of later work, `recall_memory` searches your own captures for the requested repository. It returns at most five memories. Imported Codex documents remain dashboard only. Captures are private and never become team knowledge automatically. Use the existing draft and approval workflow to share a learning.
+
+MCP supplies tools and connection instructions, not a stream of the whole conversation. Automatic capture depends on the agent following those instructions and the client allowing the call. For Codex and Claude Code, install the [lifecycle adapter](/docs/automatic-memory) to run retrieval and completion checks through client hooks with a durable retry queue. There is no background transcript collector. Agents must respect requests not to save and report failed saves honestly.
+
+Only concise durable learnings should be sent. The capture endpoint checks for known secret patterns, but that check cannot identify every sensitive value. Agents must exclude raw conversations, prompts, code files, terminal output, credentials and customer data.
+
 ## Import local Codex memory
 
 [Codex memory](https://learn.chatgpt.com/docs/customization/memories) is stored locally under `~/.codex/memories/`. Create a personal Intertool API token, then run:
@@ -28,7 +38,7 @@ The current MVP is an on-demand import, not continuous sync. It does not import 
 
 - Personal documents are always scoped by the authenticated user ID.
 - Organisation members and administrators cannot list or open another user's personal documents.
-- Personal documents are never returned by `/api/context/search`, `/api/context/get`, or the MCP context tools.
+- Personal documents are never returned by `/api/context/search`, `/api/context/get`, or the team MCP context tools. The separate `recall_memory` tool only returns the authenticated user’s own agent captures.
 - Importing never creates or publishes team memory.
 
 A later extraction workflow can identify engineering-specific candidates and create reviewable Team memory drafts. Human approval remains required before those drafts become retrievable team context.

@@ -71,3 +71,6 @@ registry/.index.json
 .superpowers/
 .claude/
 .codex/config.toml
+
+# Python hook runtime test caches
+__pycache__/

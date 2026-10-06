@@ -1,0 +1,85 @@
+---
+title: Automatic Memory
+description: Connect Codex and Claude Code lifecycle hooks to private memory with durable retries.
+---
+
+The lifecycle adapter makes a memory retrieval attempt before each user prompt and checks for a capture decision before the agent finishes. Unlike MCP guidance alone, these steps run as client hooks. The agent still decides which learnings are useful; the adapter verifies that a decision was recorded and handles delivery.
+
+## Install once
+
+Use Python 3.9 or newer on macOS or Linux. Keep a trusted Intertool checkout in a stable location. From that checkout, run one of these commands for the repository where you want the hooks:
+
+```bash
+python3 claude-plugin/hooks/runtime.py install --client codex --project /absolute/path/to/your/repository
+python3 claude-plugin/hooks/runtime.py install --client claude --project /absolute/path/to/your/repository
+```
+
+Choose the command for your client. The installer merges into `.codex/hooks.json` or `.claude/settings.local.json`, preserves existing settings and creates a dated backup when a file already exists. Commands point to the runtime in your checkout, so keep that path available. It does not write tokens or change MCP configuration.
+
+The Claude Code plugin already bundles the same hooks. Use either the plugin or the installer for Claude, not both, to avoid running duplicate hooks.
+
+Restart the client after installation. In Codex, open `/hooks` and review and trust the new hook definitions. Installing the adapter cannot grant that trust for you. Projects must also be trusted for their local hooks to run. See the [Codex hook reference](https://learn.chatgpt.com/docs/hooks) and [Claude hook reference](https://code.claude.com/docs/en/hooks).
+
+Configure these variables in the environment that launches the client:
+
+```bash
+export INTERTOOL_URL="https://your-intertool-api.example.com"
+export INTERTOOL_API_TOKEN="itk_..."
+```
+
+Use the API service base URL, without `/mcp`. Local development can use `http://localhost:3001`. Tokens stay in the process environment. The runtime refuses remote HTTP URLs and redirects so credentials are not forwarded to another location.
+
+The adapter derives `owner/repository` from a GitHub origin without sending the remote URL. Set `INTERTOOL_REPOSITORY` explicitly for repositories with another host or no origin:
+
+```bash
+export INTERTOOL_REPOSITORY="your-team/your-repository"
+```
+
+## What happens during work
+
+1. `UserPromptSubmit` retries due queued memories and requests a bounded repository overview from `/api/agent/context`. It injects reviewed team context and up to three recent private captures. It never sends the prompt or reads the transcript. The agent can still use MCP for more specific searches.
+2. The hook gives the agent a completion command tied to this session and response. The agent supplies a concise learning with an evidence reference, or records `no_learning` when there is nothing useful to save. A user request not to save is recorded as `opt_out`.
+3. The completion helper commits the summary to a private local SQLite queue before contacting `/api/agent/capture`. Only a successful response with a memory receipt marks it saved. Repeated submissions are idempotent.
+4. `Stop` checks that the current response has a recorded decision. If it does not, the hook asks the agent to complete the check. Pending uploads are allowed to finish because the summary is already on disk.
+
+The hook retrieves a repository overview, not task specific semantic search. The agent supplies the learning and its evidence; the hook does not independently prove that the learning is true.
+
+## Delivery and status
+
+A detached local worker retries transient failures with backoff from five seconds to five minutes while pending entries exist. It uses a process lock so duplicate workers exit. New hooks also retry due entries, which recovers queued work after a restart or worker crash. There is no operating system startup service: after a reboot, open a hooked session or run `retry` to restart delivery.
+
+```bash
+python3 claude-plugin/hooks/runtime.py status
+python3 claude-plugin/hooks/runtime.py retry
+```
+
+Status includes the last successful retrieval, last confirmed save and queue counts. A capture remains pending until a receipt arrives. Authentication failures are marked blocked and require fixing the token or permissions. Invalid captures are marked rejected and must be corrected or explicitly discarded through the completion helper. Neither state is reported as saved.
+
+Queues are partitioned by destination and a token fingerprint. A different token never silently uploads the old queue to another account. `pending_other_credentials` reports entries waiting under other credentials. Resume with the original valid credentials where possible. If they were revoked, keep the old queue for a deliberate recovery; this release does not automatically migrate it to a replacement token.
+
+State lives under `~/.intertool/` by default, with a private directory and database permissions. `INTERTOOL_STATE_DIR` can select another local directory. Only pending learning summaries, receipts and check metadata are stored. Payloads are cleared from queue rows after acknowledgement; the database is not encrypted and is not a secure erasure mechanism. Use an encrypted user disk for local protection.
+
+## Turn capture off
+
+Pause local capture and stop further retry attempts for the current destination and token:
+
+```bash
+python3 claude-plugin/hooks/runtime.py pause
+python3 claude-plugin/hooks/runtime.py resume
+```
+
+The worker checks this persisted pause state before each upload. An upload already in flight may still finish. Pausing preserves queued summaries for later delivery.
+
+Alternatively, set this in the client environment and restart the client to disable retrieval, capture and retry work for new hook processes:
+
+```bash
+export INTERTOOL_MEMORY_DISABLED=1
+```
+
+An already running retry worker retains the environment it started with. Stop that worker before changing global capture policy. A turn level `opt_out` removes unsent entries for that response; it cannot retract an upload already in flight or delete an already saved memory.
+
+## Limits of enforcement
+
+The hooks check each ordinary prompt and completion when installed, enabled and trusted. A client crash, forced termination, interruption or disabled hook can prevent completion processing. Two unsuccessful recovery requests end with an explicit incomplete warning instead of an endless stop loop. An unavailable service is reported as unavailable, not an empty successful lookup. None of these states counts as a successful memory capture.
+
+MCP only clients still receive guidance but do not have lifecycle enforcement. Cloud agents and clients without compatible hooks need a separate adapter. The supplied automated tests exercise the hook commands, real HTTP delivery, durable retry and server isolation; they do not establish that every client release loads and runs the hooks.

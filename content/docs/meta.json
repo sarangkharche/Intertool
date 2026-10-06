@@ -3,6 +3,7 @@
   "pages": [
     "getting-started",
     "personal-memory",
+    "automatic-memory",
     "publishing",
     "architecture",
     "deployment",

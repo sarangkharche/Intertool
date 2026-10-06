@@ -192,6 +192,21 @@ export const personalMemoryImportSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).default({}),
 });
 
+export const captureMemorySchema = z.object({
+  repository: repositoryNameSchema,
+  title: z.string().trim().min(3).max(200),
+  content: z.string().trim().min(20).max(4_000),
+  evidence: z.string().trim().min(3).max(1_000),
+});
+
+export const hookContextSchema = z.object({ repository: repositoryNameSchema });
+
+export const recallMemorySchema = z.object({
+  repository: repositoryNameSchema,
+  query: z.string().trim().min(2).max(500),
+  limit: z.number().int().min(1).max(5).default(5),
+});
+
 export const personalMemoryListQuerySchema = paginationSchema.extend({
   query: z.string().trim().max(500).optional(),
   source_kind: personalMemorySourceKindSchema.optional(),
